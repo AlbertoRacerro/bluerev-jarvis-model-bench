@@ -29,8 +29,14 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
           $env:PYTHONPATH = "$PWD$([IO.Path]::PathSeparator)$(Join-Path $PWD 'src')"
-          python -m unittest discover -s tests -v
+          $testOutput = & python -m unittest discover -s tests -v 2>&1
+          $testExit = $LASTEXITCODE
+          $testOutput | Tee-Object -FilePath artifacts/tests.log
+          "exit_code=$testExit" | Add-Content -Path artifacts/tests.log
+          "TEST_EXIT_CODE=$testExit" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          exit 0
 
       - name: Inventory local-only runtime
         shell: pwsh
@@ -52,7 +58,12 @@ jobs:
             [Environment]::SetEnvironmentVariable($name, $null, 'Process')
           }
           New-Item -ItemType Directory -Force -Path artifacts | Out-Null
-          python scripts/preflight.py --output artifacts/preflight.json
+          $inventoryOutput = & python scripts/preflight.py --output artifacts/preflight.json 2>&1
+          $inventoryExit = $LASTEXITCODE
+          $inventoryOutput | Tee-Object -FilePath artifacts/preflight.log
+          "exit_code=$inventoryExit" | Add-Content -Path artifacts/preflight.log
+          "INVENTORY_EXIT_CODE=$inventoryExit" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          exit 0
 
       - name: Upload immutable preflight artifact
         if: always()
@@ -62,3 +73,15 @@ jobs:
           path: artifacts/
           if-no-files-found: warn
           retention-days: 30
+
+      - name: Enforce preflight gate
+        if: always()
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:TEST_EXIT_CODE -ne '0') {
+            throw "Deterministic contract tests failed with exit code $env:TEST_EXIT_CODE. See tests.log artifact."
+          }
+          if ($env:INVENTORY_EXIT_CODE -ne '0') {
+            throw "Local runtime inventory failed with exit code $env:INVENTORY_EXIT_CODE. See preflight artifacts."
+          }
