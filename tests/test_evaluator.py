@@ -37,7 +37,11 @@ class FixtureExecutionTests(unittest.TestCase):
     def test_fixture_inventory_is_exact_and_unique(self) -> None:
         self.assertEqual(
             set(self.cases),
-            {"ho-route-local-coder-001", "ho-stop-reuse-001"},
+            {
+                "ho-route-local-coder-001",
+                "ho-stop-reuse-001",
+                "ho-stop-reuse-explicit-002",
+            },
         )
 
     def test_candidate_payload_hides_evaluator_oracle(self) -> None:
