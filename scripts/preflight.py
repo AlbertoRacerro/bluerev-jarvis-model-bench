@@ -166,40 +166,78 @@ def build_report() -> dict[str, Any]:
     hermes = inspect_hermes()
     external_env_names = [name for name in KNOWN_EXTERNAL_KEYS if os.environ.get(name)]
 
-    ready = bool(ollama.get("ok") and ollama.get("models") and hermes.get("ok"))
+    runner_ready = bool(ollama.get("ok") and ollama.get("models") and hermes.get("ok"))
+    local_only = len(external_env_names) == 0
+    runner_name = os.environ.get("RUNNER_NAME")
+    workflow = {
+        "run_id": os.environ.get("GITHUB_RUN_ID"),
+        "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
+        "event_name": os.environ.get("GITHUB_EVENT_NAME"),
+        "sha": os.environ.get("GITHUB_SHA"),
+        "ref": os.environ.get("GITHUB_REF"),
+    }
+
+    blocking_reasons = [
+        reason
+        for condition, reason in (
+            (not ollama.get("ok"), "ollama_unreachable"),
+            (ollama.get("ok") and not ollama.get("models"), "no_ollama_models"),
+            (not hermes.get("ok"), "hermes_unavailable"),
+            (external_env_names, "external_api_environment_present"),
+        )
+        if condition
+    ]
+
+    models = ollama.get("models") or []
+    scoring_blocking_reasons = list(blocking_reasons)
+    scoring_blocking_reasons.extend(
+        reason
+        for condition, reason in (
+            (not runner_name, "runner_name_unavailable"),
+            (
+                any(not workflow.get(field) for field in ("run_id", "run_attempt", "sha", "ref")),
+                "workflow_identity_incomplete",
+            ),
+            (
+                ollama.get("ok") and not (ollama.get("version") or {}).get("ok"),
+                "ollama_version_unavailable",
+            ),
+            (
+                bool(models)
+                and any(not model.get("name") or not model.get("digest") for model in models),
+                "ollama_model_identity_incomplete",
+            ),
+            (hermes.get("ok") and not hermes.get("commit"), "hermes_commit_unavailable"),
+            (
+                hermes.get("ok") and hermes.get("dirty") is None,
+                "hermes_worktree_state_unknown",
+            ),
+            (hermes.get("ok") and hermes.get("dirty") is True, "hermes_worktree_dirty"),
+        )
+        if condition
+    )
+
     return {
         "schema_version": "bench.preflight.v1",
         "created_at_utc": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
-        "status": "ready" if ready else "blocked",
-        "local_only": len(external_env_names) == 0,
+        "status": "ready" if runner_ready else "blocked",
+        "runner_ready": runner_ready,
+        "local_only": local_only,
+        "scoring_ready": runner_ready and local_only and not scoring_blocking_reasons,
         "external_api_env_names_present": external_env_names,
         "environment": {
-            "runner_name": os.environ.get("RUNNER_NAME"),
+            "runner_name": runner_name,
             "os": platform.platform(),
             "machine": platform.machine(),
             "processor": platform.processor(),
             "python": sys.version,
             "cpu_count": os.cpu_count(),
         },
-        "workflow": {
-            "run_id": os.environ.get("GITHUB_RUN_ID"),
-            "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
-            "event_name": os.environ.get("GITHUB_EVENT_NAME"),
-            "sha": os.environ.get("GITHUB_SHA"),
-            "ref": os.environ.get("GITHUB_REF"),
-        },
+        "workflow": workflow,
         "ollama": ollama,
         "hermes": hermes,
-        "blocking_reasons": [
-            reason
-            for condition, reason in (
-                (not ollama.get("ok"), "ollama_unreachable"),
-                (ollama.get("ok") and not ollama.get("models"), "no_ollama_models"),
-                (not hermes.get("ok"), "hermes_unavailable"),
-                (external_env_names, "external_api_environment_present"),
-            )
-            if condition
-        ],
+        "blocking_reasons": blocking_reasons,
+        "scoring_blocking_reasons": scoring_blocking_reasons,
     }
 
 
