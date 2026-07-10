@@ -42,6 +42,31 @@ def isolated_environment(values: dict[str, str] | None = None):
         yield
 
 
+class OllamaEndpointTests(unittest.TestCase):
+    def test_rejects_non_loopback_endpoint_before_network_access(self) -> None:
+        with (
+            isolated_environment({"OLLAMA_TAGS_URL": "https://example.com/api/tags"}),
+            patch.object(preflight, "_run", return_value={"ok": True}),
+            patch.object(preflight, "urlopen") as mocked_urlopen,
+        ):
+            report = preflight.inspect_ollama()
+
+        self.assertFalse(report["ok"])
+        self.assertEqual(report["error"], "NonLoopbackEndpoint")
+        mocked_urlopen.assert_not_called()
+
+    def test_accepts_ipv4_and_ipv6_loopback_http_endpoints(self) -> None:
+        self.assertTrue(
+            preflight._is_loopback_http_endpoint("http://127.0.0.1:11434/api/tags")
+        )
+        self.assertTrue(
+            preflight._is_loopback_http_endpoint("http://[::1]:11434/api/tags")
+        )
+        self.assertFalse(
+            preflight._is_loopback_http_endpoint("https://127.0.0.1:11434/api/tags")
+        )
+
+
 class BuildReportTests(unittest.TestCase):
     def test_ready_local_runtime_is_scoring_ready_when_pinned_and_clean(self) -> None:
         with (
@@ -75,6 +100,26 @@ class BuildReportTests(unittest.TestCase):
             "external_api_environment_present", report["scoring_blocking_reasons"]
         )
         self.assertNotIn("not-a-real-key", str(report))
+
+    def test_non_loopback_ollama_blocks_preflight_with_specific_reason(self) -> None:
+        with (
+            isolated_environment(),
+            patch.object(
+                preflight,
+                "inspect_ollama",
+                return_value={
+                    "ok": False,
+                    "error": "NonLoopbackEndpoint",
+                    "models": [],
+                },
+            ),
+            patch.object(preflight, "inspect_hermes", return_value=ready_hermes()),
+        ):
+            report = preflight.build_report()
+
+        self.assertEqual(report["status"], "blocked")
+        self.assertIn("ollama_endpoint_not_loopback", report["blocking_reasons"])
+        self.assertNotIn("ollama_unreachable", report["blocking_reasons"])
 
     def test_missing_hermes_blocks_preflight_and_scoring(self) -> None:
         with (
