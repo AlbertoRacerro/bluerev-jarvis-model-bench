@@ -1,0 +1,132 @@
+name: Local model residency qualification
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/local-model-residency.yml"
+      - "scripts/probe_model_residency.py"
+      - "tests/test_probe_model_residency.py"
+      - "candidates/models.local.json"
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: local-benchmark-runner
+  cancel-in-progress: false
+
+jobs:
+  residency:
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Windows, X64, bluerev-bench]
+    timeout-minutes: 180
+
+    steps:
+      - name: Check out trusted default branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Run deterministic tests and sequential residency probe
+        shell: cmd
+        env:
+          OPENAI_API_KEY: ""
+          ANTHROPIC_API_KEY: ""
+          OPENROUTER_API_KEY: ""
+          XAI_API_KEY: ""
+          DEEPSEEK_API_KEY: ""
+          GOOGLE_API_KEY: ""
+          GEMINI_API_KEY: ""
+          GLM_API_KEY: ""
+          KIMI_API_KEY: ""
+          DASHSCOPE_API_KEY: ""
+          NO_PROXY: "*"
+          no_proxy: "*"
+        run: |
+          if not exist artifacts\model-residency mkdir artifacts\model-residency
+          python -m unittest discover -s tests -v > artifacts\model-residency\tests.log 2>&1
+          if errorlevel 1 exit /b 1
+          python scripts\probe_model_residency.py --output-dir artifacts\model-residency > artifacts\model-residency\probe-stdout.log 2>&1
+          exit /b %ERRORLEVEL%
+
+      - name: Upload immutable residency artifact
+        id: upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-residency-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/model-residency/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish structured residency result to automation inbox
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          INBOX_ISSUE: "24"
+          REPORT_PATH: artifacts/model-residency/report.json
+          JOB_STATUS: ${{ job.status }}
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+        with:
+          script: |
+            const fs = require("fs");
+            let report = null;
+            let reportError = null;
+            try {
+              report = JSON.parse(fs.readFileSync(process.env.REPORT_PATH, "utf8"));
+            } catch (error) {
+              reportError = `${error.name}: ${error.message}`;
+            }
+
+            const models = (report?.models ?? []).map((entry) => ({
+              name: entry?.model?.name ?? null,
+              digest: entry?.model?.digest ?? null,
+              classification: entry?.classification ?? null,
+              residency_ratio: entry?.residency_ratio ?? null,
+              probe_duration_seconds: entry?.probe_duration_seconds ?? null,
+              error: entry?.error ?? null,
+            }));
+
+            const payload = {
+              schema_version: "bench.model-residency-inbox.v1",
+              run_id: Number(context.runId),
+              run_attempt: Number(context.runAttempt),
+              workflow: context.workflow,
+              event_name: context.eventName,
+              sha: context.sha,
+              ref: context.ref,
+              job_status: process.env.JOB_STATUS,
+              artifact: {
+                id: process.env.ARTIFACT_ID || null,
+                url: process.env.ARTIFACT_URL || null,
+                digest: process.env.ARTIFACT_DIGEST || null,
+              },
+              profile: report?.profile ?? null,
+              explicit_exclusions: report?.explicit_exclusions ?? null,
+              initial_gpu: report?.initial_gpu ?? null,
+              infrastructure_error: report?.infrastructure_error ?? null,
+              classification_counts: report?.classification_counts ?? null,
+              models,
+              report_error: reportError,
+            };
+
+            const body = [
+              "<!-- bench-model-residency-v1 -->",
+              "```json",
+              JSON.stringify(payload, null, 2),
+              "```",
+            ].join("\n");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number(process.env.INBOX_ISSUE),
+              body,
+            });
