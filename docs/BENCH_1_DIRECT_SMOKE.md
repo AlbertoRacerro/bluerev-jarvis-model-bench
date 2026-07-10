@@ -1,13 +1,13 @@
 # BENCH-1 bounded direct-model smoke
 
-This slice proves the local execution and evidence pipeline with one deliberately small run. It is not comparative evidence and does not involve Hermes.
+This slice proves the local execution and evidence pipeline with deliberately small runs. It is not comparative evidence and does not involve Hermes.
 
-## Fixed scope
+## Current fixed scope
 
 - Lane: `direct`.
-- Candidate: `minicpm5-fable-1b-control`.
+- Candidate: `qwythos-hermes-safe`.
 - Case: `ho-stop-reuse-001`.
-- Repetitions: `1`.
+- Repetitions in the current run: `1`.
 - Ollama endpoint: exactly `http://127.0.0.1:11434/api/generate`.
 - Temperature: `0`.
 - Seed: `4242`.
@@ -17,6 +17,22 @@ This slice proves the local execution and evidence pipeline with one deliberatel
 - `keep_alive`: `0` so the smoke run does not leave the model resident.
 
 The candidate and case are constants in the trusted job driver. Workflow inputs cannot select an arbitrary model, path, endpoint, or fixture.
+
+## First observed control run
+
+Trusted-main run `29103303992`, attempt `1`, executed commit `784ea2327dd444225c1319ef240db4a8c3cd388c` with candidate `minicpm5-fable-1b-control`.
+
+- Artifact: `direct-smoke-29103303992-1`.
+- Artifact digest: `sha256:56497d28e33b6853be65bf29f28aa94b5b021ce77e389cd58fb4e6cc8adb505c`.
+- Deterministic tests: `73` passed.
+- Infrastructure exit code: `0`.
+- Execution completed: `true`.
+- Candidate passed: `false`.
+- Failure: missing required `FINAL:` marker.
+- Raw response: a generic model self-description unrelated to the supplied task.
+- Manifest SHA-256: `bae7e3a3d77d27a12c507fee433f3502bcffa00c34d7b38a0981d7cf8201b407`.
+
+This is preliminary pipeline evidence only. It establishes that the validator rejected a non-responsive answer without confusing candidate failure with infrastructure failure.
 
 ## Preconditions
 
@@ -66,6 +82,7 @@ The workflow fails when tests, preflight, model identity binding, local executio
 ## Network and safety boundary
 
 - External provider environment variables are removed from the job process.
+- Proxy environment variables are removed and the HTTP client uses an empty proxy configuration.
 - Only an IP-literal loopback HTTP endpoint with the exact `/api/generate` path is accepted.
 - Redirects, credentials in URLs, query strings, and fragments are rejected.
 - Prompt and response sizes are bounded.
