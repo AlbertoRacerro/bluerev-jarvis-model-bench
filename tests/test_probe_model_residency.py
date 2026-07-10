@@ -4,13 +4,16 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from scripts.probe_model_residency import (
+    ProbeError,
     _is_exact_loopback_url,
     classify_residency,
     is_user_excluded,
     model_artifact_slug,
     parse_nvidia_smi_csv,
+    stop_all_running_models,
     write_manifest,
 )
 
@@ -78,6 +81,17 @@ class ModelResidencyProbeTests(unittest.TestCase):
         self.assertEqual(first, model_artifact_slug("hf.co/example/model:Q4_K_M"))
         self.assertNotEqual(first, second)
         self.assertRegex(first, r"^[A-Za-z0-9._-]+-[0-9a-f]{12}$")
+
+    def test_unverified_unload_blocks_following_measurements(self):
+        with patch(
+            "scripts.probe_model_residency.running_models",
+            return_value=[{"name": "candidate:latest"}],
+        ), patch(
+            "scripts.probe_model_residency.stop_model",
+            return_value={"verified_absent": False},
+        ):
+            with self.assertRaisesRegex(ProbeError, "could not verify model unload"):
+                stop_all_running_models()
 
     def test_manifest_binds_report_and_per_model_results(self):
         with tempfile.TemporaryDirectory() as directory:
