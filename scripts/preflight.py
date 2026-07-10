@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from ipaddress import ip_address
 import json
 import os
 import platform
@@ -10,6 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from urllib.error import URLError
+from urllib.parse import urlparse
 from urllib.request import urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -31,6 +33,15 @@ KNOWN_EXTERNAL_KEYS = (
 )
 
 DEFAULT_WINDOWS_HERMES_REPO = Path(r"C:\AI\hermes-agent")
+
+
+def _is_loopback_http_endpoint(endpoint: str) -> bool:
+    try:
+        parsed = urlparse(endpoint)
+        host = parsed.hostname
+        return parsed.scheme == "http" and host is not None and ip_address(host).is_loopback
+    except ValueError:
+        return False
 
 
 def _run(command: list[str], *, cwd: Path | None = None) -> dict[str, Any]:
@@ -62,6 +73,14 @@ def _run(command: list[str], *, cwd: Path | None = None) -> dict[str, Any]:
 def inspect_ollama() -> dict[str, Any]:
     endpoint = os.environ.get("OLLAMA_TAGS_URL", "http://127.0.0.1:11434/api/tags")
     version = _run(["ollama", "--version"])
+    if not _is_loopback_http_endpoint(endpoint):
+        return {
+            "ok": False,
+            "endpoint": endpoint,
+            "error": "NonLoopbackEndpoint",
+            "version": version,
+            "models": [],
+        }
     try:
         with urlopen(endpoint, timeout=8) as response:  # noqa: S310 - loopback endpoint by contract
             payload = json.load(response)
@@ -180,7 +199,16 @@ def build_report() -> dict[str, Any]:
     blocking_reasons = [
         reason
         for condition, reason in (
-            (not ollama.get("ok"), "ollama_unreachable"),
+            (
+                not ollama.get("ok")
+                and ollama.get("error") == "NonLoopbackEndpoint",
+                "ollama_endpoint_not_loopback",
+            ),
+            (
+                not ollama.get("ok")
+                and ollama.get("error") != "NonLoopbackEndpoint",
+                "ollama_unreachable",
+            ),
             (ollama.get("ok") and not ollama.get("models"), "no_ollama_models"),
             (not hermes.get("ok"), "hermes_unavailable"),
             (external_env_names, "external_api_environment_present"),
