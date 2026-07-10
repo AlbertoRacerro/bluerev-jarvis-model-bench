@@ -1,0 +1,98 @@
+{
+  "schema_version": "bench.candidates.v1",
+  "mapping_status": "preliminary",
+  "observed_at_utc": "2026-07-10T09:21:53Z",
+  "evidence_note": "Mapped from a successful manual preflight. Replace preliminary status only after the same inventory is captured by an immutable GitHub Actions artifact.",
+  "candidates": [
+    {
+      "candidate_id": "qwythos-hermes-64k",
+      "family": "qwythos",
+      "model_tag": "qwythos-hermes-64k:latest",
+      "digest": "466701318bae40cfcf42682a17dc8b5a1e2e99a19fb157cdc0cd09a2abc7a991",
+      "expected_roles": ["primary_orchestrator", "critic"],
+      "initial_matrix": true,
+      "enabled": true
+    },
+    {
+      "candidate_id": "qwythos-hermes-safe",
+      "family": "qwythos",
+      "model_tag": "qwythos-hermes-safe:latest",
+      "digest": "f1b4ecbbe67a7adef8f8f975cdbfb3eb08a04b8d91737b2b96e7b761187c668d",
+      "expected_roles": ["bounded_orchestrator", "safety_control"],
+      "initial_matrix": true,
+      "enabled": true
+    },
+    {
+      "candidate_id": "qwable-9b-fable5",
+      "family": "qwable",
+      "model_tag": "hf.co/empero-ai/Qwable-9B-Claude-Fable-5-GGUF:Q4_K_M",
+      "digest": "6e3590af5e19106c55a25aec936d7e55a0d23b602bb276ad32321f8a49a3c1d0",
+      "expected_roles": ["orchestrator", "bounded_executor"],
+      "initial_matrix": true,
+      "enabled": true
+    },
+    {
+      "candidate_id": "gemma4-fable-agentic-12b",
+      "family": "gemma4-fable",
+      "model_tag": "hf.co/yuxinlu1/gemma-4-12B-agentic-fable5-composer2.5-v2-3.5x-tau2-GGUF:Q4_K_M",
+      "digest": "036489398bf6af6874783c754592a90f12a036b20cbbf47a867a3ac938868aff",
+      "expected_roles": ["primary_orchestrator", "architecture_critic"],
+      "initial_matrix": true,
+      "enabled": true
+    },
+    {
+      "candidate_id": "gemma4-12b-it-qat",
+      "family": "gemma4",
+      "model_tag": "gemma4:12b-it-qat",
+      "digest": "38044be4f923e5a55264ed7df4eaac2676651a905f735197c504045140c02bd3",
+      "expected_roles": ["general_orchestrator", "classifier"],
+      "initial_matrix": true,
+      "enabled": true
+    },
+    {
+      "candidate_id": "qwen3-coder-30b",
+      "family": "qwen3-coder",
+      "model_tag": "qwen3-coder:30b",
+      "digest": "06c1097efce0431c2045fe7b2e5108366e43bee1b4603a7aded8f21689e90bca",
+      "expected_roles": ["coding_worker", "orchestrator_control"],
+      "initial_matrix": true,
+      "enabled": true
+    },
+    {
+      "candidate_id": "minicpm5-fable-1b-control",
+      "family": "minicpm5-fable",
+      "model_tag": "hf.co/GnLOLot/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-GGUF:Q4_K_M",
+      "digest": "9273fd7794224d33f1ce2364c395df1eeb049e56705d635b29cfc51dfd6d157e",
+      "expected_roles": ["lightweight_negative_control"],
+      "initial_matrix": true,
+      "enabled": true
+    },
+    {
+      "candidate_id": "qwen3.6-fablevibes-14b-a3b",
+      "family": "qwen3.6-fablevibes",
+      "model_tag": "hf.co/tvall43/Qwen3.6-14B-A3B-FableVibes-GGUF:Q4_K_M",
+      "digest": "0714a296bfcc73c72cc5042ab6754d77ae3871e42ce864d50243f3f116ec33e7",
+      "expected_roles": ["secondary_orchestrator"],
+      "initial_matrix": false,
+      "enabled": false
+    },
+    {
+      "candidate_id": "gemma4-fable-coder-12b",
+      "family": "gemma4-fable",
+      "model_tag": "hf.co/yuxinlu1/gemma-4-12B-coder-fable5-composer2.5-v1-GGUF:Q4_K_M",
+      "digest": "5434f64afb3f2b49f0c8d5e6950313a119303b6dbea21ce542e1f82122427391",
+      "expected_roles": ["coding_worker", "critic"],
+      "initial_matrix": false,
+      "enabled": false
+    },
+    {
+      "candidate_id": "gemma4-31b-it-qat",
+      "family": "gemma4",
+      "model_tag": "gemma4:31b-it-qat",
+      "digest": "e0812a55773bfeac846b2d605b4d93638b8dfa7119d9587f3d91475afc78185e",
+      "expected_roles": ["large_general_control"],
+      "initial_matrix": false,
+      "enabled": false
+    }
+  ]
+}
