@@ -1,0 +1,64 @@
+name: Local benchmark preflight
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/20 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: local-benchmark-runner
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Windows, X64, bluerev-bench]
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out trusted default branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Run deterministic contract tests
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $env:PYTHONPATH = (Join-Path $PWD 'src')
+          python -m unittest discover -s tests -v
+
+      - name: Inventory local-only runtime
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $externalKeys = @(
+            'OPENAI_API_KEY',
+            'ANTHROPIC_API_KEY',
+            'OPENROUTER_API_KEY',
+            'XAI_API_KEY',
+            'DEEPSEEK_API_KEY',
+            'GOOGLE_API_KEY',
+            'GEMINI_API_KEY',
+            'GLM_API_KEY',
+            'KIMI_API_KEY',
+            'DASHSCOPE_API_KEY'
+          )
+          foreach ($name in $externalKeys) {
+            [Environment]::SetEnvironmentVariable($name, $null, 'Process')
+          }
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          python scripts/preflight.py --output artifacts/preflight.json
+
+      - name: Upload immutable preflight artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preflight-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/
+          if-no-files-found: warn
+          retention-days: 30

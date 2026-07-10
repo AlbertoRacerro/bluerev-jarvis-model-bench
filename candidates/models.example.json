@@ -1,0 +1,42 @@
+{
+  "schema_version": "bench.candidates.v1",
+  "notes": "Map model_tag only after the self-hosted preflight records the actual Ollama inventory.",
+  "candidates": [
+    {
+      "candidate_id": "qwythos",
+      "model_tag": null,
+      "expected_roles": ["orchestrator", "critic"],
+      "enabled": false
+    },
+    {
+      "candidate_id": "qwable",
+      "model_tag": null,
+      "expected_roles": ["orchestrator", "bounded_executor"],
+      "enabled": false
+    },
+    {
+      "candidate_id": "gemma4-fable",
+      "model_tag": null,
+      "expected_roles": ["orchestrator", "architecture_critic"],
+      "enabled": false
+    },
+    {
+      "candidate_id": "gemma4-12b-it-qat",
+      "model_tag": null,
+      "expected_roles": ["lightweight_orchestrator", "classifier"],
+      "enabled": false
+    },
+    {
+      "candidate_id": "qwen3-coder-30b",
+      "model_tag": null,
+      "expected_roles": ["coding_worker", "orchestrator_control"],
+      "enabled": false
+    },
+    {
+      "candidate_id": "lightweight-control",
+      "model_tag": null,
+      "expected_roles": ["negative_control"],
+      "enabled": false
+    }
+  ]
+}
