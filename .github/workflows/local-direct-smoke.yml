@@ -2,6 +2,16 @@ name: Local direct-model smoke
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/local-direct-smoke.yml"
+      - "candidates/models.local.json"
+      - "fixtures/bench-1/**"
+      - "scripts/run_direct_smoke*.py"
+      - "src/bench/**"
+      - "tests/**"
 
 permissions:
   contents: read
