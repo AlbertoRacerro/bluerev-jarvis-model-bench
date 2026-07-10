@@ -52,7 +52,8 @@ jobs:
           python -m unittest discover -s tests -v > artifacts\model-residency\tests.log 2>&1
           if errorlevel 1 exit /b 1
           python scripts\probe_model_residency.py --output-dir artifacts\model-residency > artifacts\model-residency\probe-stdout.log 2>&1
-          exit /b %ERRORLEVEL%
+          if errorlevel 1 exit /b 1
+          exit /b 0
 
       - name: Upload immutable residency artifact
         id: upload
@@ -70,19 +71,31 @@ jobs:
         env:
           INBOX_ISSUE: "24"
           REPORT_PATH: artifacts/model-residency/report.json
+          MANIFEST_PATH: artifacts/model-residency/manifest.json
           JOB_STATUS: ${{ job.status }}
           ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
           ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
           ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
         with:
           script: |
+            const crypto = require("crypto");
             const fs = require("fs");
             let report = null;
             let reportError = null;
+            let manifestSha256 = null;
             try {
               report = JSON.parse(fs.readFileSync(process.env.REPORT_PATH, "utf8"));
             } catch (error) {
               reportError = `${error.name}: ${error.message}`;
+            }
+            try {
+              const manifestBytes = fs.readFileSync(process.env.MANIFEST_PATH);
+              manifestSha256 = crypto
+                .createHash("sha256")
+                .update(manifestBytes)
+                .digest("hex");
+            } catch (error) {
+              reportError = reportError || `${error.name}: ${error.message}`;
             }
 
             const models = (report?.models ?? []).map((entry) => ({
@@ -108,6 +121,7 @@ jobs:
                 url: process.env.ARTIFACT_URL || null,
                 digest: process.env.ARTIFACT_DIGEST || null,
               },
+              manifest_sha256: manifestSha256,
               profile: report?.profile ?? null,
               explicit_exclusions: report?.explicit_exclusions ?? null,
               initial_gpu: report?.initial_gpu ?? null,
