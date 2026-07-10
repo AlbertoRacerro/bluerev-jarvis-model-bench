@@ -29,7 +29,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $env:PYTHONPATH = (Join-Path $PWD 'src')
+          $env:PYTHONPATH = "$PWD$([IO.Path]::PathSeparator)$(Join-Path $PWD 'src')"
           python -m unittest discover -s tests -v
 
       - name: Inventory local-only runtime
