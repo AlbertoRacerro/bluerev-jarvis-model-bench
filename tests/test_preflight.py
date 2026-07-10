@@ -7,10 +7,18 @@ from unittest.mock import patch
 from scripts import preflight
 
 
+def local_only_environment(**overrides: str):
+    """Blank provider keys without deleting Windows runtime variables."""
+
+    values = {name: "" for name in preflight.KNOWN_EXTERNAL_KEYS}
+    values.update(overrides)
+    return patch.dict(os.environ, values, clear=False)
+
+
 class BuildReportTests(unittest.TestCase):
     def test_ready_local_runtime(self) -> None:
         with (
-            patch.dict(os.environ, {}, clear=True),
+            local_only_environment(),
             patch.object(preflight, "inspect_ollama", return_value={"ok": True, "models": [{"name": "local"}]}),
             patch.object(preflight, "inspect_hermes", return_value={"ok": True}),
         ):
@@ -22,7 +30,7 @@ class BuildReportTests(unittest.TestCase):
 
     def test_external_key_name_blocks_local_only_without_exposing_value(self) -> None:
         with (
-            patch.dict(os.environ, {"OPENAI_API_KEY": "not-a-real-key"}, clear=True),
+            local_only_environment(OPENAI_API_KEY="not-a-real-key"),
             patch.object(preflight, "inspect_ollama", return_value={"ok": True, "models": [{"name": "local"}]}),
             patch.object(preflight, "inspect_hermes", return_value={"ok": True}),
         ):
@@ -36,7 +44,7 @@ class BuildReportTests(unittest.TestCase):
 
     def test_missing_hermes_blocks_preflight(self) -> None:
         with (
-            patch.dict(os.environ, {}, clear=True),
+            local_only_environment(),
             patch.object(preflight, "inspect_ollama", return_value={"ok": True, "models": [{"name": "local"}]}),
             patch.object(preflight, "inspect_hermes", return_value={"ok": False}),
         ):
