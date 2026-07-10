@@ -11,6 +11,7 @@ on:
       - "scripts/build_residency_shortlist.py"
       - "tests/test_probe_model_residency.py"
       - "tests/test_build_residency_shortlist.py"
+      - "tests/test_residency_shortlist_binding.py"
       - "candidates/models.local.json"
 
 permissions:
