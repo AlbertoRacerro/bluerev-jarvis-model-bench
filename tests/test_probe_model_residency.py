@@ -9,6 +9,7 @@ from scripts.probe_model_residency import (
     _is_exact_loopback_url,
     classify_residency,
     is_user_excluded,
+    model_artifact_slug,
     parse_nvidia_smi_csv,
     write_manifest,
 )
@@ -70,6 +71,13 @@ class ModelResidencyProbeTests(unittest.TestCase):
         self.assertTrue(is_user_excluded("gemma4:27b-it-qat"))
         self.assertFalse(is_user_excluded("gemma4:31b-it-qat"))
         self.assertFalse(is_user_excluded("gemma4:12b-it-qat"))
+
+    def test_model_artifact_slug_is_stable_and_collision_resistant(self):
+        first = model_artifact_slug("hf.co/example/model:Q4_K_M")
+        second = model_artifact_slug("hf.co_example_model:Q4_K_M")
+        self.assertEqual(first, model_artifact_slug("hf.co/example/model:Q4_K_M"))
+        self.assertNotEqual(first, second)
+        self.assertRegex(first, r"^[A-Za-z0-9._-]+-[0-9a-f]{12}$")
 
     def test_manifest_binds_report_and_per_model_results(self):
         with tempfile.TemporaryDirectory() as directory:
