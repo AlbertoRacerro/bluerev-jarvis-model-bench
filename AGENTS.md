@@ -13,7 +13,7 @@ This repository evaluates local AI models directly and as orchestrators inside H
 5. Do not silently accept malformed output. Missing `FINAL:` markers, invalid schemas, missing units, and incomplete traces are failures.
 6. Separate orchestrator quality from worker, critic, scientific-reasoning, and direct-model quality.
 7. Prefer the smallest sufficient change. Before adding infrastructure, verify whether an existing script, contract, or workflow can be extended.
-8. No automatic merge. Branches, commits, and pull requests are allowed; the maintainer remains merge authority.
+8. Supervised automatic merge is allowed only in this repository after deterministic tests, diff-scope review, and explicit verification that the change does not weaken local-only, trusted-main, artifact, credential, or JarvisOS boundaries. Changes involving external providers, credentials, repository permissions, untrusted workflow triggers, destructive state changes, or JarvisOS remain maintainer-confirmation gates.
 9. Never commit credentials, tokens, private prompts, personal files, model weights, or host-specific secrets.
 10. Self-hosted workflows must not run untrusted pull-request code and must use explicit concurrency and timeout limits.
 

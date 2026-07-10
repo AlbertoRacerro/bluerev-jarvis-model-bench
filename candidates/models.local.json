@@ -1,8 +1,8 @@
 {
   "schema_version": "bench.candidates.v1",
   "mapping_status": "validated",
-  "observed_at_utc": "2026-07-10T13:33:15.062058Z",
-  "evidence_note": "Validated against trusted-main GitHub Actions run 29096446631 at workflow SHA 73a06a20ef60bdcab55a53fcd80eda6249ecff5a. Artifact preflight-29096446631-1 has digest sha256:48769db01a9cccee0ded90978360c60001ac8b52ff27942a654d1f02fe377d40; every listed candidate tag and digest matched preflight.json. Hermes was detected dirty and must be cleaned or explicitly pinned before comparative scoring.",
+  "observed_at_utc": "2026-07-10T14:51:59Z",
+  "evidence_note": "Validated against trusted-main GitHub Actions run 29101424988 at workflow SHA 4437ae74e229b4c168cfbe89691c6d85a5690def. Artifact preflight-29101424988-1 has digest sha256:5f38b2e945be0fa12dfeacaa2d011389d7a579ce86622802fbf56089a34d5aab; all 61 deterministic tests passed, runner_ready=true, scoring_ready=true, local_only=true, Hermes was clean at pinned commit 73b611ad19720d70308dad6b0fb64648aaadc216, and every listed candidate tag and digest matched the inventory.",
   "candidates": [
     {
       "candidate_id": "qwythos-hermes-64k",

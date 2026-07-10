@@ -1,0 +1,42 @@
+name: Local direct-model smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: local-benchmark-runner
+  cancel-in-progress: false
+
+jobs:
+  direct-smoke:
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Windows, X64, bluerev-bench]
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out trusted default branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Capture tests, preflight, and bounded direct execution
+        shell: cmd
+        run: python -m scripts.run_direct_smoke_job capture
+
+      - name: Upload immutable direct-smoke artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: direct-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/direct-smoke/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce infrastructure and evidence gate
+        if: always()
+        shell: cmd
+        run: python -m scripts.run_direct_smoke_job enforce
