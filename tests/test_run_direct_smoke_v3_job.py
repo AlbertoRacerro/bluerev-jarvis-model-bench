@@ -50,6 +50,12 @@ class DirectSmokeV3JobGateTests(unittest.TestCase):
             with patch.object(run_direct_smoke_v3_job, "SUMMARY_PATH", path):
                 self.assertEqual(run_direct_smoke_v3_job.enforce(), 1)
 
+    def test_non_hex_case_digest_fails_gate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = self.write_summary(Path(directory), "g" * 64)
+            with patch.object(run_direct_smoke_v3_job, "SUMMARY_PATH", path):
+                self.assertEqual(run_direct_smoke_v3_job.enforce(), 1)
+
 
 if __name__ == "__main__":
     unittest.main()
