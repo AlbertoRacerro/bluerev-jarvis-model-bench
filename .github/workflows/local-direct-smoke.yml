@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: local-benchmark-runner
@@ -38,6 +39,7 @@ jobs:
         run: python -m scripts.run_direct_smoke_v3_job capture
 
       - name: Upload immutable direct-smoke artifact
+        id: upload
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -50,3 +52,77 @@ jobs:
         if: always()
         shell: cmd
         run: python -m scripts.run_direct_smoke_v3_job enforce
+
+      - name: Publish structured result to automation inbox
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          INBOX_ISSUE: "24"
+          SUMMARY_PATH: artifacts/direct-smoke/job-summary.json
+          JOB_STATUS: ${{ job.status }}
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+        with:
+          script: |
+            const fs = require("fs");
+            let summary = null;
+            let summaryError = null;
+            try {
+              summary = JSON.parse(
+                fs.readFileSync(process.env.SUMMARY_PATH, "utf8")
+              );
+            } catch (error) {
+              summaryError = `${error.name}: ${error.message}`;
+            }
+
+            const execution = summary?.execution ?? {};
+            const payload = {
+              schema_version: "bench.workflow-inbox.v1",
+              run_id: Number(context.runId),
+              run_attempt: Number(context.runAttempt),
+              workflow: context.workflow,
+              event_name: context.eventName,
+              sha: context.sha,
+              ref: context.ref,
+              job_status: process.env.JOB_STATUS,
+              artifact: {
+                id: process.env.ARTIFACT_ID || null,
+                url: process.env.ARTIFACT_URL || null,
+                digest: process.env.ARTIFACT_DIGEST || null,
+              },
+              tests_exit: summary?.tests?.exit_code ?? null,
+              inventory_exit: summary?.inventory?.exit_code ?? null,
+              execution: {
+                infrastructure_exit_code:
+                  execution.infrastructure_exit_code ?? null,
+                execution_completed:
+                  execution.execution_completed ?? null,
+                candidate_id: execution.candidate_id ?? null,
+                case_id: execution.case_id ?? null,
+                candidate_result_status:
+                  execution.candidate_result_status ?? null,
+                candidate_passed: execution.candidate_passed ?? null,
+                termination_reason: execution.termination_reason ?? null,
+                eval_count: execution.eval_count ?? null,
+                num_predict: execution.num_predict ?? null,
+                case_definition_sha256:
+                  execution.case_definition_sha256 ?? null,
+                manifest_sha256: execution.manifest_sha256 ?? null,
+              },
+              summary_error: summaryError,
+            };
+
+            const body = [
+              "<!-- bench-workflow-result-v1 -->",
+              "```json",
+              JSON.stringify(payload, null, 2),
+              "```",
+            ].join("\n");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number(process.env.INBOX_ISSUE),
+              body,
+            });
