@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import os
 import subprocess
@@ -59,7 +60,13 @@ def _is_exact_loopback_url(url: str, path: str) -> bool:
         return False
 
 
-def _request_json(url: str, *, expected_path: str, payload: dict[str, Any] | None = None, timeout: int = 30) -> dict[str, Any]:
+def _request_json(
+    url: str,
+    *,
+    expected_path: str,
+    payload: dict[str, Any] | None = None,
+    timeout: int = 30,
+) -> dict[str, Any]:
     if not _is_exact_loopback_url(url, expected_path):
         raise ProbeError(f"endpoint must be exact loopback {expected_path}")
     data = None if payload is None else json.dumps(payload, sort_keys=True).encode("utf-8")
@@ -76,7 +83,7 @@ def _request_json(url: str, *, expected_path: str, payload: dict[str, Any] | Non
             raw = response.read(4_000_001)
     except ProbeError:
         raise
-    except Exception as exc:  # urllib exposes several platform-specific subclasses
+    except Exception as exc:  # urllib exposes platform-specific subclasses
         raise ProbeError(f"loopback request failed: {type(exc).__name__}") from exc
     if len(raw) > 4_000_000:
         raise ProbeError("loopback response exceeds size limit")
@@ -116,7 +123,9 @@ def parse_nvidia_smi_csv(text: str) -> list[dict[str, Any]]:
     for raw_row in csv.reader(line for line in text.splitlines() if line.strip()):
         if len(raw_row) != 5:
             raise ProbeError("unexpected nvidia-smi CSV shape")
-        index, name, total_mib, used_mib, utilization = (item.strip() for item in raw_row)
+        index, name, total_mib, used_mib, utilization = (
+            item.strip() for item in raw_row
+        )
         try:
             rows.append(
                 {
@@ -148,7 +157,12 @@ def gpu_snapshot() -> dict[str, Any]:
     try:
         gpus = parse_nvidia_smi_csv(str(result.get("stdout") or ""))
     except ProbeError as exc:
-        return {"ok": False, "command_result": result, "error": str(exc), "gpus": []}
+        return {
+            "ok": False,
+            "command_result": result,
+            "error": str(exc),
+            "gpus": [],
+        }
     return {"ok": True, "command_result": result, "gpus": gpus}
 
 
@@ -195,7 +209,11 @@ def list_installed_models() -> list[dict[str, Any]]:
 
 def running_models() -> list[dict[str, Any]]:
     payload = _request_json(PS_URL, expected_path="/api/ps", timeout=30)
-    return [dict(item) for item in payload.get("models", []) if isinstance(item, dict)]
+    return [
+        dict(item)
+        for item in payload.get("models", [])
+        if isinstance(item, dict)
+    ]
 
 
 def _running_name(item: dict[str, Any]) -> str | None:
@@ -217,7 +235,11 @@ def stop_model(model_name: str) -> dict[str, Any]:
         except ProbeError as exc:
             last_error = str(exc)
         time.sleep(1)
-    return {"command": result, "verified_absent": absent, "verification_error": last_error}
+    return {
+        "command": result,
+        "verified_absent": absent,
+        "verification_error": last_error,
+    }
 
 
 def stop_all_running_models() -> list[dict[str, Any]]:
@@ -230,7 +252,9 @@ def stop_all_running_models() -> list[dict[str, Any]]:
 
 
 def _find_running_model(model_name: str) -> dict[str, Any] | None:
-    matches = [item for item in running_models() if _running_name(item) == model_name]
+    matches = [
+        item for item in running_models() if _running_name(item) == model_name
+    ]
     if len(matches) != 1:
         return None
     return matches[0]
@@ -238,12 +262,42 @@ def _find_running_model(model_name: str) -> dict[str, Any] | None:
 
 def _write_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(value, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _sha256_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def write_manifest(output_dir: Path) -> dict[str, Any]:
+    evidence_paths = [output_dir / "report.json"]
+    evidence_paths.extend(sorted((output_dir / "models").glob("*/result.json")))
+    artifacts = {
+        path.relative_to(output_dir).as_posix(): {
+            "sha256": _sha256_file(path),
+            "size_bytes": path.stat().st_size,
+        }
+        for path in evidence_paths
+        if path.exists()
+    }
+    manifest = {
+        "schema_version": "bench.model-residency-manifest.v1",
+        "created_at_utc": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        "artifacts": artifacts,
+    }
+    _write_json(output_dir / "manifest.json", manifest)
+    return manifest
 
 
 def probe_model(model: dict[str, Any], output_dir: Path) -> dict[str, Any]:
     model_name = model["name"]
-    safe_name = "".join(character if character.isalnum() or character in "._-" else "_" for character in model_name)
+    safe_name = "".join(
+        character if character.isalnum() or character in "._-" else "_"
+        for character in model_name
+    )
     model_dir = output_dir / "models" / safe_name
     model_dir.mkdir(parents=True, exist_ok=True)
 
@@ -298,7 +352,10 @@ def probe_model(model: dict[str, Any], output_dir: Path) -> dict[str, Any]:
         classification = "load_failed"
         residency_ratio = None
     else:
-        classification, residency_ratio = classify_residency(ps_entry.get("size"), ps_entry.get("size_vram"))
+        classification, residency_ratio = classify_residency(
+            ps_entry.get("size"),
+            ps_entry.get("size_vram"),
+        )
 
     result = {
         "model": model,
@@ -359,13 +416,16 @@ def build_report(output_dir: Path) -> dict[str, Any]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Measure sequential Ollama model GPU residency.")
+    parser = argparse.ArgumentParser(
+        description="Measure sequential Ollama model GPU residency."
+    )
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
     report = build_report(args.output_dir)
     _write_json(args.output_dir / "report.json", report)
+    write_manifest(args.output_dir)
     print(json.dumps(report, indent=2, sort_keys=True))
 
     if report["infrastructure_error"] is not None:
