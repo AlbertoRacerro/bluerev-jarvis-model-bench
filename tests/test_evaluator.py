@@ -92,6 +92,17 @@ class FixtureExecutionTests(unittest.TestCase):
         failed = {item["assertion_id"] for item in result["checks"] if not item["passed"]}
         self.assertIn("reused_supplied_result", failed)
 
+    def test_route_fixture_rejects_duplicate_allowed_actions(self) -> None:
+        case = self.cases["ho-route-local-coder-001"]
+        result = evaluate_submission(
+            case,
+            {"selected_route": "local_coder"},
+            trace(case["case_id"], "route_local", "route_local", "return_final", "stop"),
+        )
+        self.assertFalse(result["passed"])
+        failed = {item["assertion_id"] for item in result["checks"] if not item["passed"]}
+        self.assertEqual(failed, {"selected_route_equals_expected"})
+
     def test_route_fixture_passes_canonical_submission(self) -> None:
         case = self.cases["ho-route-local-coder-001"]
         result = evaluate_submission(
@@ -107,17 +118,6 @@ class FixtureExecutionTests(unittest.TestCase):
             case,
             {"selected_route": "local_fast"},
             trace(case["case_id"], "route_local", "return_final", "stop"),
-        )
-        self.assertFalse(result["passed"])
-        failed = {item["assertion_id"] for item in result["checks"] if not item["passed"]}
-        self.assertEqual(failed, {"selected_route_equals_expected"})
-
-    def test_route_fixture_rejects_duplicate_allowed_actions(self) -> None:
-        case = self.cases["ho-route-local-coder-001"]
-        result = evaluate_submission(
-            case,
-            {"selected_route": "local_coder"},
-            trace(case["case_id"], "route_local", "route_local", "return_final", "stop"),
         )
         self.assertFalse(result["passed"])
         failed = {item["assertion_id"] for item in result["checks"] if not item["passed"]}
@@ -161,6 +161,16 @@ class FixtureExecutionTests(unittest.TestCase):
                 {"final": "stable-result"},
                 trace(case["case_id"], "return_supplied_result", "stop"),
             )
+
+    def test_duplicate_json_key_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "duplicate.json"
+            path.write_text(
+                '{"schema_version":"bench.case.v1","schema_version":"shadow"}',
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ContractError, "duplicate key: schema_version"):
+                load_case_directory(Path(directory))
 
     def test_duplicate_case_id_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
