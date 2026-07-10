@@ -31,14 +31,28 @@ jobs:
           $ErrorActionPreference = 'Stop'
           New-Item -ItemType Directory -Force -Path artifacts | Out-Null
           $env:PYTHONPATH = "$PWD$([IO.Path]::PathSeparator)$(Join-Path $PWD 'src')"
-          $testOutput = & python -m unittest discover -s tests -v 2>&1
-          $testExit = $LASTEXITCODE
-          $testOutput | Tee-Object -FilePath artifacts/tests.log
-          "exit_code=$testExit" | Add-Content -Path artifacts/tests.log
+          $stdoutPath = Join-Path $PWD 'artifacts/tests.stdout.log'
+          $stderrPath = Join-Path $PWD 'artifacts/tests.stderr.log'
+          $testExit = 127
+          try {
+            $process = Start-Process -FilePath 'python' `
+              -ArgumentList @('-m', 'unittest', 'discover', '-s', 'tests', '-v') `
+              -NoNewWindow -Wait -PassThru `
+              -RedirectStandardOutput $stdoutPath `
+              -RedirectStandardError $stderrPath
+            $testExit = $process.ExitCode
+          }
+          catch {
+            $_ | Out-String | Set-Content -Path $stderrPath -Encoding utf8
+          }
+          if (Test-Path $stdoutPath) { Get-Content $stdoutPath }
+          if (Test-Path $stderrPath) { Get-Content $stderrPath }
+          "exit_code=$testExit" | Set-Content -Path artifacts/tests.exit -Encoding utf8
           "TEST_EXIT_CODE=$testExit" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           exit 0
 
       - name: Inventory local-only runtime
+        if: always()
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -58,10 +72,23 @@ jobs:
             [Environment]::SetEnvironmentVariable($name, $null, 'Process')
           }
           New-Item -ItemType Directory -Force -Path artifacts | Out-Null
-          $inventoryOutput = & python scripts/preflight.py --output artifacts/preflight.json 2>&1
-          $inventoryExit = $LASTEXITCODE
-          $inventoryOutput | Tee-Object -FilePath artifacts/preflight.log
-          "exit_code=$inventoryExit" | Add-Content -Path artifacts/preflight.log
+          $stdoutPath = Join-Path $PWD 'artifacts/preflight.stdout.log'
+          $stderrPath = Join-Path $PWD 'artifacts/preflight.stderr.log'
+          $inventoryExit = 127
+          try {
+            $process = Start-Process -FilePath 'python' `
+              -ArgumentList @('scripts/preflight.py', '--output', 'artifacts/preflight.json') `
+              -NoNewWindow -Wait -PassThru `
+              -RedirectStandardOutput $stdoutPath `
+              -RedirectStandardError $stderrPath
+            $inventoryExit = $process.ExitCode
+          }
+          catch {
+            $_ | Out-String | Set-Content -Path $stderrPath -Encoding utf8
+          }
+          if (Test-Path $stdoutPath) { Get-Content $stdoutPath }
+          if (Test-Path $stderrPath) { Get-Content $stderrPath }
+          "exit_code=$inventoryExit" | Set-Content -Path artifacts/preflight.exit -Encoding utf8
           "INVENTORY_EXIT_CODE=$inventoryExit" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           exit 0
 
@@ -71,7 +98,7 @@ jobs:
         with:
           name: preflight-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 30
 
       - name: Enforce preflight gate
@@ -79,8 +106,14 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
+          if ([string]::IsNullOrWhiteSpace($env:TEST_EXIT_CODE)) {
+            throw 'Deterministic contract test exit code was not recorded.'
+          }
+          if ([string]::IsNullOrWhiteSpace($env:INVENTORY_EXIT_CODE)) {
+            throw 'Local runtime inventory exit code was not recorded.'
+          }
           if ($env:TEST_EXIT_CODE -ne '0') {
-            throw "Deterministic contract tests failed with exit code $env:TEST_EXIT_CODE. See tests.log artifact."
+            throw "Deterministic contract tests failed with exit code $env:TEST_EXIT_CODE. See test artifacts."
           }
           if ($env:INVENTORY_EXIT_CODE -ne '0') {
             throw "Local runtime inventory failed with exit code $env:INVENTORY_EXIT_CODE. See preflight artifacts."
