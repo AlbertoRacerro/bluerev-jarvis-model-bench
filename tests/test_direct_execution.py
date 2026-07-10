@@ -138,6 +138,19 @@ class DirectExecutionTests(unittest.TestCase):
                 "c",
             )
 
+    def test_parse_submission_accepts_qwythos_think_block_before_final(self):
+        raw_output = (
+            "<think>I am Qwythos and should explain my identity before answering.</think>\n"
+            'FINAL: {"output":{"final":"stable-result"},'
+            '"actions":["return_supplied_result","stop"]}'
+        )
+        output, trace = parse_submission(raw_output, "ho-stop-reuse-001")
+        self.assertEqual(output, {"final": "stable-result"})
+        self.assertEqual(
+            [event["action_id"] for event in trace["events"]],
+            ["return_supplied_result", "stop"],
+        )
+
     def test_successful_execution_writes_immutable_artifacts(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
