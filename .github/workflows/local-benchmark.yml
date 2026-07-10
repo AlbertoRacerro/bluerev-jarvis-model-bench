@@ -27,7 +27,7 @@ jobs:
 
       - name: Capture deterministic tests and local runtime inventory
         shell: cmd
-        run: python scripts\run_preflight_job.py capture
+        run: python -m scripts.run_preflight_job capture
 
       - name: Upload immutable preflight artifact
         if: always()
@@ -41,4 +41,4 @@ jobs:
       - name: Enforce preflight gate
         if: always()
         shell: cmd
-        run: python scripts\run_preflight_job.py enforce
+        run: python -m scripts.run_preflight_job enforce
