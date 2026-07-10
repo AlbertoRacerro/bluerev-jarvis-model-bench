@@ -30,6 +30,8 @@ KNOWN_EXTERNAL_KEYS = (
     "DASHSCOPE_API_KEY",
 )
 
+DEFAULT_WINDOWS_HERMES_REPO = Path(r"C:\AI\hermes-agent")
+
 
 def _run(command: list[str], *, cwd: Path | None = None) -> dict[str, Any]:
     try:
@@ -38,6 +40,8 @@ def _run(command: list[str], *, cwd: Path | None = None) -> dict[str, Any]:
             cwd=cwd,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=20,
             check=False,
         )
@@ -57,11 +61,18 @@ def _run(command: list[str], *, cwd: Path | None = None) -> dict[str, Any]:
 
 def inspect_ollama() -> dict[str, Any]:
     endpoint = os.environ.get("OLLAMA_TAGS_URL", "http://127.0.0.1:11434/api/tags")
+    version = _run(["ollama", "--version"])
     try:
         with urlopen(endpoint, timeout=8) as response:  # noqa: S310 - loopback endpoint by contract
             payload = json.load(response)
     except (OSError, URLError, TimeoutError, json.JSONDecodeError) as exc:
-        return {"ok": False, "endpoint": endpoint, "error": type(exc).__name__, "models": []}
+        return {
+            "ok": False,
+            "endpoint": endpoint,
+            "error": type(exc).__name__,
+            "version": version,
+            "models": [],
+        }
 
     models = []
     for item in payload.get("models", []):
@@ -76,7 +87,23 @@ def inspect_ollama() -> dict[str, Any]:
             }
         )
     models.sort(key=lambda item: str(item.get("name") or ""))
-    return {"ok": True, "endpoint": endpoint, "models": models}
+    return {
+        "ok": True,
+        "endpoint": endpoint,
+        "version": version,
+        "models": models,
+    }
+
+
+def _resolve_hermes_repo() -> tuple[Path | None, str | None]:
+    repo_value = os.environ.get("HERMES_REPO")
+    if repo_value:
+        return Path(repo_value).expanduser().resolve(), "environment"
+
+    if os.name == "nt" and DEFAULT_WINDOWS_HERMES_REPO.exists():
+        return DEFAULT_WINDOWS_HERMES_REPO.resolve(), "windows_default"
+
+    return None, None
 
 
 def inspect_hermes() -> dict[str, Any]:
@@ -85,13 +112,17 @@ def inspect_hermes() -> dict[str, Any]:
     attempts.append(([hermes_exe, "--version"], None))
     attempts.append(([hermes_exe, "--help"], None))
 
-    repo_value = os.environ.get("HERMES_REPO")
-    repo = Path(repo_value).expanduser().resolve() if repo_value else None
+    repo, repo_source = _resolve_hermes_repo()
     if repo:
-        venv_python = repo / ".venv" / "Scripts" / "python.exe"
-        if venv_python.exists():
-            attempts.append(([str(venv_python), "-m", "hermes_cli.main", "--version"], repo))
-            attempts.append(([str(venv_python), "-m", "hermes_cli.main", "--help"], repo))
+        python_candidates = (
+            repo / ".venv" / "Scripts" / "python.exe",
+            repo / ".venv" / "bin" / "python",
+        )
+        for candidate in python_candidates:
+            if candidate.exists():
+                attempts.append(([str(candidate), "-m", "hermes_cli.main", "--version"], repo))
+                attempts.append(([str(candidate), "-m", "hermes_cli.main", "--help"], repo))
+                break
 
     results = []
     selected: dict[str, Any] | None = None
@@ -103,15 +134,28 @@ def inspect_hermes() -> dict[str, Any]:
             break
 
     commit = None
+    branch = None
+    dirty = None
     if repo and (repo / ".git").exists():
-        git_result = _run(["git", "rev-parse", "HEAD"], cwd=repo)
-        if git_result.get("ok"):
-            commit = git_result.get("stdout_tail")
+        git_commit = _run(["git", "rev-parse", "HEAD"], cwd=repo)
+        if git_commit.get("ok"):
+            commit = git_commit.get("stdout_tail")
+
+        git_branch = _run(["git", "branch", "--show-current"], cwd=repo)
+        if git_branch.get("ok"):
+            branch = git_branch.get("stdout_tail") or None
+
+        git_status = _run(["git", "status", "--porcelain"], cwd=repo)
+        if git_status.get("ok"):
+            dirty = bool(git_status.get("stdout_tail"))
 
     return {
         "ok": selected is not None,
         "repo": str(repo) if repo else None,
+        "repo_source": repo_source,
         "commit": commit,
+        "branch": branch,
+        "dirty": dirty,
         "selected": selected,
         "attempts": results,
     }
@@ -136,6 +180,13 @@ def build_report() -> dict[str, Any]:
             "processor": platform.processor(),
             "python": sys.version,
             "cpu_count": os.cpu_count(),
+        },
+        "workflow": {
+            "run_id": os.environ.get("GITHUB_RUN_ID"),
+            "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
+            "event_name": os.environ.get("GITHUB_EVENT_NAME"),
+            "sha": os.environ.get("GITHUB_SHA"),
+            "ref": os.environ.get("GITHUB_REF"),
         },
         "ollama": ollama,
         "hermes": hermes,
