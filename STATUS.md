@@ -7,7 +7,7 @@ Status vocabulary: `planned`, `blocked`, `ready`, `in_progress`, `in_review`, `m
 | ID | Status | PR | Name | Dependencies | Scope |
 |---|---|---:|---|---|---|
 | BENCH-0 | merged | #1 | Foundation and runner contract | --- | Strict output extraction, manifests, local environment inventory, Windows self-hosted runner workflow, immutable artifacts, and safety rules. |
-| BENCH-1 | in_progress | #13 | Synthetic orchestration battery | BENCH-0 | The strict `bench.case.v1` case-data boundary is merged. Executable deterministic fixtures and validator dispatch remain pending. |
+| BENCH-1 | in_review | #16 | Synthetic orchestration battery | BENCH-0 | The strict case boundary is merged. PR #16 adds the first executable HO-STOP and HO-ROUTE fixtures, trace-derived accounting, oracle isolation, and deterministic validation; local-model execution remains pending. |
 | BENCH-2 | planned | --- | Hermes orchestrator isolation | BENCH-1 | Hold worker pool and tools fixed while varying only the local model driving Hermes. |
 | BENCH-3 | planned | --- | Tool and coding fixtures | BENCH-2 | Windows/PowerShell, file edits, patching, test execution, bounded worker/critic/adjudicator loops. |
 | BENCH-4 | blocked | --- | Adaptive local model routing | BENCH-2, BENCH-3 | Hermes chooses among eligible local models by capability, latency, reliability, and resource cost. External APIs remain out of scope. |
@@ -28,10 +28,10 @@ Status vocabulary: `planned`, `blocked`, `ready`, `in_progress`, `in_review`, `m
 
 ## Current operating order
 
-1. Keep the clean Hermes commit and Ollama model digests fixed while implementing the first BENCH-1 fixtures.
-2. Add a small executable fixture slice and deterministic validator dispatch without calling models, Hermes, tools, external APIs, or JarvisOS.
-3. Replay the trusted-main suite after that slice is merged and preserve the resulting artifact.
-4. Only then add bounded local-model execution and repeated runs; raw output, trace, extraction, validation, and environment evidence must remain separate.
+1. Review PR #16 as the first executable deterministic fixture slice; do not interpret local test success as trusted-main evidence.
+2. After merge, replay `Local benchmark preflight` and preserve the immutable artifact.
+3. Confirm the full suite and `scoring_ready=true` before adding any local-model execution.
+4. Add bounded execution for one candidate and one fixture first; preserve raw output, extracted output, trace, validator result, and environment fingerprint separately.
 5. Start comparative claims only after at least three repetitions per candidate and capability under an unchanged environment fingerprint.
 
 `planned` means an outline exists. It is not an implementation instruction and does not authorize unattended expansion of scope.
