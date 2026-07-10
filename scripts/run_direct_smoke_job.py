@@ -22,7 +22,7 @@ from scripts import preflight
 
 ARTIFACTS = ROOT / "artifacts" / "direct-smoke"
 SUMMARY_PATH = ARTIFACTS / "job-summary.json"
-CANDIDATE_ID = "minicpm5-fable-1b-control"
+CANDIDATE_ID = "qwythos-hermes-safe"
 CASE_PATH = ROOT / "fixtures" / "bench-1" / "ho-stop-reuse-001.json"
 CANDIDATE_REGISTRY = ROOT / "candidates" / "models.local.json"
 PROXY_ENV_NAMES = (
