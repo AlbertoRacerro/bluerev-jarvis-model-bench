@@ -7,7 +7,7 @@ Status vocabulary: `planned`, `blocked`, `ready`, `in_progress`, `in_review`, `m
 | ID | Status | PR | Name | Dependencies | Scope |
 |---|---|---:|---|---|---|
 | BENCH-0 | merged | #1 | Foundation and runner contract | --- | Strict output extraction, manifests, local environment inventory, Windows self-hosted runner workflow, immutable artifacts, and safety rules. |
-| BENCH-1 | planned | --- | Synthetic orchestration battery | BENCH-0 | Deterministic planning, routing, escalation, budget, sensitivity, recovery, critic, and stop/no-op cases. |
+| BENCH-1 | in_progress | #13 | Synthetic orchestration battery | BENCH-0 | Deterministic planning, routing, escalation, budget, sensitivity, recovery, critic, and stop/no-op cases. PR #13 establishes the strict case-data boundary only; executable fixtures remain pending. |
 | BENCH-2 | planned | --- | Hermes orchestrator isolation | BENCH-1 | Hold worker pool and tools fixed while varying only the local model driving Hermes. |
 | BENCH-3 | planned | --- | Tool and coding fixtures | BENCH-2 | Windows/PowerShell, file edits, patching, test execution, bounded worker/critic/adjudicator loops. |
 | BENCH-4 | blocked | --- | Adaptive local model routing | BENCH-2, BENCH-3 | Hermes chooses among eligible local models by capability, latency, reliability, and resource cost. External APIs remain out of scope. |
@@ -27,9 +27,9 @@ Status vocabulary: `planned`, `blocked`, `ready`, `in_progress`, `in_review`, `m
 ## Current operating order
 
 1. Clean or explicitly snapshot and pin the Hermes working tree before comparative scoring.
-2. Rebase or rebuild the draft BENCH-1 contract on current `main`; do not merge the stale conflicting branch as-is.
-3. Correct any harness, encoding, environment-fingerprint, or extraction defects before scoring models.
-4. Write and implement BENCH-1 synthetic cases.
-5. Start repeated Hermes orchestration runs only after deterministic fixtures are green.
+2. Review PR #13 as the replacement for stale draft PR #2; do not merge PR #2.
+3. Replay the trusted-main deterministic suite after PR #13 is merged.
+4. Add the first executable synthetic cases only after the case contract is green on trusted `main`.
+5. Start repeated Hermes orchestration runs only after deterministic fixtures and validators are green.
 
 `planned` means an outline exists. It is not an implementation instruction and does not authorize unattended expansion of scope.
