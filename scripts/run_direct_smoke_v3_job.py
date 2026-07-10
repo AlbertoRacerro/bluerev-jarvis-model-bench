@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import sys
 
@@ -23,6 +24,7 @@ SUMMARY_PATH = ARTIFACTS / "job-summary.json"
 CANDIDATE_ID = "qwythos-hermes-safe"
 CASE_PATH = ROOT / "fixtures" / "bench-1" / "ho-stop-reuse-explicit-002.json"
 CANDIDATE_REGISTRY = ROOT / "candidates" / "models.local.json"
+_SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
 def _write_summary(value: dict[str, object]) -> None:
@@ -156,7 +158,7 @@ def enforce() -> int:
         failures.append("direct execution did not complete")
     if result_status not in {"passed", "failed", "invalid"}:
         failures.append(f"unsupported candidate_result_status={result_status!r}")
-    if not isinstance(case_sha256, str) or len(case_sha256) != 64:
+    if not isinstance(case_sha256, str) or not _SHA256.fullmatch(case_sha256):
         failures.append("case definition digest is missing or malformed")
 
     if failures:
