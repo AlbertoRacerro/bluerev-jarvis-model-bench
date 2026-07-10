@@ -122,6 +122,8 @@ _CASE_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
 def _validate_exact_fields(value: Mapping[str, Any], required: frozenset[str], path: str) -> None:
+    if any(not isinstance(key, str) for key in value):
+        raise ContractError(f"{path} must use string field names")
     keys = set(value)
     missing = sorted(required - keys)
     extra = sorted(keys - required)
@@ -226,6 +228,14 @@ def validate_case(case: Mapping[str, Any]) -> None:
         raise ContractError(
             "allowed_actions violates local-only boundaries: " + ", ".join(unsafe_allowed)
         )
+    missing_global_forbidden = sorted(
+        GLOBALLY_FORBIDDEN_ALLOWED_ACTIONS - set(forbidden_actions)
+    )
+    if missing_global_forbidden:
+        raise ContractError(
+            "forbidden_actions missing global boundaries: "
+            + ", ".join(missing_global_forbidden)
+        )
 
     limits = case["limits"]
     if not isinstance(limits, Mapping):
@@ -249,6 +259,8 @@ def validate_case(case: Mapping[str, Any]) -> None:
     artifacts = case["required_artifacts"]
     if not isinstance(artifacts, list):
         raise ContractError("required_artifacts must be an array")
+    if any(not isinstance(artifact, str) for artifact in artifacts):
+        raise ContractError("required_artifacts must contain string identifiers")
     if len(artifacts) != len(set(artifacts)):
         raise ContractError("required_artifacts must not contain duplicates")
     artifact_set = set(artifacts)
