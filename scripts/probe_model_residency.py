@@ -184,6 +184,16 @@ def is_user_excluded(model_name: str) -> bool:
     return any(fragment in normalized for fragment in EXCLUDED_MODEL_FRAGMENTS)
 
 
+def model_artifact_slug(model_name: str) -> str:
+    prefix = "".join(
+        character if character.isalnum() or character in "._-" else "_"
+        for character in model_name
+    ).strip("._-")
+    prefix = prefix[:80] or "model"
+    suffix = hashlib.sha256(model_name.encode("utf-8")).hexdigest()[:12]
+    return f"{prefix}-{suffix}"
+
+
 def list_installed_models() -> list[dict[str, Any]]:
     payload = _request_json(TAGS_URL, expected_path="/api/tags", timeout=30)
     models: list[dict[str, Any]] = []
@@ -248,6 +258,13 @@ def stop_all_running_models() -> list[dict[str, Any]]:
         name = _running_name(item)
         if name:
             results.append({"model": name, **stop_model(name)})
+    failed = [
+        item["model"]
+        for item in results
+        if item.get("verified_absent") is not True
+    ]
+    if failed:
+        raise ProbeError("could not verify model unload: " + ", ".join(failed))
     return results
 
 
@@ -294,11 +311,7 @@ def write_manifest(output_dir: Path) -> dict[str, Any]:
 
 def probe_model(model: dict[str, Any], output_dir: Path) -> dict[str, Any]:
     model_name = model["name"]
-    safe_name = "".join(
-        character if character.isalnum() or character in "._-" else "_"
-        for character in model_name
-    )
-    model_dir = output_dir / "models" / safe_name
+    model_dir = output_dir / "models" / model_artifact_slug(model_name)
     model_dir.mkdir(parents=True, exist_ok=True)
 
     if is_user_excluded(model_name):
@@ -386,7 +399,17 @@ def build_report(output_dir: Path) -> dict[str, Any]:
         installed = list_installed_models()
         initial_cleanup = stop_all_running_models()
         for model in installed:
-            models.append(probe_model(model, output_dir))
+            result = probe_model(model, output_dir)
+            models.append(result)
+            cleanup = result.get("cleanup_after")
+            if result.get("classification") != "excluded" and (
+                not isinstance(cleanup, dict)
+                or cleanup.get("verified_absent") is not True
+            ):
+                raise ProbeError(
+                    "cleanup verification failed after model: "
+                    + str(model.get("name"))
+                )
     except ProbeError as exc:
         infrastructure_error = {"type": type(exc).__name__, "detail": str(exc)}
 
