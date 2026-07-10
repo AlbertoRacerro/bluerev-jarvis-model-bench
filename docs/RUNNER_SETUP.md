@@ -10,6 +10,7 @@ The benchmark requires a dedicated Windows x64 runner because Ollama models and 
 - Prefer a non-administrator Windows account with access only to the benchmark, Ollama, and Hermes directories.
 - The workflow never runs on `pull_request`; scheduled execution checks out the trusted `main` branch explicitly.
 - Do not place API keys or provider credentials in runner environment variables.
+- The Ollama inventory endpoint must use plain HTTP on a literal loopback address (`127.0.0.1` or `::1`).
 
 ## Prerequisites
 
@@ -88,13 +89,16 @@ Expected behavior:
 `scoring_ready=true` additionally requires:
 
 - local-only execution with no external API environment variables;
+- an Ollama inventory endpoint using `http` and a literal loopback IP address;
 - complete workflow identity and runner identity;
 - an available Ollama version;
 - model names and digests for the observed inventory;
 - a detected Hermes commit;
 - a clean, known Hermes working-tree state.
 
-A dirty Hermes checkout therefore leaves the infrastructure preflight green but produces `scoring_ready=false` with `hermes_worktree_dirty`. Comparative model runs must not start until the scoring blockers are removed and a new immutable artifact records `scoring_ready=true`.
+A non-loopback `OLLAMA_TAGS_URL` is rejected before network access and reported as `ollama_endpoint_not_loopback`.
+
+A dirty Hermes checkout leaves the infrastructure preflight green but produces `scoring_ready=false` with `hermes_worktree_dirty`. Comparative model runs must not start until the scoring blockers are removed and a new immutable artifact records `scoring_ready=true`.
 
 A blocked preflight is useful evidence. Do not bypass it. Fix the reported environment condition and replay the job.
 
