@@ -25,72 +25,9 @@ jobs:
           ref: main
           persist-credentials: false
 
-      - name: Run deterministic contract tests
-        shell: powershell
-        run: |
-          $ErrorActionPreference = 'Stop'
-          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
-          $env:PYTHONPATH = "$PWD$([IO.Path]::PathSeparator)$(Join-Path $PWD 'src')"
-          $stdoutPath = Join-Path $PWD 'artifacts/tests.stdout.log'
-          $stderrPath = Join-Path $PWD 'artifacts/tests.stderr.log'
-          $testExit = 127
-          try {
-            $process = Start-Process -FilePath 'python' `
-              -ArgumentList @('-m', 'unittest', 'discover', '-s', 'tests', '-v') `
-              -NoNewWindow -Wait -PassThru `
-              -RedirectStandardOutput $stdoutPath `
-              -RedirectStandardError $stderrPath
-            $testExit = $process.ExitCode
-          }
-          catch {
-            $_ | Out-String | Set-Content -Path $stderrPath -Encoding utf8
-          }
-          if (Test-Path $stdoutPath) { Get-Content $stdoutPath }
-          if (Test-Path $stderrPath) { Get-Content $stderrPath }
-          "exit_code=$testExit" | Set-Content -Path artifacts/tests.exit -Encoding utf8
-          "TEST_EXIT_CODE=$testExit" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          exit 0
-
-      - name: Inventory local-only runtime
-        if: always()
-        shell: powershell
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $externalKeys = @(
-            'OPENAI_API_KEY',
-            'ANTHROPIC_API_KEY',
-            'OPENROUTER_API_KEY',
-            'XAI_API_KEY',
-            'DEEPSEEK_API_KEY',
-            'GOOGLE_API_KEY',
-            'GEMINI_API_KEY',
-            'GLM_API_KEY',
-            'KIMI_API_KEY',
-            'DASHSCOPE_API_KEY'
-          )
-          foreach ($name in $externalKeys) {
-            [Environment]::SetEnvironmentVariable($name, $null, 'Process')
-          }
-          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
-          $stdoutPath = Join-Path $PWD 'artifacts/preflight.stdout.log'
-          $stderrPath = Join-Path $PWD 'artifacts/preflight.stderr.log'
-          $inventoryExit = 127
-          try {
-            $process = Start-Process -FilePath 'python' `
-              -ArgumentList @('scripts/preflight.py', '--output', 'artifacts/preflight.json') `
-              -NoNewWindow -Wait -PassThru `
-              -RedirectStandardOutput $stdoutPath `
-              -RedirectStandardError $stderrPath
-            $inventoryExit = $process.ExitCode
-          }
-          catch {
-            $_ | Out-String | Set-Content -Path $stderrPath -Encoding utf8
-          }
-          if (Test-Path $stdoutPath) { Get-Content $stdoutPath }
-          if (Test-Path $stderrPath) { Get-Content $stderrPath }
-          "exit_code=$inventoryExit" | Set-Content -Path artifacts/preflight.exit -Encoding utf8
-          "INVENTORY_EXIT_CODE=$inventoryExit" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          exit 0
+      - name: Capture deterministic tests and local runtime inventory
+        shell: cmd
+        run: python -m scripts.run_preflight_job capture
 
       - name: Upload immutable preflight artifact
         if: always()
@@ -103,18 +40,5 @@ jobs:
 
       - name: Enforce preflight gate
         if: always()
-        shell: powershell
-        run: |
-          $ErrorActionPreference = 'Stop'
-          if ([string]::IsNullOrWhiteSpace($env:TEST_EXIT_CODE)) {
-            throw 'Deterministic contract test exit code was not recorded.'
-          }
-          if ([string]::IsNullOrWhiteSpace($env:INVENTORY_EXIT_CODE)) {
-            throw 'Local runtime inventory exit code was not recorded.'
-          }
-          if ($env:TEST_EXIT_CODE -ne '0') {
-            throw "Deterministic contract tests failed with exit code $env:TEST_EXIT_CODE. See test artifacts."
-          }
-          if ($env:INVENTORY_EXIT_CODE -ne '0') {
-            throw "Local runtime inventory failed with exit code $env:INVENTORY_EXIT_CODE. See preflight artifacts."
-          }
+        shell: cmd
+        run: python -m scripts.run_preflight_job enforce
