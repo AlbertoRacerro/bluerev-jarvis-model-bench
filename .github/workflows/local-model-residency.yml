@@ -8,7 +8,9 @@ on:
     paths:
       - ".github/workflows/local-model-residency.yml"
       - "scripts/probe_model_residency.py"
+      - "scripts/build_residency_shortlist.py"
       - "tests/test_probe_model_residency.py"
+      - "tests/test_build_residency_shortlist.py"
       - "candidates/models.local.json"
 
 permissions:
@@ -53,6 +55,8 @@ jobs:
           if errorlevel 1 exit /b 1
           python scripts\probe_model_residency.py --output-dir artifacts\model-residency > artifacts\model-residency\probe-stdout.log 2>&1
           if errorlevel 1 exit /b 1
+          python scripts\build_residency_shortlist.py --output-dir artifacts\model-residency > artifacts\model-residency\shortlist-stdout.log 2>&1
+          if errorlevel 1 exit /b 1
           exit /b 0
 
       - name: Upload immutable residency artifact
@@ -72,6 +76,8 @@ jobs:
           INBOX_ISSUE: "24"
           REPORT_PATH: artifacts/model-residency/report.json
           MANIFEST_PATH: artifacts/model-residency/manifest.json
+          SHORTLIST_PATH: artifacts/model-residency/shortlist.json
+          SHORTLIST_MANIFEST_PATH: artifacts/model-residency/shortlist-manifest.json
           JOB_STATUS: ${{ job.status }}
           ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
           ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
@@ -80,23 +86,35 @@ jobs:
           script: |
             const crypto = require("crypto");
             const fs = require("fs");
-            let report = null;
-            let reportError = null;
-            let manifestSha256 = null;
-            try {
-              report = JSON.parse(fs.readFileSync(process.env.REPORT_PATH, "utf8"));
-            } catch (error) {
-              reportError = `${error.name}: ${error.message}`;
-            }
-            try {
-              const manifestBytes = fs.readFileSync(process.env.MANIFEST_PATH);
-              manifestSha256 = crypto
-                .createHash("sha256")
-                .update(manifestBytes)
-                .digest("hex");
-            } catch (error) {
-              reportError = reportError || `${error.name}: ${error.message}`;
-            }
+            const readJson = (path) => {
+              try {
+                return {value: JSON.parse(fs.readFileSync(path, "utf8")), error: null};
+              } catch (error) {
+                return {value: null, error: `${error.name}: ${error.message}`};
+              }
+            };
+            const hashFile = (path) => {
+              try {
+                return {
+                  value: crypto
+                    .createHash("sha256")
+                    .update(fs.readFileSync(path))
+                    .digest("hex"),
+                  error: null,
+                };
+              } catch (error) {
+                return {value: null, error: `${error.name}: ${error.message}`};
+              }
+            };
+
+            const reportRead = readJson(process.env.REPORT_PATH);
+            const shortlistRead = readJson(process.env.SHORTLIST_PATH);
+            const manifestHash = hashFile(process.env.MANIFEST_PATH);
+            const shortlistManifestHash = hashFile(
+              process.env.SHORTLIST_MANIFEST_PATH
+            );
+            const report = reportRead.value;
+            const shortlist = shortlistRead.value;
 
             const models = (report?.models ?? []).map((entry) => ({
               name: entry?.model?.name ?? null,
@@ -106,9 +124,15 @@ jobs:
               probe_duration_seconds: entry?.probe_duration_seconds ?? null,
               error: entry?.error ?? null,
             }));
+            const selectModels = (entries) =>
+              (entries ?? []).map((entry) => ({
+                name: entry?.name ?? null,
+                digest: entry?.digest ?? null,
+                residency_ratio: entry?.residency_ratio ?? null,
+              }));
 
             const payload = {
-              schema_version: "bench.model-residency-inbox.v1",
+              schema_version: "bench.model-residency-inbox.v2",
               run_id: Number(context.runId),
               run_attempt: Number(context.runAttempt),
               workflow: context.workflow,
@@ -121,18 +145,30 @@ jobs:
                 url: process.env.ARTIFACT_URL || null,
                 digest: process.env.ARTIFACT_DIGEST || null,
               },
-              manifest_sha256: manifestSha256,
+              manifest_sha256: manifestHash.value,
+              shortlist_manifest_sha256: shortlistManifestHash.value,
               profile: report?.profile ?? null,
               explicit_exclusions: report?.explicit_exclusions ?? null,
               initial_gpu: report?.initial_gpu ?? null,
               infrastructure_error: report?.infrastructure_error ?? null,
               classification_counts: report?.classification_counts ?? null,
               models,
-              report_error: reportError,
+              shortlist: {
+                status: shortlist?.status ?? null,
+                counts: shortlist?.counts ?? null,
+                primary_h2: selectModels(shortlist?.primary_h2),
+                secondary_partial_vram: selectModels(
+                  shortlist?.secondary_partial_vram
+                ),
+              },
+              report_error: reportRead.error,
+              shortlist_error: shortlistRead.error,
+              manifest_error: manifestHash.error,
+              shortlist_manifest_error: shortlistManifestHash.error,
             };
 
             const body = [
-              "<!-- bench-model-residency-v1 -->",
+              "<!-- bench-model-residency-v2 -->",
               "```json",
               JSON.stringify(payload, null, 2),
               "```",
