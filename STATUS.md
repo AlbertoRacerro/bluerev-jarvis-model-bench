@@ -7,7 +7,7 @@ Status vocabulary: `planned`, `blocked`, `ready`, `in_progress`, `in_review`, `m
 | ID | Status | PR | Name | Dependencies | Scope |
 |---|---|---:|---|---|---|
 | BENCH-0 | merged | #1 | Foundation and runner contract | --- | Strict output extraction, manifests, local environment inventory, Windows self-hosted runner workflow, immutable artifacts, and safety rules. |
-| BENCH-1 | in_review | #16 | Synthetic orchestration battery | BENCH-0 | The strict case boundary is merged. PR #16 adds the first executable HO-STOP and HO-ROUTE fixtures, trace-derived accounting, oracle isolation, and deterministic validation; local-model execution remains pending. |
+| BENCH-1 | in_review | #18 | Synthetic orchestration battery | BENCH-0 | Strict case contracts and the first deterministic HO-STOP/HO-ROUTE fixtures are merged. PR #18 adds one bounded direct Ollama smoke execution for the lightweight control; it does not add Hermes execution or comparative scoring. |
 | BENCH-2 | planned | --- | Hermes orchestrator isolation | BENCH-1 | Hold worker pool and tools fixed while varying only the local model driving Hermes. |
 | BENCH-3 | planned | --- | Tool and coding fixtures | BENCH-2 | Windows/PowerShell, file edits, patching, test execution, bounded worker/critic/adjudicator loops. |
 | BENCH-4 | blocked | --- | Adaptive local model routing | BENCH-2, BENCH-3 | Hermes chooses among eligible local models by capability, latency, reliability, and resource cost. External APIs remain out of scope. |
@@ -15,23 +15,23 @@ Status vocabulary: `planned`, `blocked`, `ready`, `in_progress`, `in_review`, `m
 
 ## Latest trusted preflight evidence
 
-- GitHub Actions run: `29100302596`, attempt `1`.
-- Trusted branch and SHA: `main` at `27d2ca544f44772d4a2720620c5cde3c05532e6d`.
-- Artifact: `preflight-29100302596-1`.
-- Artifact digest: `sha256:08b54b90be663395bb34d11cbf82d1681d6fdcac4ef5a99b94e0f92d35c7e977`.
-- Deterministic tests: `44` passed; test exit code `0`.
+- GitHub Actions run: `29101424988`, attempt `1`.
+- Trusted branch and SHA: `main` at `4437ae74e229b4c168cfbe89691c6d85a5690def`.
+- Artifact: `preflight-29101424988-1`.
+- Artifact digest: `sha256:5f38b2e945be0fa12dfeacaa2d011389d7a579ce86622802fbf56089a34d5aab`.
+- Deterministic tests: `61` passed; test exit code `0`.
 - Runtime inventory: exit code `0`, `status=ready`, `runner_ready=true`, `scoring_ready=true`, `local_only=true`, and no blocking reasons.
 - Hermes: version `0.18.2`, branch `main`, clean worktree, pinned commit `73b611ad19720d70308dad6b0fb64648aaadc216`.
 - Ollama: loopback endpoint, version `0.31.2`, and `15` model tags with digests recorded.
-- Candidate mapping: every tag and digest listed in `candidates/models.local.json` remained present and matched the trusted artifact inventory.
-- Reproducibility note: Hermes reports that the pinned checkout is `106` commits behind upstream. This is not a scoring-readiness blocker while the exact clean commit remains recorded; updating Hermes would create a new environment baseline and require a replay.
+- Candidate mapping: every enabled candidate tag and digest remained present and matched the trusted artifact inventory.
+- Reproducibility note: Hermes reports that the pinned checkout is `106` commits behind upstream. This remains non-blocking while the exact clean commit is retained; updating Hermes creates a new baseline and requires replay.
 
 ## Current operating order
 
-1. Review PR #16 as the first executable deterministic fixture slice; do not interpret local test success as trusted-main evidence.
-2. After merge, replay `Local benchmark preflight` and preserve the immutable artifact.
-3. Confirm the full suite and `scoring_ready=true` before adding any local-model execution.
-4. Add bounded execution for one candidate and one fixture first; preserve raw output, extracted output, trace, validator result, and environment fingerprint separately.
-5. Start comparative claims only after at least three repetitions per candidate and capability under an unchanged environment fingerprint.
+1. Review and merge PR #18 only if its trusted-main, local-only, fixed-candidate, fixed-case, timeout, and artifact boundaries remain intact.
+2. Manually dispatch `Local direct-model smoke` on `main`; the workflow has no arbitrary model, endpoint, path, or fixture inputs.
+3. Inspect the immutable artifact and distinguish infrastructure success from `candidate_passed`.
+4. Treat the single smoke result as preliminary pipeline evidence only, whether the control passes or fails.
+5. Add repetitions or additional candidates only after the direct artifact contract is verified; comparative claims require at least three repetitions under an unchanged environment fingerprint.
 
 `planned` means an outline exists. It is not an implementation instruction and does not authorize unattended expansion of scope.
