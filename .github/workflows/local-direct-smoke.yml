@@ -25,7 +25,7 @@ jobs:
 
       - name: Capture tests, preflight, and bounded direct execution
         shell: cmd
-        run: python -m scripts.run_direct_smoke_v2_job capture
+        run: python -m scripts.run_direct_smoke_v3_job capture
 
       - name: Upload immutable direct-smoke artifact
         if: always()
@@ -39,4 +39,4 @@ jobs:
       - name: Enforce infrastructure and evidence gate
         if: always()
         shell: cmd
-        run: python -m scripts.run_direct_smoke_v2_job enforce
+        run: python -m scripts.run_direct_smoke_v3_job enforce

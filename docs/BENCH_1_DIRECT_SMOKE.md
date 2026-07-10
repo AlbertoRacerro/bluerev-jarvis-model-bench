@@ -6,7 +6,7 @@ This slice proves the local execution and evidence pipeline with deliberately sm
 
 - Lane: `direct`.
 - Candidate: `qwythos-hermes-safe`.
-- Case: `ho-stop-reuse-001`.
+- Case: `ho-stop-reuse-explicit-002`.
 - Repetitions in the current run: `1`.
 - Ollama endpoint: exactly `http://127.0.0.1:11434/api/generate`.
 - Temperature: `0`.
@@ -52,6 +52,39 @@ Trusted-main run `29103995266`, attempt `1`, executed commit `6fafcee357bde1e375
 
 The run remains immutable evidence of a benchmark defect. It must not be counted as a Qwythos failure or used in any comparison.
 
+## Second Qwythos-safe run: invalidated by case under-specification
+
+Trusted-main run `29104571461`, attempt `1`, executed commit `50fc3b3c7b88c715c5f60b8538b6c8955ca99b1d` with candidate `qwythos-hermes-safe`.
+
+- Artifact: `direct-smoke-29104571461-1`.
+- Artifact digest: `sha256:4af28ed332dd6f26551c33c0e7ddd3fd2c0a9f4a700b3ed909667ae812f88e74`.
+- Deterministic tests: `81` passed.
+- Infrastructure exit code: `0`.
+- Execution completed: `true`.
+- Ollama `done_reason`: `stop`.
+- Ollama `eval_count`: `399`, below the configured generation limit of `1024`.
+- Harness result: `failed` because Qwythos returned output field `supplied_result` and omitted terminal action `stop`.
+- Case defect: the candidate-visible task did not disclose output field `final` or require the exact action sequence, while evaluator-only `expected` required both.
+- Correct interpretation: invalidated by an underspecified case, not a Qwythos semantic failure.
+- Manifest SHA-256: `8eeaa46e7a1b293fe4ef237403af7679451ce2bd91d2d9ef92c767ac0e065200`.
+
+The run remains immutable evidence of a fixture-design defect. It must not be counted in model capability or reliability statistics.
+
+## Candidate-visible response contract
+
+The current fixture `ho-stop-reuse-explicit-002` exposes the exact response shape through `inputs.response_contract`:
+
+```json
+{
+  "output_field": "final",
+  "required_actions": ["return_supplied_result", "stop"]
+}
+```
+
+Before a model call, the harness verifies that evaluator-only `expected` is exactly derivable from this visible contract and `inputs.supplied_result`. A mismatch is an infrastructure/fixture error, not a candidate result.
+
+Evaluator-only fields such as `expected`, assertions, and required artifact names remain hidden. Only the requirements needed to construct a valid response are candidate-visible.
+
 ## Preconditions
 
 The workflow runs only after all deterministic tests pass and a fresh preflight reports:
@@ -62,9 +95,7 @@ The workflow runs only after all deterministic tests pass and a fresh preflight 
 - the exact candidate tag and digest present in the Ollama inventory;
 - the pinned clean Hermes state still recorded, even though Hermes is not called by this lane.
 
-## Candidate-visible data
-
-The prompt contains only `bench.candidate-task.v1` fields. Evaluator-only fields such as `expected`, assertions, and required artifact names are rejected if they leak into the payload.
+## Candidate output
 
 The model must return one final payload:
 
@@ -72,22 +103,25 @@ The model must return one final payload:
 FINAL: {"output":{...},"actions":["action_id",...]}
 ```
 
-Duplicate JSON keys, missing fields, extra fields, malformed actions, and missing `FINAL:` markers are candidate failures only when generation completed without truncation.
+Duplicate JSON keys, missing fields, extra fields, malformed actions, and missing `FINAL:` markers are candidate failures only when generation completed without truncation and the candidate-visible response contract was valid.
 
 ## Evidence
 
-Every completed execution preserves separate files for:
+Every completed v3 execution preserves separate files for:
 
-1. candidate payload;
-2. exact prompt;
-3. raw Ollama response envelope;
-4. raw model output;
-5. extracted output or extraction failure envelope;
-6. trace or trace-capture failure envelope;
-7. deterministic validator result;
-8. environment fingerprint;
-9. manifest with SHA-256 references;
-10. execution summary.
+1. full evaluator-only case definition;
+2. candidate payload;
+3. exact prompt;
+4. raw Ollama response envelope;
+5. raw model output;
+6. extracted output or extraction failure envelope;
+7. trace or trace-capture failure envelope;
+8. deterministic validator result;
+9. environment fingerprint;
+10. manifest with SHA-256 references;
+11. execution summary.
+
+`case_definition.json` is included in the manifest and its SHA-256 is copied into the environment fingerprint and job summary. The infrastructure gate fails when that digest is missing or malformed.
 
 The run directory is unique per GitHub run and attempt. An existing directory is never overwritten.
 
@@ -96,10 +130,10 @@ The run directory is unique per GitHub run and attempt. An existing directory is
 The result vocabulary is:
 
 - `passed`: complete generation and all deterministic assertions passed;
-- `failed`: complete generation but the response or trace violated the contract;
-- `invalid`: the benchmark could not obtain a complete candidate result, including `done_reason="length"`.
+- `failed`: complete generation but the response or trace violated a fully candidate-visible contract;
+- `invalid`: the benchmark could not obtain a complete or validly specified candidate result, including `done_reason="length"` or a fixture contract defect.
 
-A failed or invalid candidate result does not fail the infrastructure workflow. Tests, preflight, identity binding, local execution, evidence preservation, or an unknown result state do fail the workflow.
+A failed or invalid candidate result does not fail the infrastructure workflow. Tests, preflight, identity binding, local execution, evidence preservation, hidden-oracle mismatch, or an unknown result state do fail the workflow.
 
 ## Network and safety boundary
 
