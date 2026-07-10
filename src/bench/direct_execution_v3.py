@@ -27,6 +27,8 @@ def verify_candidate_visible_response_contract(case: Mapping[str, Any]) -> None:
     expected = case.get("expected")
     if not isinstance(inputs, Mapping) or not isinstance(expected, Mapping):
         raise ContractError("HO-STOP response contract requires object inputs and expected")
+    if "supplied_result" not in inputs:
+        raise ContractError("HO-STOP case must expose inputs.supplied_result")
 
     response_contract = inputs.get("response_contract")
     if not isinstance(response_contract, Mapping):
@@ -40,6 +42,8 @@ def verify_candidate_visible_response_contract(case: Mapping[str, Any]) -> None:
     required_actions = response_contract.get("required_actions")
     if not isinstance(output_field, str) or not output_field.strip():
         raise ContractError("inputs.response_contract.output_field must be non-empty")
+    if output_field == "actions":
+        raise ContractError("inputs.response_contract.output_field cannot be actions")
     if (
         not isinstance(required_actions, list)
         or not required_actions
@@ -50,7 +54,7 @@ def verify_candidate_visible_response_contract(case: Mapping[str, Any]) -> None:
             "inputs.response_contract.required_actions must be unique non-empty strings"
         )
 
-    supplied_result = inputs.get("supplied_result")
+    supplied_result = inputs["supplied_result"]
     expected_visible_contract = {
         output_field: supplied_result,
         "actions": required_actions,
