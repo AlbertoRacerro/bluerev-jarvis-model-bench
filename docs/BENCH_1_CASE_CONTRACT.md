@@ -21,7 +21,7 @@ Unknown fields are rejected. Arrays must be JSON arrays, must not contain duplic
 
 ## Global boundaries
 
-The following actions may appear in `forbidden_actions` but can never appear in `allowed_actions`:
+Every case must include the following actions in `forbidden_actions`, and none may appear in `allowed_actions`:
 
 - `call_external_provider`;
 - `modify_jarvisos`;
