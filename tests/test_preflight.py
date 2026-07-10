@@ -1,24 +1,31 @@
 from __future__ import annotations
 
-import os
+from contextlib import contextmanager
 import unittest
 from unittest.mock import patch
 
 from scripts import preflight
 
 
-def local_only_environment(**overrides: str):
-    """Blank provider keys without deleting Windows runtime variables."""
+@contextmanager
+def isolated_environment(values: dict[str, str] | None = None):
+    """Replace host-dependent environment and platform probes with test doubles."""
 
-    values = {name: "" for name in preflight.KNOWN_EXTERNAL_KEYS}
-    values.update(overrides)
-    return patch.dict(os.environ, values, clear=False)
+    fake_environment = dict(values or {})
+    with (
+        patch.object(preflight.os, "environ", fake_environment),
+        patch.object(preflight.os, "cpu_count", return_value=24),
+        patch.object(preflight.platform, "platform", return_value="Windows-test"),
+        patch.object(preflight.platform, "machine", return_value="AMD64"),
+        patch.object(preflight.platform, "processor", return_value="test-processor"),
+    ):
+        yield
 
 
 class BuildReportTests(unittest.TestCase):
     def test_ready_local_runtime(self) -> None:
         with (
-            local_only_environment(),
+            isolated_environment(),
             patch.object(preflight, "inspect_ollama", return_value={"ok": True, "models": [{"name": "local"}]}),
             patch.object(preflight, "inspect_hermes", return_value={"ok": True}),
         ):
@@ -30,7 +37,7 @@ class BuildReportTests(unittest.TestCase):
 
     def test_external_key_name_blocks_local_only_without_exposing_value(self) -> None:
         with (
-            local_only_environment(OPENAI_API_KEY="not-a-real-key"),
+            isolated_environment({"OPENAI_API_KEY": "not-a-real-key"}),
             patch.object(preflight, "inspect_ollama", return_value={"ok": True, "models": [{"name": "local"}]}),
             patch.object(preflight, "inspect_hermes", return_value={"ok": True}),
         ):
@@ -44,7 +51,7 @@ class BuildReportTests(unittest.TestCase):
 
     def test_missing_hermes_blocks_preflight(self) -> None:
         with (
-            local_only_environment(),
+            isolated_environment(),
             patch.object(preflight, "inspect_ollama", return_value={"ok": True, "models": [{"name": "local"}]}),
             patch.object(preflight, "inspect_hermes", return_value={"ok": False}),
         ):
