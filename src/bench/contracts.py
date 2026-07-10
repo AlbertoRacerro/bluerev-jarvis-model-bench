@@ -93,7 +93,7 @@ def validate_manifest(manifest: Mapping[str, Any]) -> None:
 
 
 def validate_candidate_manifest(manifest: Mapping[str, Any]) -> None:
-    """Validate the local candidate inventory before it drives benchmark runs."""
+    """Validate a candidate inventory that is permitted to drive benchmark runs."""
 
     if not isinstance(manifest, Mapping):
         raise ContractError("candidate manifest must be an object")
@@ -108,8 +108,8 @@ def validate_candidate_manifest(manifest: Mapping[str, Any]) -> None:
 
     if manifest["schema_version"] != "bench.candidates.v1":
         raise ContractError("unsupported candidate schema_version")
-    if manifest["mapping_status"] not in _ALLOWED_STATUSES:
-        raise ContractError(f"unsupported mapping_status: {manifest['mapping_status']!r}")
+    if manifest["mapping_status"] != "validated":
+        raise ContractError("candidate mapping_status must be validated")
 
     for field in ("observed_at_utc", "evidence_note"):
         value = manifest[field]
