@@ -1,0 +1,14 @@
+[project]
+name = "bluerev-jarvis-model-bench"
+version = "0.0.0"
+description = "Private local-model and Hermes orchestration benchmark"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]
