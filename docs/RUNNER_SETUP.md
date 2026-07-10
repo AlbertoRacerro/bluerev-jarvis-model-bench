@@ -30,11 +30,11 @@ Python 3.11 or newer is recommended. Ollama must remain reachable on `127.0.0.1:
 1. Open the repository on GitHub.
 2. Go to **Settings → Actions → Runners → New self-hosted runner**.
 3. Select **Windows** and **x64**.
-4. Create a dedicated directory:
+4. Create the root-level directory recommended by GitHub:
 
 ```powershell
-New-Item -ItemType Directory -Force C:\AI\bluerev-bench-runner
-Set-Location C:\AI\bluerev-bench-runner
+New-Item -ItemType Directory -Force C:\actions-runner
+Set-Location C:\actions-runner
 ```
 
 5. Execute the download and extraction commands shown by GitHub. The registration token is temporary; never paste it into chat or commit it.
@@ -46,18 +46,28 @@ Additional labels: bluerev-bench
 Work folder: _work
 ```
 
-7. Set the Hermes checkout for the runner process:
+7. Set the Hermes checkout for future runner processes:
 
 ```powershell
 [Environment]::SetEnvironmentVariable('HERMES_REPO', 'C:\AI\hermes-agent', 'User')
 ```
 
-8. Close and reopen PowerShell so the environment variable is visible, then start the runner:
+8. Close the runner and every PowerShell window that may have inherited the old environment. Open a new PowerShell and verify:
 
 ```powershell
-Set-Location C:\AI\bluerev-bench-runner
+$env:HERMES_REPO
+Test-Path $env:HERMES_REPO
+Test-Path "$env:HERMES_REPO\.venv\Scripts\python.exe"
+```
+
+9. Start the runner from the new process:
+
+```powershell
+Set-Location C:\actions-runner
 .\run.cmd
 ```
+
+The runner snapshots its environment when `run.cmd` starts. Changing a user environment variable while the runner is already active does not update that process; stop and restart it. The preflight also recognizes `C:\AI\hermes-agent` as the documented Windows fallback when `HERMES_REPO` is absent.
 
 Keep that window open for the initial validation. Installing the runner as a Windows service can be considered after the first successful preflight; it is not required for BENCH-0.
 
@@ -69,11 +79,11 @@ Expected behavior:
 
 1. The runner accepts the job.
 2. Contract unit tests pass.
-3. `artifacts/preflight.json` records the OS, Python version, Hermes commit, and Ollama model inventory.
+3. `artifacts/preflight.json` records the OS, Python version, Hermes commit, Hermes branch/dirty state, Ollama version, and Ollama model inventory.
 4. The workflow uploads a `preflight-<run>-<attempt>` artifact.
 
 A blocked preflight is useful evidence. Do not bypass it. Fix the reported environment condition and replay the job.
 
 ## Stop or remove
 
-Stop an interactive runner with `Ctrl+C`. To permanently detach it, follow GitHub's runner removal instructions and delete `C:\AI\bluerev-bench-runner` only after confirming no job is active.
+Stop an interactive runner with `Ctrl+C`. To permanently detach it, follow GitHub's runner removal instructions and delete `C:\actions-runner` only after confirming no job is active.
