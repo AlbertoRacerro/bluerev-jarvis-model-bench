@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import json
+import tempfile
 import unittest
+from pathlib import Path
 
 from scripts.probe_model_residency import (
     _is_exact_loopback_url,
     classify_residency,
     is_user_excluded,
     parse_nvidia_smi_csv,
+    write_manifest,
 )
 
 
@@ -20,7 +24,12 @@ class ModelResidencyProbeTests(unittest.TestCase):
         )
 
     def test_endpoint_rejects_hostname_query_and_wrong_path(self):
-        self.assertFalse(_is_exact_loopback_url("http://localhost:11434/api/ps", "/api/ps"))
+        self.assertFalse(
+            _is_exact_loopback_url(
+                "http://localhost:11434/api/ps",
+                "/api/ps",
+            )
+        )
         self.assertFalse(
             _is_exact_loopback_url(
                 "http://127.0.0.1:11434/api/ps?model=x",
@@ -61,6 +70,25 @@ class ModelResidencyProbeTests(unittest.TestCase):
         self.assertTrue(is_user_excluded("gemma4:27b-it-qat"))
         self.assertFalse(is_user_excluded("gemma4:31b-it-qat"))
         self.assertFalse(is_user_excluded("gemma4:12b-it-qat"))
+
+    def test_manifest_binds_report_and_per_model_results(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "report.json").write_text("{}\n", encoding="utf-8")
+            model_path = root / "models" / "candidate" / "result.json"
+            model_path.parent.mkdir(parents=True)
+            model_path.write_text('{"classification":"full_vram"}\n', encoding="utf-8")
+
+            manifest = write_manifest(root)
+
+            self.assertEqual(
+                set(manifest["artifacts"]),
+                {"report.json", "models/candidate/result.json"},
+            )
+            stored = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(stored, manifest)
+            for item in manifest["artifacts"].values():
+                self.assertRegex(item["sha256"], r"^[0-9a-f]{64}$")
 
 
 if __name__ == "__main__":
