@@ -11,25 +11,50 @@ from typing import Any
 REPORT_SCHEMA = "bench.model-residency.v1"
 MANIFEST_SCHEMA = "bench.model-residency-manifest.v1"
 SHORTLIST_SCHEMA = "bench.model-shortlist.v1"
-VALID_CLASSES = {"full_vram", "partial_vram", "cpu_only", "load_failed", "excluded"}
+VALID_CLASSES = {
+    "full_vram",
+    "partial_vram",
+    "cpu_only",
+    "load_failed",
+    "excluded",
+}
 
 
 class ShortlistError(RuntimeError):
     pass
 
 
+def _reject_duplicate_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    value: dict[str, Any] = {}
+    for key, item in pairs:
+        if key in value:
+            raise ShortlistError(f"duplicate JSON key: {key}")
+        value[key] = item
+    return value
+
+
 def load_json(path: Path) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=_reject_duplicate_pairs,
+        )
+    except ShortlistError:
+        raise
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-        raise ShortlistError(f"cannot read {path.name}: {type(exc).__name__}") from exc
+        raise ShortlistError(
+            f"cannot read {path.name}: {type(exc).__name__}"
+        ) from exc
     if not isinstance(value, dict):
         raise ShortlistError(f"{path.name} must contain an object")
     return value
 
 
 def write_json(path: Path, value: Any) -> None:
-    path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(value, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
 
 def sha256(path: Path) -> str:
@@ -50,7 +75,13 @@ def validate_manifest(output_dir: Path, manifest: Mapping[str, Any]) -> None:
     if set(artifacts) != discovered:
         raise ShortlistError("residency manifest inventory mismatch")
     for relative, metadata in artifacts.items():
+        if not isinstance(relative, str) or not relative:
+            raise ShortlistError("residency manifest contains an invalid path")
         path = output_dir / relative
+        try:
+            path.resolve().relative_to(output_dir.resolve())
+        except ValueError as exc:
+            raise ShortlistError("residency manifest path escapes output") from exc
         if not path.is_file() or not isinstance(metadata, Mapping):
             raise ShortlistError(f"missing residency artifact: {relative}")
         if metadata.get("sha256") != sha256(path):
@@ -65,7 +96,12 @@ def normalize_entry(entry: Mapping[str, Any]) -> dict[str, Any]:
         raise ShortlistError("model identity is missing")
     name = model.get("name")
     digest = model.get("digest")
-    if not isinstance(name, str) or not name or not isinstance(digest, str) or not digest:
+    if (
+        not isinstance(name, str)
+        or not name
+        or not isinstance(digest, str)
+        or not digest
+    ):
         raise ShortlistError("model name or digest is invalid")
     classification = entry.get("classification")
     if classification not in VALID_CLASSES:
@@ -82,10 +118,17 @@ def normalize_entry(entry: Mapping[str, Any]) -> dict[str, Any]:
         return result
 
     cleanup = entry.get("cleanup_after")
-    if not isinstance(cleanup, Mapping) or cleanup.get("verified_absent") is not True:
+    if (
+        not isinstance(cleanup, Mapping)
+        or cleanup.get("verified_absent") is not True
+    ):
         raise ShortlistError(f"{name} cleanup was not verified")
     duration = entry.get("probe_duration_seconds")
-    if not isinstance(duration, (int, float)) or isinstance(duration, bool) or duration < 0:
+    if (
+        not isinstance(duration, (int, float))
+        or isinstance(duration, bool)
+        or duration < 0
+    ):
         raise ShortlistError(f"{name} has invalid probe duration")
     result["probe_duration_seconds"] = float(duration)
 
@@ -103,15 +146,28 @@ def normalize_entry(entry: Mapping[str, Any]) -> dict[str, Any]:
     ratio = entry.get("residency_ratio")
     if not isinstance(size, int) or isinstance(size, bool) or size <= 0:
         raise ShortlistError(f"{name} has invalid model size")
-    if not isinstance(size_vram, int) or isinstance(size_vram, bool) or size_vram < 0:
+    if (
+        not isinstance(size_vram, int)
+        or isinstance(size_vram, bool)
+        or size_vram < 0
+    ):
         raise ShortlistError(f"{name} has invalid VRAM size")
     expected_ratio = size_vram / size
     if not isinstance(ratio, (int, float)) or isinstance(ratio, bool):
         raise ShortlistError(f"{name} has invalid residency ratio")
-    if not math.isclose(float(ratio), expected_ratio, rel_tol=1e-9, abs_tol=1e-12):
+    if not math.isclose(
+        float(ratio),
+        expected_ratio,
+        rel_tol=1e-9,
+        abs_tol=1e-12,
+    ):
         raise ShortlistError(f"{name} residency ratio is inconsistent")
     expected_class = (
-        "full_vram" if expected_ratio >= 0.98 else "partial_vram" if size_vram else "cpu_only"
+        "full_vram"
+        if expected_ratio >= 0.98
+        else "partial_vram"
+        if size_vram
+        else "cpu_only"
     )
     if classification != expected_class:
         raise ShortlistError(f"{name} classification is inconsistent")
@@ -123,13 +179,47 @@ def normalize_entry(entry: Mapping[str, Any]) -> dict[str, Any]:
     return result
 
 
+def validate_per_model_evidence(
+    output_dir: Path,
+    report: Mapping[str, Any],
+) -> None:
+    report_models = report.get("models")
+    if not isinstance(report_models, list):
+        raise ShortlistError("residency report models must be an array")
+    file_models = [
+        load_json(path)
+        for path in sorted((output_dir / "models").glob("*/result.json"))
+    ]
+    if len(file_models) != len(report_models):
+        raise ShortlistError("per-model evidence count does not match report")
+
+    def keyed(entries: list[Any]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for entry in entries:
+            if not isinstance(entry, Mapping):
+                raise ShortlistError("model evidence entry must be an object")
+            model = entry.get("model")
+            name = model.get("name") if isinstance(model, Mapping) else None
+            if not isinstance(name, str) or not name or name in result:
+                raise ShortlistError("per-model evidence identity is invalid")
+            result[name] = dict(entry)
+        return result
+
+    if keyed(report_models) != keyed(file_models):
+        raise ShortlistError("per-model evidence does not match aggregate report")
+
+
 def build_shortlist(report: Mapping[str, Any]) -> dict[str, Any]:
     if report.get("schema_version") != REPORT_SCHEMA:
         raise ShortlistError("unsupported residency report schema")
     if report.get("infrastructure_error") is not None:
         raise ShortlistError("residency report contains an infrastructure error")
     gpu = report.get("initial_gpu")
-    if not isinstance(gpu, Mapping) or gpu.get("ok") is not True or not gpu.get("gpus"):
+    if (
+        not isinstance(gpu, Mapping)
+        or gpu.get("ok") is not True
+        or not gpu.get("gpus")
+    ):
         raise ShortlistError("successful GPU evidence is missing")
     profile = report.get("profile")
     if not isinstance(profile, Mapping) or profile.get("num_ctx") != 4096:
@@ -138,7 +228,11 @@ def build_shortlist(report: Mapping[str, Any]) -> dict[str, Any]:
     if not isinstance(raw_models, list) or not raw_models:
         raise ShortlistError("residency report has no model results")
 
-    models = [normalize_entry(entry) for entry in raw_models if isinstance(entry, Mapping)]
+    models = [
+        normalize_entry(entry)
+        for entry in raw_models
+        if isinstance(entry, Mapping)
+    ]
     if len(models) != len(raw_models):
         raise ShortlistError("residency report contains a non-object model result")
     names = [entry["name"] for entry in models]
@@ -158,11 +252,22 @@ def build_shortlist(report: Mapping[str, Any]) -> dict[str, Any]:
         key=lambda entry: entry["name"].casefold(),
     )
     partial = sorted(
-        [entry for entry in models if entry["classification"] == "partial_vram"],
-        key=lambda entry: (-entry["residency_ratio"], entry["name"].casefold()),
+        [
+            entry
+            for entry in models
+            if entry["classification"] == "partial_vram"
+        ],
+        key=lambda entry: (
+            -entry["residency_ratio"],
+            entry["name"].casefold(),
+        ),
     )
     deferred = sorted(
-        [entry for entry in models if entry["classification"] not in {"full_vram", "partial_vram"}],
+        [
+            entry
+            for entry in models
+            if entry["classification"] not in {"full_vram", "partial_vram"}
+        ],
         key=lambda entry: entry["name"].casefold(),
     )
     return {
@@ -192,7 +297,10 @@ def markdown(shortlist: Mapping[str, Any]) -> str:
         "",
         "## Primary H2 — full VRAM",
     ]
-    lines.extend(f"- `{entry['name']}`: {entry['residency_ratio']:.3f}" for entry in shortlist["primary_h2"])
+    lines.extend(
+        f"- `{entry['name']}`: {entry['residency_ratio']:.3f}"
+        for entry in shortlist["primary_h2"]
+    )
     if not shortlist["primary_h2"]:
         lines.append("- None.")
     lines.extend(["", "## Secondary — partial VRAM"])
@@ -218,6 +326,7 @@ def run(output_dir: Path) -> dict[str, Any]:
     report = load_json(report_path)
     manifest = load_json(manifest_path)
     validate_manifest(output_dir, manifest)
+    validate_per_model_evidence(output_dir, report)
     shortlist = build_shortlist(report)
     shortlist["source"] = {
         "report_sha256": sha256(report_path),
@@ -233,8 +342,16 @@ def run(output_dir: Path) -> dict[str, Any]:
         {
             "schema_version": "bench.model-shortlist-manifest.v1",
             "artifacts": {
-                path.name: {"sha256": sha256(path), "size_bytes": path.stat().st_size}
-                for path in (report_path, manifest_path, shortlist_path, markdown_path)
+                path.name: {
+                    "sha256": sha256(path),
+                    "size_bytes": path.stat().st_size,
+                }
+                for path in (
+                    report_path,
+                    manifest_path,
+                    shortlist_path,
+                    markdown_path,
+                )
             },
         },
     )
