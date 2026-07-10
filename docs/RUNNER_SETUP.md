@@ -80,7 +80,21 @@ Expected behavior:
 1. The runner accepts the job.
 2. Contract unit tests pass.
 3. `artifacts/preflight.json` records the OS, Python version, Hermes commit, Hermes branch/dirty state, Ollama version, and Ollama model inventory.
-4. The workflow uploads a `preflight-<run>-<attempt>` artifact.
+4. The report separates `runner_ready` from `scoring_ready` and records dedicated blocking reasons for each boundary.
+5. The workflow uploads a `preflight-<run>-<attempt>` artifact.
+
+`status=ready` and `runner_ready=true` mean that the local execution infrastructure is available. They do not authorize comparative scoring.
+
+`scoring_ready=true` additionally requires:
+
+- local-only execution with no external API environment variables;
+- complete workflow identity and runner identity;
+- an available Ollama version;
+- model names and digests for the observed inventory;
+- a detected Hermes commit;
+- a clean, known Hermes working-tree state.
+
+A dirty Hermes checkout therefore leaves the infrastructure preflight green but produces `scoring_ready=false` with `hermes_worktree_dirty`. Comparative model runs must not start until the scoring blockers are removed and a new immutable artifact records `scoring_ready=true`.
 
 A blocked preflight is useful evidence. Do not bypass it. Fix the reported environment condition and replay the job.
 
