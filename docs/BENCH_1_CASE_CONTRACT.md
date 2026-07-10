@@ -30,6 +30,12 @@ Every case must include the following actions in `forbidden_actions`, and none m
 
 This keeps the initial battery local-only and prevents a synthetic fixture from weakening repository invariants.
 
+## Visibility boundary
+
+`expected`, `success_assertions`, `negative_assertions`, and `required_artifacts` are evaluator-only data. A future runner must never serialize them into the model prompt or tool context. The model-facing payload may be derived only from `prompt`, `inputs`, the declared action envelope, and limits.
+
+A run that exposes evaluator-only fields is invalid even when its deterministic assertions pass, because it leaks the oracle to the candidate.
+
 ## Limit consistency
 
 A case is invalid when it allows an action while setting the corresponding limit to zero:
