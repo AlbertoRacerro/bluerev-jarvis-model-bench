@@ -17,7 +17,13 @@ class CaseContractTests(unittest.TestCase):
             "inputs": {"supplied_result": "stable-result"},
             "expected": {"final": "stable-result"},
             "allowed_actions": ["return_supplied_result", "stop"],
-            "forbidden_actions": ["call_tool", "call_external_provider"],
+            "forbidden_actions": [
+                "call_tool",
+                "call_external_provider",
+                "modify_jarvisos",
+                "promote_learning",
+                "write_external_state",
+            ],
             "success_assertions": ["reused_supplied_result"],
             "negative_assertions": [
                 "no_external_provider_calls",
@@ -57,6 +63,11 @@ class CaseContractTests(unittest.TestCase):
         case["comment"] = "silently ignored metadata"
         self.assert_rejected(case, "unsupported fields: comment")
 
+    def test_rejects_non_string_top_level_field_name(self) -> None:
+        case = self.valid_case()
+        case[7] = "invalid JSON object key"  # type: ignore[index]
+        self.assert_rejected(case, "case must use string field names")
+
     def test_rejects_non_string_capability_without_type_error(self) -> None:
         case = self.valid_case()
         case["capability"] = []
@@ -95,8 +106,20 @@ class CaseContractTests(unittest.TestCase):
     def test_rejects_external_provider_as_allowed_action(self) -> None:
         case = self.valid_case()
         case["allowed_actions"] = ["stop", "call_external_provider"]
-        case["forbidden_actions"] = ["call_tool"]
+        case["forbidden_actions"] = [
+            "call_tool",
+            "modify_jarvisos",
+            "promote_learning",
+            "write_external_state",
+        ]
         self.assert_rejected(case, "violates local-only boundaries")
+
+    def test_rejects_missing_global_forbidden_action(self) -> None:
+        case = self.valid_case()
+        forbidden = list(case["forbidden_actions"])
+        forbidden.remove("modify_jarvisos")
+        case["forbidden_actions"] = forbidden
+        self.assert_rejected(case, "missing global boundaries: modify_jarvisos")
 
     def test_rejects_arbitrary_success_assertion(self) -> None:
         case = self.valid_case()
@@ -143,7 +166,12 @@ class CaseContractTests(unittest.TestCase):
     def test_rejects_action_limit_contradiction(self) -> None:
         case = self.valid_case()
         case["allowed_actions"] = ["return_final", "call_tool"]
-        case["forbidden_actions"] = ["call_external_provider"]
+        case["forbidden_actions"] = [
+            "call_external_provider",
+            "modify_jarvisos",
+            "promote_learning",
+            "write_external_state",
+        ]
         self.assert_rejected(case, "call_tool is allowed but max_tool_calls is zero")
 
     def test_rejects_non_json_input(self) -> None:
@@ -169,6 +197,13 @@ class CaseContractTests(unittest.TestCase):
         artifacts.append("trace")
         case["required_artifacts"] = artifacts
         self.assert_rejected(case, "required_artifacts must not contain duplicates")
+
+    def test_rejects_non_string_required_artifact_without_type_error(self) -> None:
+        case = self.valid_case()
+        artifacts = list(case["required_artifacts"])
+        artifacts[0] = []
+        case["required_artifacts"] = artifacts
+        self.assert_rejected(case, "must contain string identifiers")
 
 
 if __name__ == "__main__":
