@@ -1,8 +1,8 @@
 {
   "schema_version": "bench.candidates.v1",
-  "mapping_status": "preliminary",
-  "observed_at_utc": "2026-07-10T09:21:53Z",
-  "evidence_note": "Mapped from a successful manual preflight. Replace preliminary status only after the same inventory is captured by an immutable GitHub Actions artifact.",
+  "mapping_status": "validated",
+  "observed_at_utc": "2026-07-10T13:33:15.062058Z",
+  "evidence_note": "Validated against trusted-main GitHub Actions run 29096446631 at workflow SHA 73a06a20ef60bdcab55a53fcd80eda6249ecff5a. Artifact preflight-29096446631-1 has digest sha256:48769db01a9cccee0ded90978360c60001ac8b52ff27942a654d1f02fe377d40; every listed candidate tag and digest matched preflight.json. Hermes was detected dirty and must be cleaned or explicitly pinned before comparative scoring.",
   "candidates": [
     {
       "candidate_id": "qwythos-hermes-64k",
