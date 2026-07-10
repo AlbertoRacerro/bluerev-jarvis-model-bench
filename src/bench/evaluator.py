@@ -73,6 +73,15 @@ def _validate_json_value(value: Any, path: str) -> None:
     raise ContractError(f"{path} contains a non-JSON value: {type(value).__name__}")
 
 
+def _reject_duplicate_object_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    value: dict[str, Any] = {}
+    for key, item in pairs:
+        if key in value:
+            raise ContractError(f"JSON object contains duplicate key: {key}")
+        value[key] = item
+    return value
+
+
 def build_candidate_payload(case: Mapping[str, Any]) -> dict[str, Any]:
     """Return only fields that may be shown to the evaluated candidate."""
 
@@ -163,8 +172,9 @@ def _evaluate_assertion(
         passed = _within_limits(counts, limits)
         return passed, f"counts={dict(counts)} limits={dict(limits)}"
     if assertion_id == "final_equals_expected":
-        passed = extracted_output.get("final") == case["expected"].get("final")
-        return passed, "extracted final compared with evaluator-only expected final"
+        expected_output = {"final": case["expected"].get("final")}
+        passed = dict(extracted_output) == expected_output
+        return passed, "exact final output compared with evaluator-only expected final"
     if assertion_id == "reused_supplied_result":
         expected_output = {"final": case["inputs"].get("supplied_result")}
         expected_actions = case["expected"].get("actions")
@@ -273,8 +283,11 @@ def evaluate_submission(
 
 def load_case_file(path: Path) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+        value = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=_reject_duplicate_object_pairs,
+        )
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise ContractError(f"cannot load case file {path.name}: {type(exc).__name__}") from exc
     if not isinstance(value, Mapping):
         raise ContractError(f"case file {path.name} must contain an object")
