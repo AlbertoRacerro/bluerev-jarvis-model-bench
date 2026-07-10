@@ -7,7 +7,7 @@ Status vocabulary: `planned`, `blocked`, `ready`, `in_progress`, `in_review`, `m
 | ID | Status | PR | Name | Dependencies | Scope |
 |---|---|---:|---|---|---|
 | BENCH-0 | merged | #1 | Foundation and runner contract | --- | Strict output extraction, manifests, local environment inventory, Windows self-hosted runner workflow, immutable artifacts, and safety rules. |
-| BENCH-1 | in_progress | #18 | Synthetic orchestration battery | BENCH-0 | Strict case contracts, deterministic HO-STOP/HO-ROUTE fixtures, and the bounded direct execution pipeline are merged. The first control run completed and failed semantically as expected; a second fixed-candidate smoke is being prepared. |
+| BENCH-1 | in_progress | #18 | Synthetic orchestration battery | BENCH-0 | Strict case contracts, deterministic HO-STOP/HO-ROUTE fixtures, and the bounded direct execution pipeline are merged. The Qwythos smoke exposed a generation-limit defect; truncation-aware replay is pending. |
 | BENCH-2 | planned | --- | Hermes orchestrator isolation | BENCH-1 | Hold worker pool and tools fixed while varying only the local model driving Hermes. |
 | BENCH-3 | planned | --- | Tool and coding fixtures | BENCH-2 | Windows/PowerShell, file edits, patching, test execution, bounded worker/critic/adjudicator loops. |
 | BENCH-4 | blocked | --- | Adaptive local model routing | BENCH-2, BENCH-3 | Hermes chooses among eligible local models by capability, latency, reliability, and resource cost. External APIs remain out of scope. |
@@ -24,7 +24,7 @@ Status vocabulary: `planned`, `blocked`, `ready`, `in_progress`, `in_review`, `m
 - Hermes: version `0.18.2`, branch `main`, clean worktree, pinned commit `73b611ad19720d70308dad6b0fb64648aaadc216`.
 - Ollama: loopback endpoint, version `0.31.2`, and `15` model tags with digests recorded.
 - Candidate mapping: every enabled candidate tag and digest remained present and matched the trusted artifact inventory.
-- Reproducibility note: Hermes reports that the pinned checkout is `106` commits behind upstream. This remains non-blocking while the exact clean commit is retained; updating Hermes creates a new baseline and requires replay.
+- Reproducibility note: Hermes reports that the pinned checkout is behind upstream. This remains non-blocking while the exact clean commit is retained; updating Hermes creates a new baseline and requires replay.
 
 ## First trusted direct-smoke evidence
 
@@ -41,12 +41,28 @@ Status vocabulary: `planned`, `blocked`, `ready`, `in_progress`, `in_review`, `m
 - Manifest SHA-256: `bae7e3a3d77d27a12c507fee433f3502bcffa00c34d7b38a0981d7cf8201b407`.
 - Interpretation: valid preliminary pipeline evidence and a semantic failure for the lightweight control, not a comparative ranking.
 
+## First Qwythos-safe direct-smoke evidence
+
+- GitHub Actions run: `29103995266`, attempt `1`.
+- Trusted branch and SHA: `main` at `6fafcee357bde1e375924e428bff3b703daf7d27`.
+- Artifact: `direct-smoke-29103995266-1`.
+- Artifact digest: `sha256:dcf7ec4841869119ce6c577c7f0c513bec063e1d20a60545e47632da9ae0aa3e`.
+- Deterministic tests: `75` passed; test exit code `0`.
+- Candidate: `qwythos-hermes-safe`.
+- Case: `ho-stop-reuse-001`.
+- Execution completed: `true`; infrastructure exit code `0`.
+- Ollama termination: `done_reason=length`, `eval_count=256`, configured `num_predict=256`.
+- Raw output ended mid-reasoning before a contracted `FINAL:` could be emitted.
+- Prior harness field: `candidate_passed=false`.
+- Correct result status: `invalid`; the benchmark truncated the response, so this is not a semantic Qwythos failure.
+- Manifest SHA-256: `b8881d0591d29899476bbe18fc28ec6140f81e963ff0281132a3b7cee75e0ce1`.
+
 ## Current operating order
 
-1. Keep the fixture, prompt contract, generation parameters, environment fingerprint rules, and validator unchanged.
-2. Run the same single HO-STOP smoke with fixed candidate `qwythos-hermes-safe`.
-3. Inspect the immutable artifact and record `candidate_passed` without claiming a ranking.
-4. Add repetitions only after the second candidate confirms that the direct execution boundary behaves consistently.
-5. Comparative claims require at least three repetitions per candidate and capability under an unchanged environment fingerprint.
+1. Merge the truncation-aware result contract only after review of its `passed` / `failed` / `invalid` separation.
+2. Replay the same `qwythos-hermes-safe` and `ho-stop-reuse-001` smoke with `num_predict=1024`; all other experimental parameters remain fixed.
+3. Inspect the immutable artifact and reject any further `done_reason=length` result as invalid rather than failed.
+4. Do not compare candidates until complete results exist and each candidate-capability pair has at least three repetitions under an unchanged environment fingerprint.
+5. Add Hermes execution only after the direct-lane evidence pipeline remains stable across complete runs.
 
 `planned` means an outline exists. It is not an implementation instruction and does not authorize unattended expansion of scope.

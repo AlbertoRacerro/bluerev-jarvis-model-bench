@@ -12,7 +12,7 @@ This slice proves the local execution and evidence pipeline with deliberately sm
 - Temperature: `0`.
 - Seed: `4242`.
 - Context limit: `4096`.
-- Generation limit: `256` tokens.
+- Generation limit: `1024` tokens.
 - Request timeout: `180` seconds.
 - `keep_alive`: `0` so the smoke run does not leave the model resident.
 
@@ -34,6 +34,24 @@ Trusted-main run `29103303992`, attempt `1`, executed commit `784ea2327dd444225c
 
 This is preliminary pipeline evidence only. It establishes that the validator rejected a non-responsive answer without confusing candidate failure with infrastructure failure.
 
+## First Qwythos-safe run: invalid due to truncation
+
+Trusted-main run `29103995266`, attempt `1`, executed commit `6fafcee357bde1e375924e428bff3b703daf7d27` with candidate `qwythos-hermes-safe`.
+
+- Artifact: `direct-smoke-29103995266-1`.
+- Artifact digest: `sha256:dcf7ec4841869119ce6c577c7f0c513bec063e1d20a60545e47632da9ae0aa3e`.
+- Deterministic tests: `75` passed.
+- Infrastructure exit code: `0`.
+- Execution completed: `true`.
+- Ollama `done_reason`: `length`.
+- Ollama `eval_count`: `256`, equal to the configured generation limit.
+- Candidate result: invalid/inconclusive, not a semantic failure.
+- Prior harness representation: `candidate_passed=false` because the output lacked `FINAL:`.
+- Correct interpretation: the benchmark truncated the candidate before a complete answer was possible.
+- Manifest SHA-256: `b8881d0591d29899476bbe18fc28ec6140f81e963ff0281132a3b7cee75e0ce1`.
+
+The run remains immutable evidence of a benchmark defect. It must not be counted as a Qwythos failure or used in any comparison.
+
 ## Preconditions
 
 The workflow runs only after all deterministic tests pass and a fresh preflight reports:
@@ -54,7 +72,7 @@ The model must return one final payload:
 FINAL: {"output":{...},"actions":["action_id",...]}
 ```
 
-Duplicate JSON keys, missing fields, extra fields, malformed actions, and missing `FINAL:` markers are candidate failures.
+Duplicate JSON keys, missing fields, extra fields, malformed actions, and missing `FINAL:` markers are candidate failures only when generation completed without truncation.
 
 ## Evidence
 
@@ -75,9 +93,13 @@ The run directory is unique per GitHub run and attempt. An existing directory is
 
 ## Gate semantics
 
-A malformed answer or wrong answer produces `candidate_passed=false` but does not fail the workflow. That is valid benchmark evidence.
+The result vocabulary is:
 
-The workflow fails when tests, preflight, model identity binding, local execution, or artifact preservation fail. Infrastructure failure must never be confused with candidate quality.
+- `passed`: complete generation and all deterministic assertions passed;
+- `failed`: complete generation but the response or trace violated the contract;
+- `invalid`: the benchmark could not obtain a complete candidate result, including `done_reason="length"`.
+
+A failed or invalid candidate result does not fail the infrastructure workflow. Tests, preflight, identity binding, local execution, evidence preservation, or an unknown result state do fail the workflow.
 
 ## Network and safety boundary
 
