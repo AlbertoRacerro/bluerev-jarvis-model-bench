@@ -38,6 +38,9 @@ class DirectSmokeJobGateTests(unittest.TestCase):
         )
         return path
 
+    def test_second_smoke_candidate_is_fixed(self):
+        self.assertEqual(run_direct_smoke_job.CANDIDATE_ID, "qwythos-hermes-safe")
+
     def test_candidate_failure_does_not_fail_infrastructure_gate(self):
         with tempfile.TemporaryDirectory() as directory:
             path = self.write_summary(Path(directory), candidate_passed=False)

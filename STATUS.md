@@ -7,7 +7,7 @@ Status vocabulary: `planned`, `blocked`, `ready`, `in_progress`, `in_review`, `m
 | ID | Status | PR | Name | Dependencies | Scope |
 |---|---|---:|---|---|---|
 | BENCH-0 | merged | #1 | Foundation and runner contract | --- | Strict output extraction, manifests, local environment inventory, Windows self-hosted runner workflow, immutable artifacts, and safety rules. |
-| BENCH-1 | in_review | #18 | Synthetic orchestration battery | BENCH-0 | Strict case contracts and the first deterministic HO-STOP/HO-ROUTE fixtures are merged. PR #18 adds one bounded direct Ollama smoke execution for the lightweight control; it does not add Hermes execution or comparative scoring. |
+| BENCH-1 | in_progress | #18 | Synthetic orchestration battery | BENCH-0 | Strict case contracts, deterministic HO-STOP/HO-ROUTE fixtures, and the bounded direct execution pipeline are merged. The first control run completed and failed semantically as expected; a second fixed-candidate smoke is being prepared. |
 | BENCH-2 | planned | --- | Hermes orchestrator isolation | BENCH-1 | Hold worker pool and tools fixed while varying only the local model driving Hermes. |
 | BENCH-3 | planned | --- | Tool and coding fixtures | BENCH-2 | Windows/PowerShell, file edits, patching, test execution, bounded worker/critic/adjudicator loops. |
 | BENCH-4 | blocked | --- | Adaptive local model routing | BENCH-2, BENCH-3 | Hermes chooses among eligible local models by capability, latency, reliability, and resource cost. External APIs remain out of scope. |
@@ -26,12 +26,27 @@ Status vocabulary: `planned`, `blocked`, `ready`, `in_progress`, `in_review`, `m
 - Candidate mapping: every enabled candidate tag and digest remained present and matched the trusted artifact inventory.
 - Reproducibility note: Hermes reports that the pinned checkout is `106` commits behind upstream. This remains non-blocking while the exact clean commit is retained; updating Hermes creates a new baseline and requires replay.
 
+## First trusted direct-smoke evidence
+
+- GitHub Actions run: `29103303992`, attempt `1`.
+- Trusted branch and SHA: `main` at `784ea2327dd444225c1319ef240db4a8c3cd388c`.
+- Artifact: `direct-smoke-29103303992-1`.
+- Artifact digest: `sha256:56497d28e33b6853be65bf29f28aa94b5b021ce77e389cd58fb4e6cc8adb505c`.
+- Deterministic tests: `73` passed; test exit code `0`.
+- Candidate: `minicpm5-fable-1b-control`.
+- Case: `ho-stop-reuse-001`.
+- Execution completed: `true`; infrastructure exit code `0`.
+- Candidate passed: `false`.
+- Deterministic failure: missing required `FINAL:` marker; the raw response was a generic self-description unrelated to the task.
+- Manifest SHA-256: `bae7e3a3d77d27a12c507fee433f3502bcffa00c34d7b38a0981d7cf8201b407`.
+- Interpretation: valid preliminary pipeline evidence and a semantic failure for the lightweight control, not a comparative ranking.
+
 ## Current operating order
 
-1. Review and merge PR #18 only if its trusted-main, local-only, fixed-candidate, fixed-case, timeout, and artifact boundaries remain intact.
-2. Manually dispatch `Local direct-model smoke` on `main`; the workflow has no arbitrary model, endpoint, path, or fixture inputs.
-3. Inspect the immutable artifact and distinguish infrastructure success from `candidate_passed`.
-4. Treat the single smoke result as preliminary pipeline evidence only, whether the control passes or fails.
-5. Add repetitions or additional candidates only after the direct artifact contract is verified; comparative claims require at least three repetitions under an unchanged environment fingerprint.
+1. Keep the fixture, prompt contract, generation parameters, environment fingerprint rules, and validator unchanged.
+2. Run the same single HO-STOP smoke with fixed candidate `qwythos-hermes-safe`.
+3. Inspect the immutable artifact and record `candidate_passed` without claiming a ranking.
+4. Add repetitions only after the second candidate confirms that the direct execution boundary behaves consistently.
+5. Comparative claims require at least three repetitions per candidate and capability under an unchanged environment fingerprint.
 
 `planned` means an outline exists. It is not an implementation instruction and does not authorize unattended expansion of scope.
