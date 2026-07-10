@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
+# Local benchmark outputs
+artifacts/
+.tmp/
+.work/
+
+# Credentials and local agent state
+.env
+.env.*
+!.env.example
+.hermes/
+.ollama/
+
+# Model weights and large runtime files
+*.gguf
+*.safetensors
+*.bin
+*.pt
+*.pth
+
+# Self-hosted runner state
+_actions/
+_work/
+.runner
+.credentials
+.credentials_rsaparams
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
