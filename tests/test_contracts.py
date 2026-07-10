@@ -91,6 +91,14 @@ class CandidateManifestTests(unittest.TestCase):
     def test_accepts_valid_candidate_manifest(self) -> None:
         validate_candidate_manifest(self.valid_manifest())
 
+    def test_rejects_non_validated_mapping_status(self) -> None:
+        for status in ("preliminary", "invalid", "superseded"):
+            with self.subTest(status=status):
+                manifest = self.valid_manifest()
+                manifest["mapping_status"] = status
+                with self.assertRaisesRegex(ContractError, "must be validated"):
+                    validate_candidate_manifest(manifest)
+
     def test_rejects_extra_manifest_field(self) -> None:
         manifest = self.valid_manifest()
         manifest["unexpected"] = True
