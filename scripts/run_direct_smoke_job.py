@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 from typing import Any
+from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
@@ -24,6 +25,25 @@ SUMMARY_PATH = ARTIFACTS / "job-summary.json"
 CANDIDATE_ID = "minicpm5-fable-1b-control"
 CASE_PATH = ROOT / "fixtures" / "bench-1" / "ho-stop-reuse-001.json"
 CANDIDATE_REGISTRY = ROOT / "candidates" / "models.local.json"
+PROXY_ENV_NAMES = (
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "ALL_PROXY",
+    "http_proxy",
+    "https_proxy",
+    "all_proxy",
+)
+
+
+class _NoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[no-untyped-def]
+        return None
+
+
+def _open_loopback(request: Request, timeout: int):
+    return build_opener(ProxyHandler({}), _NoRedirect).open(
+        request, timeout=timeout
+    )  # noqa: S310 - exact loopback endpoint is validated before use
 
 
 def _run_and_capture(name: str, command: list[str], *, env: dict[str, str]) -> dict[str, Any]:
@@ -54,9 +74,13 @@ def capture() -> int:
     ARTIFACTS.mkdir(parents=True)
 
     clean_env = os.environ.copy()
-    for name in preflight.KNOWN_EXTERNAL_KEYS:
+    for name in (*preflight.KNOWN_EXTERNAL_KEYS, *PROXY_ENV_NAMES):
         clean_env.pop(name, None)
         os.environ.pop(name, None)
+    clean_env["NO_PROXY"] = "*"
+    clean_env["no_proxy"] = "*"
+    os.environ["NO_PROXY"] = "*"
+    os.environ["no_proxy"] = "*"
     clean_env["PYTHONPATH"] = os.pathsep.join((str(ROOT), str(SRC)))
 
     tests = _run_and_capture(
@@ -112,6 +136,7 @@ def capture() -> int:
             case_path=CASE_PATH,
             preflight_path=ARTIFACTS / "preflight.json",
             output_root=ARTIFACTS / "runs",
+            opener=_open_loopback,
         )
         summary["execution"] = {
             "infrastructure_exit_code": 0,
