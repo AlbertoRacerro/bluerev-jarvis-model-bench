@@ -6,7 +6,7 @@ Status vocabulary: `planned`, `blocked`, `ready`, `in_progress`, `in_review`, `m
 
 | ID | Status | PR | Name | Dependencies | Scope |
 |---|---|---:|---|---|---|
-| BENCH-0 | in_progress | --- | Foundation and runner contract | --- | Strict output extraction, manifests, local environment inventory, Windows self-hosted runner workflow, immutable artifacts, and safety rules. |
+| BENCH-0 | in_review | #1 | Foundation and runner contract | --- | Strict output extraction, manifests, local environment inventory, Windows self-hosted runner workflow, immutable artifacts, and safety rules. |
 | BENCH-1 | planned | --- | Synthetic orchestration battery | BENCH-0 | Deterministic planning, routing, escalation, budget, sensitivity, recovery, critic, and stop/no-op cases. |
 | BENCH-2 | planned | --- | Hermes orchestrator isolation | BENCH-1 | Hold worker pool and tools fixed while varying only the local model driving Hermes. |
 | BENCH-3 | planned | --- | Tool and coding fixtures | BENCH-2 | Windows/PowerShell, file edits, patching, test execution, bounded worker/critic/adjudicator loops. |
