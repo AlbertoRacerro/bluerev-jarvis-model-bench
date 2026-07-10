@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: local-benchmark-runner
@@ -30,6 +31,7 @@ jobs:
         run: python -m scripts.run_preflight_job capture
 
       - name: Upload immutable preflight artifact
+        id: upload
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -42,3 +44,78 @@ jobs:
         if: always()
         shell: cmd
         run: python -m scripts.run_preflight_job enforce
+
+      - name: Publish structured result to automation inbox
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          INBOX_ISSUE: "24"
+          SUMMARY_PATH: artifacts/job-summary.json
+          PREFLIGHT_PATH: artifacts/preflight.json
+          JOB_STATUS: ${{ job.status }}
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+        with:
+          script: |
+            const fs = require("fs");
+            const readJson = (path) => {
+              try {
+                return {value: JSON.parse(fs.readFileSync(path, "utf8")), error: null};
+              } catch (error) {
+                return {value: null, error: `${error.name}: ${error.message}`};
+              }
+            };
+
+            const summaryRead = readJson(process.env.SUMMARY_PATH);
+            const preflightRead = readJson(process.env.PREFLIGHT_PATH);
+            const summary = summaryRead.value;
+            const preflight = preflightRead.value;
+            const payload = {
+              schema_version: "bench.workflow-inbox.v1",
+              run_id: Number(context.runId),
+              run_attempt: Number(context.runAttempt),
+              workflow: context.workflow,
+              event_name: context.eventName,
+              sha: context.sha,
+              ref: context.ref,
+              job_status: process.env.JOB_STATUS,
+              artifact: {
+                id: process.env.ARTIFACT_ID || null,
+                url: process.env.ARTIFACT_URL || null,
+                digest: process.env.ARTIFACT_DIGEST || null,
+              },
+              tests_exit: summary?.tests?.exit_code ?? null,
+              inventory_exit: summary?.inventory?.exit_code ?? null,
+              preflight: {
+                status: preflight?.status ?? null,
+                runner_ready: preflight?.runner_ready ?? null,
+                scoring_ready: preflight?.scoring_ready ?? null,
+                local_only: preflight?.local_only ?? null,
+                blocking_reasons: preflight?.blocking_reasons ?? null,
+                scoring_blocking_reasons:
+                  preflight?.scoring_blocking_reasons ?? null,
+                hermes_commit: preflight?.hermes?.commit ?? null,
+                hermes_dirty: preflight?.hermes?.dirty ?? null,
+                ollama_model_count:
+                  Array.isArray(preflight?.ollama?.models)
+                    ? preflight.ollama.models.length
+                    : null,
+              },
+              summary_error: summaryRead.error,
+              preflight_error: preflightRead.error,
+            };
+
+            const body = [
+              "<!-- bench-workflow-result-v1 -->",
+              "```json",
+              JSON.stringify(payload, null, 2),
+              "```",
+            ].join("\n");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number(process.env.INBOX_ISSUE),
+              body,
+            });
