@@ -9,7 +9,15 @@ permissions:
   contents: read
 
 jobs:
+  hosted-runner-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Confirm GitHub-hosted runner allocation
+        run: echo "github-hosted-runner-started"
+
   tests:
+    needs: hosted-runner-probe
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -20,7 +28,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: pip
       - name: Install package without optional runtime integrations
         run: python -m pip install -e .
       - name: Compile Python sources
