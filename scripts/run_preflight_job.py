@@ -3,78 +3,64 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from pathlib import Path
-import subprocess
 import sys
-from typing import Any
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scripts import preflight
+from scripts.benchmark_runtime import run_captured, safe_reset_directory, sanitize_environment
 
-ARTIFACTS = ROOT / "artifacts"
+ARTIFACT_ROOT = ROOT / "artifacts"
+ARTIFACTS = ARTIFACT_ROOT / "preflight"
 SUMMARY_PATH = ARTIFACTS / "job-summary.json"
 PREFLIGHT_PATH = ARTIFACTS / "preflight.json"
 
 
-def _run_and_capture(
-    name: str,
-    command: list[str],
-    *,
-    env: dict[str, str],
-) -> dict[str, Any]:
-    result = subprocess.run(
-        command,
-        cwd=ROOT,
-        env=env,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        check=False,
-    )
-
-    (ARTIFACTS / f"{name}.stdout.log").write_text(result.stdout, encoding="utf-8")
-    (ARTIFACTS / f"{name}.stderr.log").write_text(result.stderr, encoding="utf-8")
-    (ARTIFACTS / f"{name}.exit").write_text(f"{result.returncode}\n", encoding="utf-8")
-
-    return {
-        "command": command,
-        "exit_code": result.returncode,
-    }
-
-
 def capture() -> int:
-    ARTIFACTS.mkdir(parents=True, exist_ok=True)
+    safe_reset_directory(ARTIFACTS, allowed_root=ARTIFACT_ROOT)
 
-    test_env = os.environ.copy()
-    test_env["PYTHONPATH"] = os.pathsep.join((str(ROOT), str(ROOT / "src")))
-    tests = _run_and_capture(
+    hermes_home = ARTIFACTS / "hermes-home"
+    hermes_home.mkdir(parents=True, exist_ok=False)
+    child_env, removed_names = sanitize_environment(
+        os.environ,
+        hermes_home=hermes_home,
+    )
+    child_env["PYTHONPATH"] = os.pathsep.join((str(ROOT), str(ROOT / "src")))
+
+    tests = run_captured(
         "tests",
         [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"],
-        env=test_env,
+        cwd=ROOT,
+        environment=child_env,
+        artifact_dir=ARTIFACTS,
+        timeout_seconds=900,
     )
-
-    inventory_env = os.environ.copy()
-    for name in preflight.KNOWN_EXTERNAL_KEYS:
-        inventory_env.pop(name, None)
-    inventory = _run_and_capture(
+    inventory = run_captured(
         "preflight",
         [
             sys.executable,
             "scripts/preflight.py",
             "--output",
-            "artifacts/preflight.json",
+            str(PREFLIGHT_PATH),
         ],
-        env=inventory_env,
+        cwd=ROOT,
+        environment=child_env,
+        artifact_dir=ARTIFACTS,
+        timeout_seconds=120,
     )
 
     summary = {
-        "schema_version": "bench.preflight-job.v1",
+        "schema_version": "bench.preflight-job.v2",
         "python": sys.executable,
         "repository_root": str(ROOT),
+        "artifact_directory": str(ARTIFACTS),
+        "sanitization": {
+            "removed_external_env_names": removed_names,
+            "isolated_hermes_home": str(hermes_home),
+            "secret_values_recorded": False,
+        },
         "tests": tests,
         "inventory": inventory,
     }
@@ -82,7 +68,6 @@ def capture() -> int:
         json.dumps(summary, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-
     print(json.dumps(summary, indent=2, sort_keys=True))
     return 0
 
@@ -98,6 +83,8 @@ def enforce() -> int:
     try:
         summary = json.loads(SUMMARY_PATH.read_text(encoding="utf-8"))
         report = json.loads(PREFLIGHT_PATH.read_text(encoding="utf-8"))
+        if summary.get("schema_version") != "bench.preflight-job.v2":
+            raise ValueError("unsupported preflight job schema")
         test_exit = int(summary["tests"]["exit_code"])
         inventory_exit = int(summary["inventory"]["exit_code"])
         scoring_ready = report["scoring_ready"] is True

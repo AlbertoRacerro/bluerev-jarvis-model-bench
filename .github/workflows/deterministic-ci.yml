@@ -1,0 +1,48 @@
+name: Trusted-main deterministic CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    if: github.ref == 'refs/heads/main'
+    concurrency:
+      group: local-benchmark-runner
+      cancel-in-progress: false
+      queue: max
+    runs-on: [self-hosted, Windows, X64, bluerev-bench]
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: powershell
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+          clean: true
+
+      - name: Capture compile and deterministic tests
+        run: |
+          $env:PYTHONUTF8 = '1'
+          $env:PYTHONIOENCODING = 'utf-8'
+          python -m scripts.run_deterministic_ci capture
+
+      - name: Upload deterministic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deterministic-ci-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/deterministic-ci/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Enforce deterministic gate
+        if: always()
+        run: python -m scripts.run_deterministic_ci enforce

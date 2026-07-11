@@ -3,14 +3,16 @@ name: Local direct-model smoke
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
       - ".github/workflows/local-direct-smoke.yml"
       - "candidates/models.local.json"
       - "fixtures/bench-1/**"
+      - "scripts/benchmark_runtime.py"
+      - "scripts/preflight.py"
       - "scripts/run_direct_smoke*.py"
       - "src/bench/**"
+      - "tests/test_preflight.py"
       - "tests/test_direct_execution*.py"
       - "tests/test_run_direct_smoke*.py"
 
@@ -19,65 +21,29 @@ permissions:
   issues: write
 
 jobs:
-  announce:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-
-    steps:
-      - name: Publish queued lifecycle metadata
-        uses: actions/github-script@v7
-        env:
-          INBOX_ISSUE: "24"
-          RUN_ATTEMPT: ${{ github.run_attempt }}
-        with:
-          script: |
-            const payload = {
-              schema_version: "bench.workflow-lifecycle.v1",
-              lifecycle: "queued",
-              run_id: Number(context.runId),
-              run_attempt: Number(process.env.RUN_ATTEMPT),
-              workflow: context.workflow,
-              event_name: context.eventName,
-              sha: context.sha,
-              ref: context.ref,
-              html_url:
-                `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
-            };
-            const body = [
-              "<!-- bench-workflow-lifecycle-v1 -->",
-              "```json",
-              JSON.stringify(payload, null, 2),
-              "```",
-            ].join("\n");
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: Number(process.env.INBOX_ISSUE),
-              body,
-            });
-
   direct-smoke:
-    needs: announce
     if: github.ref == 'refs/heads/main'
     concurrency:
       group: local-benchmark-runner
       cancel-in-progress: false
       queue: max
     runs-on: [self-hosted, Windows, X64, bluerev-bench]
-    timeout-minutes: 20
-
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: powershell
     steps:
-      - name: Check out trusted default branch
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: main
           persist-credentials: false
-
-      - name: Capture tests, preflight, and bounded direct execution
-        shell: cmd
-        run: python -m scripts.run_direct_smoke_v3_job capture
-
-      - name: Upload immutable direct-smoke artifact
+          clean: true
+      - name: Capture bounded direct execution
+        run: |
+          $env:PYTHONUTF8 = '1'
+          $env:PYTHONIOENCODING = 'utf-8'
+          python -m scripts.run_direct_smoke_v3_job capture
+      - name: Upload immutable artifact
         id: upload
         if: always()
         uses: actions/upload-artifact@v4
@@ -86,84 +52,38 @@ jobs:
           path: artifacts/direct-smoke/
           if-no-files-found: error
           retention-days: 30
-
-      - name: Enforce infrastructure and evidence gate
+      - name: Enforce evidence gate
         if: always()
-        shell: cmd
         run: python -m scripts.run_direct_smoke_v3_job enforce
-
-      - name: Publish structured result to automation inbox
+      - name: Publish compact result
         if: always()
+        continue-on-error: true
         uses: actions/github-script@v7
         env:
-          INBOX_ISSUE: "24"
-          SUMMARY_PATH: artifacts/direct-smoke/job-summary.json
-          JOB_STATUS: ${{ job.status }}
-          RUN_ATTEMPT: ${{ github.run_attempt }}
-          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+          ISSUE: "24"
+          SUMMARY: artifacts/direct-smoke/job-summary.json
+          STATUS: ${{ job.status }}
+          ATTEMPT: ${{ github.run_attempt }}
           ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
           ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
         with:
           script: |
-            const fs = require("fs");
-            let summary = null;
-            let summaryError = null;
-            try {
-              summary = JSON.parse(
-                fs.readFileSync(process.env.SUMMARY_PATH, "utf8")
-              );
-            } catch (error) {
-              summaryError = `${error.name}: ${error.message}`;
-            }
-
-            const execution = summary?.execution ?? {};
+            const fs = require('fs');
+            let summary = null, error = null;
+            try { summary = JSON.parse(fs.readFileSync(process.env.SUMMARY, 'utf8')); }
+            catch (e) { error = `${e.name}: ${e.message}`; }
             const payload = {
-              schema_version: "bench.workflow-inbox.v1",
+              schema_version: 'bench.workflow-inbox.v2',
               run_id: Number(context.runId),
-              run_attempt: Number(process.env.RUN_ATTEMPT),
-              workflow: context.workflow,
-              event_name: context.eventName,
+              run_attempt: Number(process.env.ATTEMPT),
               sha: context.sha,
               ref: context.ref,
-              job_status: process.env.JOB_STATUS,
-              artifact: {
-                id: process.env.ARTIFACT_ID || null,
-                url: process.env.ARTIFACT_URL || null,
-                digest: process.env.ARTIFACT_DIGEST || null,
-              },
-              tests_exit: summary?.tests?.exit_code ?? null,
-              inventory_exit: summary?.inventory?.exit_code ?? null,
-              execution: {
-                infrastructure_exit_code:
-                  execution.infrastructure_exit_code ?? null,
-                execution_completed:
-                  execution.execution_completed ?? null,
-                candidate_id: execution.candidate_id ?? null,
-                case_id: execution.case_id ?? null,
-                candidate_result_status:
-                  execution.candidate_result_status ?? null,
-                candidate_passed: execution.candidate_passed ?? null,
-                termination_reason: execution.termination_reason ?? null,
-                eval_count: execution.eval_count ?? null,
-                num_predict: execution.num_predict ?? null,
-                case_definition_sha256:
-                  execution.case_definition_sha256 ?? null,
-                manifest_sha256: execution.manifest_sha256 ?? null,
-                skipped_reason: execution.skipped_reason ?? null,
-              },
-              summary_error: summaryError,
+              job_status: process.env.STATUS,
+              artifact: {url: process.env.ARTIFACT_URL || null, digest: process.env.ARTIFACT_DIGEST || null},
+              tests: summary?.tests ?? null,
+              inventory: summary?.inventory ?? null,
+              sanitization: summary?.sanitization ?? null,
+              execution: summary?.execution ?? null,
+              summary_error: error,
             };
-
-            const body = [
-              "<!-- bench-workflow-result-v1 -->",
-              "```json",
-              JSON.stringify(payload, null, 2),
-              "```",
-            ].join("\n");
-
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: Number(process.env.INBOX_ISSUE),
-              body,
-            });
+            await github.rest.issues.createComment({owner: context.repo.owner, repo: context.repo.repo, issue_number: Number(process.env.ISSUE), body: `<!-- bench-workflow-result-v2 -->\n\`\`\`json\n${JSON.stringify(payload, null, 2)}\n\`\`\``});

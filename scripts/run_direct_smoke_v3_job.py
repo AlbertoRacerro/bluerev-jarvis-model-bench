@@ -5,7 +5,6 @@ import json
 import os
 from pathlib import Path
 import re
-import shutil
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -16,10 +15,16 @@ for path in (ROOT, SRC):
 
 from bench.contracts import ContractError
 from bench.direct_execution_v3 import execute_direct_smoke
-from scripts import preflight
+from scripts.benchmark_runtime import (
+    isolated_process_environment,
+    run_captured,
+    safe_reset_directory,
+    sanitize_environment,
+)
 from scripts import run_direct_smoke_job as base_job
 
-ARTIFACTS = ROOT / "artifacts" / "direct-smoke"
+ARTIFACT_ROOT = ROOT / "artifacts"
+ARTIFACTS = ARTIFACT_ROOT / "direct-smoke"
 SUMMARY_PATH = ARTIFACTS / "job-summary.json"
 CANDIDATE_ID = "qwythos-hermes-safe"
 CASE_PATH = ROOT / "fixtures" / "bench-1" / "ho-stop-reuse-explicit-002.json"
@@ -36,40 +41,43 @@ def _write_summary(value: dict[str, object]) -> None:
 
 
 def capture() -> int:
-    if ARTIFACTS.exists():
-        shutil.rmtree(ARTIFACTS)
-    ARTIFACTS.mkdir(parents=True)
-
-    clean_env = os.environ.copy()
-    for name in (*preflight.KNOWN_EXTERNAL_KEYS, *base_job.PROXY_ENV_NAMES):
-        clean_env.pop(name, None)
-        os.environ.pop(name, None)
-    clean_env["NO_PROXY"] = "*"
-    clean_env["no_proxy"] = "*"
-    os.environ["NO_PROXY"] = "*"
-    os.environ["no_proxy"] = "*"
+    safe_reset_directory(ARTIFACTS, allowed_root=ARTIFACT_ROOT)
+    hermes_home = ARTIFACTS / "hermes-home"
+    hermes_home.mkdir(parents=True, exist_ok=False)
+    clean_env, removed_names = sanitize_environment(os.environ, hermes_home=hermes_home)
     clean_env["PYTHONPATH"] = os.pathsep.join((str(ROOT), str(SRC)))
 
-    tests = base_job._run_and_capture(
+    tests = run_captured(
         "tests",
         [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"],
-        env=clean_env,
+        cwd=ROOT,
+        environment=clean_env,
+        artifact_dir=ARTIFACTS,
+        timeout_seconds=900,
     )
-    inventory = base_job._run_and_capture(
+    inventory = run_captured(
         "preflight",
         [
             sys.executable,
             "scripts/preflight.py",
             "--output",
-            "artifacts/direct-smoke/preflight.json",
+            str(ARTIFACTS / "preflight.json"),
         ],
-        env=clean_env,
+        cwd=ROOT,
+        environment=clean_env,
+        artifact_dir=ARTIFACTS,
+        timeout_seconds=120,
     )
 
     summary: dict[str, object] = {
         "schema_version": "bench.direct-smoke-job.v3",
         "python": sys.executable,
         "repository_root": str(ROOT),
+        "sanitization": {
+            "removed_external_env_names": removed_names,
+            "isolated_hermes_home": str(hermes_home),
+            "secret_values_recorded": False,
+        },
         "tests": tests,
         "inventory": inventory,
         "execution": {
@@ -99,21 +107,22 @@ def capture() -> int:
         if preflight_report.get("scoring_ready") is not True:
             raise ContractError("trusted preflight is not scoring-ready")
 
-        workflow_run_id = os.environ.get("GITHUB_RUN_ID")
-        workflow_attempt = os.environ.get("GITHUB_RUN_ATTEMPT")
+        workflow_run_id = clean_env.get("GITHUB_RUN_ID")
+        workflow_attempt = clean_env.get("GITHUB_RUN_ATTEMPT")
         if not workflow_run_id or not workflow_attempt:
             raise ContractError("workflow identity is incomplete")
         run_id = f"direct-{workflow_run_id}-{workflow_attempt}"
 
-        execution = execute_direct_smoke(
-            run_id=run_id,
-            candidate_id=CANDIDATE_ID,
-            candidate_registry_path=CANDIDATE_REGISTRY,
-            case_path=CASE_PATH,
-            preflight_path=ARTIFACTS / "preflight.json",
-            output_root=ARTIFACTS / "runs",
-            opener=base_job._open_loopback,
-        )
+        with isolated_process_environment(clean_env):
+            execution = execute_direct_smoke(
+                run_id=run_id,
+                candidate_id=CANDIDATE_ID,
+                candidate_registry_path=CANDIDATE_REGISTRY,
+                case_path=CASE_PATH,
+                preflight_path=ARTIFACTS / "preflight.json",
+                output_root=ARTIFACTS / "runs",
+                opener=base_job._open_loopback,
+            )
         summary["execution"] = {
             "infrastructure_exit_code": 0,
             "skipped_reason": None,

@@ -34,6 +34,10 @@ class ProbeError(RuntimeError):
     pass
 
 
+class InfrastructureProbeError(ProbeError):
+    pass
+
+
 class _NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[no-untyped-def]
         return None
@@ -174,12 +178,7 @@ def gpu_snapshot() -> dict[str, Any]:
     try:
         gpus = parse_nvidia_smi_csv(str(result.get("stdout") or ""))
     except ProbeError as exc:
-        return {
-            "ok": False,
-            "command_result": result,
-            "error": str(exc),
-            "gpus": [],
-        }
+        return {"ok": False, "command_result": result, "error": str(exc), "gpus": []}
     return {"ok": True, "command_result": result, "gpus": gpus}
 
 
@@ -198,7 +197,10 @@ def classify_residency(size: Any, size_vram: Any) -> tuple[str, float | None]:
 
 def is_user_excluded(model_name: str) -> bool:
     normalized = model_name.casefold()
-    return any(fragment in normalized for fragment in EXCLUDED_MODEL_FRAGMENTS)
+    return any(
+        normalized == fragment or normalized.startswith(fragment + "-")
+        for fragment in EXCLUDED_MODEL_FRAGMENTS
+    )
 
 
 def model_artifact_slug(model_name: str) -> str:
@@ -215,36 +217,29 @@ def list_installed_models() -> list[dict[str, Any]]:
     payload = _request_json(TAGS_URL, expected_path="/api/tags", timeout=30)
     raw_models = payload.get("models")
     if not isinstance(raw_models, list) or not raw_models:
-        raise ProbeError("Ollama returned no installed model array")
+        raise InfrastructureProbeError("Ollama returned no installed model array")
 
     models: list[dict[str, Any]] = []
     names: set[str] = set()
-    digests: set[str] = set()
     for index, item in enumerate(raw_models):
         if not isinstance(item, dict):
-            raise ProbeError(f"Ollama model inventory entry {index} is not an object")
+            raise InfrastructureProbeError(
+                f"Ollama model inventory entry {index} is not an object"
+            )
         name = item.get("name") or item.get("model")
         digest = item.get("digest")
         size = item.get("size")
         if not isinstance(name, str) or not name:
-            raise ProbeError(f"Ollama model inventory entry {index} has no name")
+            raise InfrastructureProbeError(f"Ollama model inventory entry {index} has no name")
         if not isinstance(digest, str) or not digest:
-            raise ProbeError(f"Ollama model {name} has no digest")
+            raise InfrastructureProbeError(f"Ollama model {name} has no digest")
         if not isinstance(size, int) or isinstance(size, bool) or size <= 0:
-            raise ProbeError(f"Ollama model {name} has invalid size")
+            raise InfrastructureProbeError(f"Ollama model {name} has invalid size")
         if name in names:
-            raise ProbeError(f"Ollama model inventory has duplicate name: {name}")
-        if digest in digests:
-            raise ProbeError(f"Ollama model inventory has duplicate digest: {digest}")
+            raise InfrastructureProbeError(f"Ollama model inventory has duplicate name: {name}")
         names.add(name)
-        digests.add(digest)
         models.append(
-            {
-                "name": name,
-                "digest": digest,
-                "size": size,
-                "modified_at": item.get("modified_at"),
-            }
+            {"name": name, "digest": digest, "size": size, "modified_at": item.get("modified_at")}
         )
     models.sort(key=lambda item: item["name"].casefold())
     return models
@@ -254,15 +249,17 @@ def running_models() -> list[dict[str, Any]]:
     payload = _request_json(PS_URL, expected_path="/api/ps", timeout=30)
     raw_models = payload.get("models")
     if not isinstance(raw_models, list):
-        raise ProbeError("Ollama running-model response has no model array")
+        raise InfrastructureProbeError("Ollama running-model response has no model array")
     models: list[dict[str, Any]] = []
     names: set[str] = set()
     for index, item in enumerate(raw_models):
         if not isinstance(item, dict):
-            raise ProbeError(f"Ollama running-model entry {index} is not an object")
+            raise InfrastructureProbeError(f"Ollama running-model entry {index} is not an object")
         name = item.get("name") or item.get("model")
         if not isinstance(name, str) or not name or name in names:
-            raise ProbeError("Ollama running-model identity is invalid or duplicated")
+            raise InfrastructureProbeError(
+                "Ollama running-model identity is invalid or duplicated"
+            )
         names.add(name)
         models.append(dict(item))
     return models
@@ -287,11 +284,7 @@ def stop_model(model_name: str) -> dict[str, Any]:
         except ProbeError as exc:
             last_error = str(exc)
         time.sleep(1)
-    return {
-        "command": result,
-        "verified_absent": absent,
-        "verification_error": last_error,
-    }
+    return {"command": result, "verified_absent": absent, "verification_error": last_error}
 
 
 def stop_all_running_models() -> list[dict[str, Any]]:
@@ -300,31 +293,36 @@ def stop_all_running_models() -> list[dict[str, Any]]:
         name = _running_name(item)
         if name:
             results.append({"model": name, **stop_model(name)})
-    failed = [
-        item["model"]
-        for item in results
-        if item.get("verified_absent") is not True
-    ]
+    failed = [item["model"] for item in results if item.get("verified_absent") is not True]
     if failed:
-        raise ProbeError("could not verify model unload: " + ", ".join(failed))
+        raise InfrastructureProbeError(
+            "could not verify model unload: " + ", ".join(failed)
+        )
     return results
 
 
-def _find_running_model(model_name: str) -> dict[str, Any] | None:
-    matches = [
-        item for item in running_models() if _running_name(item) == model_name
-    ]
-    if len(matches) != 1:
-        return None
-    return matches[0]
+def _find_single_running_model(model: dict[str, Any]) -> dict[str, Any]:
+    running = running_models()
+    if len(running) != 1:
+        raise InfrastructureProbeError(
+            f"expected exactly one running Ollama model, observed {len(running)}"
+        )
+    entry = running[0]
+    expected_name = model["name"]
+    if _running_name(entry) != expected_name:
+        raise InfrastructureProbeError(
+            f"running Ollama model changed during probe: expected {expected_name}"
+        )
+    if entry.get("digest") != model.get("digest"):
+        raise InfrastructureProbeError(
+            f"running Ollama digest changed during probe: {expected_name}"
+        )
+    return entry
 
 
 def _write_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(value, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def _sha256_file(path: Path) -> str:
@@ -369,13 +367,12 @@ def probe_model(model: dict[str, Any], output_dir: Path) -> dict[str, Any]:
     cleanup_before = stop_all_running_models()
     baseline_gpu = gpu_snapshot()
     if baseline_gpu.get("ok") is not True:
-        raise ProbeError(f"GPU snapshot failed before model: {model_name}")
+        raise InfrastructureProbeError(f"GPU snapshot failed before model: {model_name}")
 
     started = time.monotonic()
     generate_response: dict[str, Any] | None = None
     ps_entry: dict[str, Any] | None = None
     error: dict[str, str] | None = None
-
     try:
         generate_response = _request_json(
             GENERATE_URL,
@@ -396,9 +393,9 @@ def probe_model(model: dict[str, Any], output_dir: Path) -> dict[str, Any]:
         )
         if generate_response.get("done") is not True:
             raise ProbeError("Ollama generate response was incomplete")
-        ps_entry = _find_running_model(model_name)
-        if ps_entry is None:
-            raise ProbeError("loaded model was not uniquely visible in /api/ps")
+        ps_entry = _find_single_running_model(model)
+    except InfrastructureProbeError:
+        raise
     except ProbeError as exc:
         error = {"type": type(exc).__name__, "detail": str(exc)}
 
@@ -406,21 +403,17 @@ def probe_model(model: dict[str, Any], output_dir: Path) -> dict[str, Any]:
     loaded_gpu = gpu_snapshot()
     cleanup_after = stop_model(model_name)
     if loaded_gpu.get("ok") is not True:
-        raise ProbeError(f"GPU snapshot failed after loading model: {model_name}")
+        raise InfrastructureProbeError(f"GPU snapshot failed after loading model: {model_name}")
 
     if error is not None or ps_entry is None:
         classification = "load_failed"
         residency_ratio = None
     else:
         classification, residency_ratio = classify_residency(
-            ps_entry.get("size"),
-            ps_entry.get("size_vram"),
+            ps_entry.get("size"), ps_entry.get("size_vram")
         )
         if classification == "unknown":
-            error = {
-                "type": "ProbeError",
-                "detail": "Ollama returned invalid residency metrics",
-            }
+            error = {"type": "ProbeError", "detail": "Ollama returned invalid residency metrics"}
             classification = "load_failed"
             residency_ratio = None
 
@@ -448,10 +441,9 @@ def build_report(output_dir: Path) -> dict[str, Any]:
     initial_cleanup: list[dict[str, Any]] = []
     models: list[dict[str, Any]] = []
     infrastructure_error: dict[str, str] | None = None
-
     try:
         if initial_gpu.get("ok") is not True:
-            raise ProbeError("initial GPU snapshot failed")
+            raise InfrastructureProbeError("initial GPU snapshot failed")
         installed = list_installed_models()
         initial_cleanup = stop_all_running_models()
         for model in installed:
@@ -459,12 +451,10 @@ def build_report(output_dir: Path) -> dict[str, Any]:
             models.append(result)
             cleanup = result.get("cleanup_after")
             if result.get("classification") != "excluded" and (
-                not isinstance(cleanup, dict)
-                or cleanup.get("verified_absent") is not True
+                not isinstance(cleanup, dict) or cleanup.get("verified_absent") is not True
             ):
-                raise ProbeError(
-                    "cleanup verification failed after model: "
-                    + str(model.get("name"))
+                raise InfrastructureProbeError(
+                    "cleanup verification failed after model: " + str(model.get("name"))
                 )
     except ProbeError as exc:
         infrastructure_error = {"type": type(exc).__name__, "detail": str(exc)}
@@ -473,7 +463,6 @@ def build_report(output_dir: Path) -> dict[str, Any]:
     for result in models:
         classification = str(result.get("classification"))
         counts[classification] = counts.get(classification, 0) + 1
-
     return {
         "schema_version": SCHEMA_VERSION,
         "created_at_utc": created_at,
@@ -495,18 +484,14 @@ def build_report(output_dir: Path) -> dict[str, Any]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Measure sequential Ollama model GPU residency."
-    )
+    parser = argparse.ArgumentParser(description="Measure sequential Ollama model GPU residency.")
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
-
     report = build_report(args.output_dir)
     _write_json(args.output_dir / "report.json", report)
     write_manifest(args.output_dir)
     print(json.dumps(report, indent=2, sort_keys=True))
-
     if report["infrastructure_error"] is not None:
         return 2
     if not report["initial_gpu"].get("ok"):
