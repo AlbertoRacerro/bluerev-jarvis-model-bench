@@ -7,10 +7,26 @@ import unittest
 from pathlib import Path
 
 from scripts.build_residency_shortlist import (
+    EXPECTED_PROFILE,
     ShortlistError,
     build_shortlist,
     run,
 )
+
+
+def gpu_snapshot(used: int = 500) -> dict[str, object]:
+    return {
+        "ok": True,
+        "gpus": [
+            {
+                "index": 0,
+                "name": "GPU",
+                "memory_total_mib": 12282,
+                "memory_used_mib": used,
+                "utilization_gpu_percent": 0,
+            }
+        ],
+    }
 
 
 def model_result(
@@ -26,23 +42,35 @@ def model_result(
             "model": {"name": name, "digest": digest},
             "classification": "excluded",
             "reason": "explicit_user_exclusion",
-            "profile": {"num_ctx": 4096},
+            "profile": dict(EXPECTED_PROFILE),
         }
+    common = {
+        "model": {"name": name, "digest": digest},
+        "profile": dict(EXPECTED_PROFILE),
+        "probe_duration_seconds": 1.0,
+        "gpu_before": gpu_snapshot(100),
+        "gpu_loaded": gpu_snapshot(800),
+        "cleanup_after": {"verified_absent": True},
+    }
     if classification == "load_failed":
         return {
-            "model": {"name": name, "digest": digest},
+            **common,
             "classification": "load_failed",
-            "probe_duration_seconds": 1.0,
-            "cleanup_after": {"verified_absent": True},
             "error": {"type": "ProbeError", "detail": "load failed"},
         }
     return {
-        "model": {"name": name, "digest": digest},
+        **common,
         "classification": classification,
         "residency_ratio": size_vram / size,
-        "probe_duration_seconds": 1.0,
-        "ollama_ps_entry": {"size": size, "size_vram": size_vram},
-        "cleanup_after": {"verified_absent": True},
+        "ollama_generate": {"done": True},
+        "ollama_ps_entry": {
+            "name": name,
+            "model": name,
+            "digest": digest,
+            "size": size,
+            "size_vram": size_vram,
+            "context_length": 4096,
+        },
         "error": None,
     }
 
@@ -62,20 +90,16 @@ def valid_report() -> dict[str, object]:
     return {
         "schema_version": "bench.model-residency.v1",
         "created_at_utc": "2026-07-10T00:00:00Z",
-        "workflow": {"run_id": "1", "sha": "abc"},
-        "profile": {"name": "h1-4k-residency", "num_ctx": 4096},
-        "explicit_exclusions": ["gemma4:27b"],
-        "initial_gpu": {
-            "ok": True,
-            "gpus": [
-                {
-                    "index": 0,
-                    "name": "GPU",
-                    "memory_total_mib": 12282,
-                    "memory_used_mib": 500,
-                }
-            ],
+        "workflow": {
+            "run_id": "1",
+            "run_attempt": "1",
+            "event_name": "workflow_dispatch",
+            "sha": "abc",
+            "ref": "refs/heads/main",
         },
+        "profile": dict(EXPECTED_PROFILE),
+        "explicit_exclusions": ["gemma4:27b"],
+        "initial_gpu": gpu_snapshot(),
         "initial_cleanup": [],
         "infrastructure_error": None,
         "classification_counts": {
@@ -114,6 +138,30 @@ class ResidencyShortlistTests(unittest.TestCase):
         report = valid_report()
         report["models"][0]["cleanup_after"]["verified_absent"] = False
         with self.assertRaisesRegex(ShortlistError, "cleanup"):
+            build_shortlist(report)
+
+    def test_rejects_failed_gpu_snapshot(self):
+        report = valid_report()
+        report["models"][0]["gpu_loaded"] = {"ok": False, "gpus": []}
+        with self.assertRaisesRegex(ShortlistError, "GPU snapshot"):
+            build_shortlist(report)
+
+    def test_rejects_profile_drift_beyond_context_size(self):
+        report = valid_report()
+        report["profile"]["seed"] = 7
+        with self.assertRaisesRegex(ShortlistError, "complete fixed H1 profile"):
+            build_shortlist(report)
+
+    def test_rejects_process_context_drift(self):
+        report = valid_report()
+        report["models"][0]["ollama_ps_entry"]["context_length"] = 32768
+        with self.assertRaisesRegex(ShortlistError, "context length"):
+            build_shortlist(report)
+
+    def test_rejects_incomplete_workflow_identity(self):
+        report = valid_report()
+        report["workflow"]["run_attempt"] = None
+        with self.assertRaisesRegex(ShortlistError, "workflow identity"):
             build_shortlist(report)
 
     def test_rejects_inconsistent_classification(self):
