@@ -27,7 +27,6 @@ from scripts.benchmark_runtime import (
     sanitize_environment,
 )
 
-# Backwards-compatible public name used by job wrappers and tests.
 KNOWN_EXTERNAL_KEYS = tuple(sorted(EXTERNAL_ENV_NAMES))
 DEFAULT_WINDOWS_HERMES_REPO = Path(r"C:\AI\hermes-agent")
 _MAX_LOOPBACK_RESPONSE_BYTES = 4_000_000
@@ -106,13 +105,7 @@ def inspect_ollama() -> dict[str, Any]:
     endpoint = os.environ.get("OLLAMA_TAGS_URL", "http://127.0.0.1:11434/api/tags")
     version = _run(["ollama", "--version"])
     if not _is_loopback_http_endpoint(endpoint):
-        return {
-            "ok": False,
-            "endpoint": endpoint,
-            "error": "NonLoopbackEndpoint",
-            "version": version,
-            "models": [],
-        }
+        return {"ok": False, "endpoint": endpoint, "error": "NonLoopbackEndpoint", "version": version, "models": []}
     try:
         request = Request(endpoint, method="GET")
         with _OPENER.open(request, timeout=8) as response:
@@ -125,25 +118,13 @@ def inspect_ollama() -> dict[str, Any]:
         if not isinstance(payload, dict) or not isinstance(payload.get("models"), list):
             raise ValueError("invalid Ollama model inventory")
     except (OSError, TimeoutError, UnicodeError, json.JSONDecodeError, RuntimeError, ValueError) as exc:
-        return {
-            "ok": False,
-            "endpoint": endpoint,
-            "error": type(exc).__name__,
-            "version": version,
-            "models": [],
-        }
+        return {"ok": False, "endpoint": endpoint, "error": type(exc).__name__, "version": version, "models": []}
 
     models: list[dict[str, Any]] = []
     names: set[str] = set()
     for item in payload["models"]:
         if not isinstance(item, dict):
-            return {
-                "ok": False,
-                "endpoint": endpoint,
-                "error": "InvalidModelInventory",
-                "version": version,
-                "models": [],
-            }
+            return {"ok": False, "endpoint": endpoint, "error": "InvalidModelInventory", "version": version, "models": []}
         name = item.get("name") or item.get("model")
         digest = item.get("digest")
         size = item.get("size")
@@ -157,29 +138,11 @@ def inspect_ollama() -> dict[str, Any]:
             or isinstance(size, bool)
             or size <= 0
         ):
-            return {
-                "ok": False,
-                "endpoint": endpoint,
-                "error": "InvalidModelInventory",
-                "version": version,
-                "models": [],
-            }
+            return {"ok": False, "endpoint": endpoint, "error": "InvalidModelInventory", "version": version, "models": []}
         names.add(name)
-        models.append(
-            {
-                "name": name,
-                "digest": digest,
-                "size": size,
-                "modified_at": item.get("modified_at"),
-            }
-        )
+        models.append({"name": name, "digest": digest, "size": size, "modified_at": item.get("modified_at")})
     models.sort(key=lambda item: item["name"].casefold())
-    return {
-        "ok": True,
-        "endpoint": endpoint,
-        "version": version,
-        "models": models,
-    }
+    return {"ok": True, "endpoint": endpoint, "version": version, "models": models}
 
 
 def _expanded_path(value: str) -> Path:
@@ -191,31 +154,21 @@ def _hermes_repo_candidates() -> list[tuple[Path, str]]:
     explicit = os.environ.get("HERMES_REPO")
     if explicit:
         candidates.append((_expanded_path(explicit), "environment:HERMES_REPO"))
-
     install_dir = os.environ.get("HERMES_INSTALL_DIR")
     if install_dir:
         candidates.append((_expanded_path(install_dir), "environment:HERMES_INSTALL_DIR"))
-
     hermes_home = os.environ.get("HERMES_HOME")
     if hermes_home:
         candidates.append((_expanded_path(hermes_home) / "hermes-agent", "environment:HERMES_HOME"))
-
     local_app_data = os.environ.get("LOCALAPPDATA")
     if local_app_data:
-        candidates.append(
-            (
-                _expanded_path(local_app_data) / "hermes" / "hermes-agent",
-                "windows_managed_install",
-            )
-        )
-
+        candidates.append((_expanded_path(local_app_data) / "hermes" / "hermes-agent", "windows_managed_install"))
     candidates.extend(
         [
             (DEFAULT_WINDOWS_HERMES_REPO, "legacy_windows_default"),
             (Path.home() / ".hermes" / "hermes-agent", "posix_managed_install"),
         ]
     )
-
     unique: list[tuple[Path, str]] = []
     seen: set[str] = set()
     for path, source in candidates:
@@ -246,11 +199,10 @@ def _resolve_git_bash() -> tuple[Path | None, str | None, list[dict[str, Any]]]:
     explicit = os.environ.get("HERMES_GIT_BASH_PATH")
     if explicit:
         candidates.append((_expanded_path(explicit), "environment:HERMES_GIT_BASH_PATH"))
-
     hermes_home = os.environ.get("HERMES_HOME")
     local_app_data = os.environ.get("LOCALAPPDATA")
-    managed_home = _expanded_path(hermes_home) if hermes_home else None
-    if managed_home:
+    if hermes_home:
+        managed_home = _expanded_path(hermes_home)
         candidates.extend(
             [
                 (managed_home / "git" / "usr" / "bin" / "bash.exe", "hermes_home_usr"),
@@ -292,10 +244,7 @@ def inspect_hermes() -> dict[str, Any]:
     git_bash, git_bash_source, git_bash_candidates = _resolve_git_bash()
 
     with tempfile.TemporaryDirectory(prefix="bluerev-hermes-preflight-") as temporary_home:
-        isolated_env, removed = sanitize_environment(
-            os.environ,
-            hermes_home=Path(temporary_home),
-        )
+        isolated_env, removed = sanitize_environment(os.environ, hermes_home=Path(temporary_home))
         if git_bash:
             isolated_env["HERMES_GIT_BASH_PATH"] = str(git_bash)
 
@@ -305,18 +254,14 @@ def inspect_hermes() -> dict[str, Any]:
             attempts.extend([([explicit_exe, "--version"], None), ([explicit_exe, "--help"], None)])
         discovered_exe = shutil.which("hermes")
         if discovered_exe and discovered_exe != explicit_exe:
-            attempts.extend(
-                [([discovered_exe, "--version"], None), ([discovered_exe, "--help"], None)]
-            )
-
+            attempts.extend([([discovered_exe, "--version"], None), ([discovered_exe, "--help"], None)])
         if repo:
-            python_candidates = (
+            for candidate in (
                 repo / "venv" / "Scripts" / "python.exe",
                 repo / ".venv" / "Scripts" / "python.exe",
                 repo / "venv" / "bin" / "python",
                 repo / ".venv" / "bin" / "python",
-            )
-            for candidate in python_candidates:
+            ):
                 if candidate.is_file():
                     attempts.extend(
                         [
@@ -334,12 +279,7 @@ def inspect_hermes() -> dict[str, Any]:
             if result.get("ok"):
                 selected = result
                 break
-
-        bash_result = (
-            _run([str(git_bash), "--version"], environment=isolated_env)
-            if git_bash
-            else {"ok": False, "error": "GitBashNotFound"}
-        )
+        bash_result = _run([str(git_bash), "--version"], environment=isolated_env) if git_bash else {"ok": False, "error": "GitBashNotFound"}
 
     commit = None
     branch = None
@@ -384,7 +324,6 @@ def build_report() -> dict[str, Any]:
     hermes = inspect_hermes()
     current_external_names = external_env_names(os.environ)
     removed_external_names = parse_removed_environment_report(os.environ)
-
     runner_ready = bool(ollama.get("ok") and ollama.get("models") and hermes.get("ok"))
     local_only = not current_external_names
     runner_name = os.environ.get("RUNNER_NAME")
@@ -399,62 +338,35 @@ def build_report() -> dict[str, Any]:
     blocking_reasons = [
         reason
         for condition, reason in (
-            (
-                not ollama.get("ok") and ollama.get("error") == "NonLoopbackEndpoint",
-                "ollama_endpoint_not_loopback",
-            ),
-            (
-                not ollama.get("ok") and ollama.get("error") != "NonLoopbackEndpoint",
-                "ollama_unreachable_or_invalid",
-            ),
+            (not ollama.get("ok") and ollama.get("error") == "NonLoopbackEndpoint", "ollama_endpoint_not_loopback"),
+            (not ollama.get("ok") and ollama.get("error") != "NonLoopbackEndpoint", "ollama_unreachable_or_invalid"),
             (ollama.get("ok") and not ollama.get("models"), "no_ollama_models"),
             (not hermes.get("ok"), "hermes_unavailable_or_windows_shell_unready"),
             (current_external_names, "external_api_environment_present_after_sanitization"),
         )
         if condition
     ]
-
     models = ollama.get("models") or []
     scoring_blocking_reasons = list(blocking_reasons)
     scoring_blocking_reasons.extend(
         reason
         for condition, reason in (
             (not runner_name, "runner_name_unavailable"),
-            (
-                any(not workflow.get(field) for field in ("run_id", "run_attempt", "sha", "ref")),
-                "workflow_identity_incomplete",
-            ),
-            (
-                ollama.get("ok") and not (ollama.get("version") or {}).get("ok"),
-                "ollama_version_unavailable",
-            ),
-            (
-                bool(models)
-                and any(not model.get("name") or not model.get("digest") for model in models),
-                "ollama_model_identity_incomplete",
-            ),
+            (any(not workflow.get(field) for field in ("run_id", "run_attempt", "sha", "ref")), "workflow_identity_incomplete"),
+            (ollama.get("ok") and not (ollama.get("version") or {}).get("ok"), "ollama_version_unavailable"),
+            (bool(models) and any(not model.get("name") or not model.get("digest") for model in models), "ollama_model_identity_incomplete"),
             (hermes.get("ok") and not hermes.get("repo"), "hermes_repository_unavailable"),
             (hermes.get("ok") and not hermes.get("commit"), "hermes_commit_unavailable"),
-            (
-                hermes.get("ok") and hermes.get("dirty") is None,
-                "hermes_worktree_state_unknown",
-            ),
+            (hermes.get("ok") and hermes.get("dirty") is None, "hermes_worktree_state_unknown"),
             (hermes.get("ok") and hermes.get("dirty") is True, "hermes_worktree_dirty"),
-            (
-                os.name == "nt"
-                and not ((hermes.get("git_bash") or {}).get("probe") or {}).get("ok"),
-                "hermes_git_bash_unavailable",
-            ),
-            (
-                removed_external_names == ["invalid_sanitization_report"],
-                "environment_sanitization_report_invalid",
-            ),
+            (os.name == "nt" and not ((hermes.get("git_bash") or {}).get("probe") or {}).get("ok"), "hermes_git_bash_unavailable"),
+            (removed_external_names == ["invalid_sanitization_report"], "environment_sanitization_report_invalid"),
         )
         if condition
     )
 
     return {
-        "schema_version": "bench.preflight.v2",
+        "schema_version": "bench.preflight.v1",
         "created_at_utc": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "status": "ready" if runner_ready else "blocked",
         "runner_ready": runner_ready,
@@ -486,7 +398,6 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Inventory the local-only benchmark environment.")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-
     report = build_report()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
