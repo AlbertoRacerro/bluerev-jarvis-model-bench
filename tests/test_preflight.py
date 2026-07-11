@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from pathlib import Path
+import sys
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -47,24 +50,29 @@ class OllamaEndpointTests(unittest.TestCase):
         with (
             isolated_environment({"OLLAMA_TAGS_URL": "https://example.com/api/tags"}),
             patch.object(preflight, "_run", return_value={"ok": True}),
-            patch.object(preflight, "urlopen") as mocked_urlopen,
+            patch.object(preflight._OPENER, "open") as mocked_open,
         ):
             report = preflight.inspect_ollama()
 
         self.assertFalse(report["ok"])
         self.assertEqual(report["error"], "NonLoopbackEndpoint")
-        mocked_urlopen.assert_not_called()
+        mocked_open.assert_not_called()
 
-    def test_accepts_ipv4_and_ipv6_loopback_http_endpoints(self) -> None:
+    def test_accepts_only_exact_ipv4_and_ipv6_loopback_tags_endpoint(self) -> None:
         self.assertTrue(
             preflight._is_loopback_http_endpoint("http://127.0.0.1:11434/api/tags")
         )
         self.assertTrue(
             preflight._is_loopback_http_endpoint("http://[::1]:11434/api/tags")
         )
-        self.assertFalse(
-            preflight._is_loopback_http_endpoint("https://127.0.0.1:11434/api/tags")
-        )
+        for endpoint in (
+            "https://127.0.0.1:11434/api/tags",
+            "http://127.0.0.1:11434/api/ps",
+            "http://127.0.0.1:11434/api/tags?x=1",
+            "http://user@127.0.0.1:11434/api/tags",
+        ):
+            with self.subTest(endpoint=endpoint):
+                self.assertFalse(preflight._is_loopback_http_endpoint(endpoint))
 
 
 class BuildReportTests(unittest.TestCase):
@@ -119,7 +127,7 @@ class BuildReportTests(unittest.TestCase):
 
         self.assertEqual(report["status"], "blocked")
         self.assertIn("ollama_endpoint_not_loopback", report["blocking_reasons"])
-        self.assertNotIn("ollama_unreachable", report["blocking_reasons"])
+        self.assertNotIn("ollama_unreachable_or_invalid", report["blocking_reasons"])
 
     def test_missing_hermes_blocks_preflight_and_scoring(self) -> None:
         with (
@@ -198,6 +206,29 @@ class BuildReportTests(unittest.TestCase):
         self.assertTrue(report["runner_ready"])
         self.assertFalse(report["scoring_ready"])
         self.assertIn("workflow_identity_incomplete", report["scoring_blocking_reasons"])
+
+
+class MainExitTests(unittest.TestCase):
+    def test_main_fails_closed_when_scoring_is_not_ready(self) -> None:
+        report = {"scoring_ready": False}
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "preflight.json"
+            with (
+                patch.object(preflight, "build_report", return_value=report),
+                patch.object(sys, "argv", ["preflight.py", "--output", str(output)]),
+            ):
+                self.assertEqual(preflight.main(), 2)
+            self.assertTrue(output.is_file())
+
+    def test_main_succeeds_only_when_scoring_is_ready(self) -> None:
+        report = {"scoring_ready": True}
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "preflight.json"
+            with (
+                patch.object(preflight, "build_report", return_value=report),
+                patch.object(sys, "argv", ["preflight.py", "--output", str(output)]),
+            ):
+                self.assertEqual(preflight.main(), 0)
 
 
 if __name__ == "__main__":
