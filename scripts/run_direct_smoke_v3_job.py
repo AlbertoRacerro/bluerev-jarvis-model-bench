@@ -15,13 +15,13 @@ for path in (ROOT, SRC):
 
 from bench.contracts import ContractError
 from bench.direct_execution_v3 import execute_direct_smoke
+from bench.loopback_http import open_loopback
 from scripts.benchmark_runtime import (
     isolated_process_environment,
     run_captured,
     safe_reset_directory,
     sanitize_environment,
 )
-from scripts import run_direct_smoke_job as base_job
 
 ARTIFACT_ROOT = ROOT / "artifacts"
 ARTIFACTS = ARTIFACT_ROOT / "direct-smoke"
@@ -33,10 +33,7 @@ _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
 def _write_summary(value: dict[str, object]) -> None:
-    SUMMARY_PATH.write_text(
-        json.dumps(value, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    SUMMARY_PATH.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps(value, indent=2, sort_keys=True))
 
 
@@ -57,18 +54,12 @@ def capture() -> int:
     )
     inventory = run_captured(
         "preflight",
-        [
-            sys.executable,
-            "scripts/preflight.py",
-            "--output",
-            str(ARTIFACTS / "preflight.json"),
-        ],
+        [sys.executable, "scripts/preflight.py", "--output", str(ARTIFACTS / "preflight.json")],
         cwd=ROOT,
         environment=clean_env,
         artifact_dir=ARTIFACTS,
         timeout_seconds=120,
     )
-
     summary: dict[str, object] = {
         "schema_version": "bench.direct-smoke-job.v3",
         "python": sys.executable,
@@ -88,7 +79,6 @@ def capture() -> int:
             "skipped_reason": None,
         },
     }
-
     if tests["exit_code"] != 0 or inventory["exit_code"] != 0:
         summary["execution"] = {
             "infrastructure_exit_code": 0,
@@ -101,18 +91,14 @@ def capture() -> int:
         return 0
 
     try:
-        preflight_report = json.loads(
-            (ARTIFACTS / "preflight.json").read_text(encoding="utf-8")
-        )
+        preflight_report = json.loads((ARTIFACTS / "preflight.json").read_text(encoding="utf-8"))
         if preflight_report.get("scoring_ready") is not True:
             raise ContractError("trusted preflight is not scoring-ready")
-
         workflow_run_id = clean_env.get("GITHUB_RUN_ID")
         workflow_attempt = clean_env.get("GITHUB_RUN_ATTEMPT")
         if not workflow_run_id or not workflow_attempt:
             raise ContractError("workflow identity is incomplete")
         run_id = f"direct-{workflow_run_id}-{workflow_attempt}"
-
         with isolated_process_environment(clean_env):
             execution = execute_direct_smoke(
                 run_id=run_id,
@@ -121,18 +107,13 @@ def capture() -> int:
                 case_path=CASE_PATH,
                 preflight_path=ARTIFACTS / "preflight.json",
                 output_root=ARTIFACTS / "runs",
-                opener=base_job._open_loopback,
+                opener=open_loopback,
             )
-        summary["execution"] = {
-            "infrastructure_exit_code": 0,
-            "skipped_reason": None,
-            **execution,
-        }
+        summary["execution"] = {"infrastructure_exit_code": 0, "skipped_reason": None, **execution}
     except (ContractError, OSError, ValueError, TypeError) as exc:
         error = {"type": type(exc).__name__, "detail": str(exc)}
         (ARTIFACTS / "execution-error.json").write_text(
-            json.dumps(error, indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
+            json.dumps(error, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
         summary["execution"] = {
             "infrastructure_exit_code": 2,
@@ -142,7 +123,6 @@ def capture() -> int:
             "skipped_reason": None,
             "error": error,
         }
-
     _write_summary(summary)
     return 0
 
@@ -158,10 +138,7 @@ def enforce() -> int:
         execution = summary["execution"]
         execution_exit = int(execution["infrastructure_exit_code"])
     except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
-        print(
-            f"invalid direct-smoke job summary: {type(exc).__name__}: {exc}",
-            file=sys.stderr,
-        )
+        print(f"invalid direct-smoke job summary: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 2
 
     failures: list[str] = []
@@ -169,7 +146,6 @@ def enforce() -> int:
         failures.append(f"deterministic tests exited {test_exit}")
     if inventory_exit != 0:
         failures.append(f"runtime inventory exited {inventory_exit}")
-
     prerequisites_ok = test_exit == 0 and inventory_exit == 0
     if prerequisites_ok:
         execution_completed = execution.get("execution_completed") is True
@@ -185,11 +161,9 @@ def enforce() -> int:
             failures.append("case definition digest is missing or malformed")
     elif execution.get("skipped_reason") != "prerequisite_failure":
         failures.append("direct execution skip reason is missing or invalid")
-
     if failures:
         print("; ".join(failures), file=sys.stderr)
         return 1
-
     print(
         "direct-smoke infrastructure gate passed; "
         f"result_status={execution.get('candidate_result_status')}; "
