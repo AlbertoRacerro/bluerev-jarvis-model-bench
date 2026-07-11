@@ -82,10 +82,30 @@ def _reject_duplicate_object_pairs(pairs: list[tuple[str, Any]]) -> dict[str, An
     return value
 
 
+def validate_evaluator_support(case: Mapping[str, Any]) -> None:
+    """Reject a valid case when the current evaluator cannot score every assertion.
+
+    This check must run before any candidate inference so a harness capability gap is
+    never recorded as a model failure.
+    """
+
+    validate_case(case)
+    declared_assertions = [
+        *case["success_assertions"],
+        *case["negative_assertions"],
+    ]
+    unsupported = sorted(set(declared_assertions) - _SUPPORTED_ASSERTIONS)
+    if unsupported:
+        raise ContractError(
+            "case uses assertions not implemented by this evaluator: "
+            + ", ".join(unsupported)
+        )
+
+
 def build_candidate_payload(case: Mapping[str, Any]) -> dict[str, Any]:
     """Return only fields that may be shown to the evaluated candidate."""
 
-    validate_case(case)
+    validate_evaluator_support(case)
     payload = {
         "schema_version": "bench.candidate-task.v1",
         **{field: copy.deepcopy(case[field]) for field in _CANDIDATE_FIELDS},
@@ -109,7 +129,6 @@ def validate_trace(trace: Mapping[str, Any]) -> list[str]:
     case_id = trace["case_id"]
     if not isinstance(case_id, str) or not case_id.strip():
         raise ContractError("trace.case_id must be a non-empty string")
-
     events = trace["events"]
     if not isinstance(events, list):
         raise ContractError("trace.events must be an array")
@@ -122,21 +141,17 @@ def validate_trace(trace: Mapping[str, Any]) -> list[str]:
             raise ContractError(f"trace.events[{expected_index - 1}] must be an object")
         path = f"trace.events[{expected_index - 1}]"
         _validate_exact_fields(event, _EVENT_FIELDS, path)
-
         index = event["index"]
         if not isinstance(index, int) or isinstance(index, bool) or index != expected_index:
             raise ContractError(f"{path}.index must equal {expected_index}")
-
         action_id = event["action_id"]
         if not isinstance(action_id, str) or action_id not in ALLOWED_ACTION_IDS:
             raise ContractError(f"{path}.action_id is unsupported")
-
         details = event["details"]
         if not isinstance(details, Mapping):
             raise ContractError(f"{path}.details must be an object")
         _validate_json_value(details, f"{path}.details")
         actions.append(action_id)
-
     return actions
 
 
@@ -207,7 +222,6 @@ def _evaluate_assertion(
     if assertion_id == "no_unbounded_retries":
         passed = counts["retries"] <= limits["max_retries"]
         return passed, f"retries={counts['retries']} max={limits['max_retries']}"
-
     raise ContractError(f"assertion is not implemented by this evaluator: {assertion_id}")
 
 
@@ -218,7 +232,7 @@ def evaluate_submission(
 ) -> dict[str, Any]:
     """Evaluate one extracted output and trace against a validated case."""
 
-    validate_case(case)
+    validate_evaluator_support(case)
     if not isinstance(extracted_output, Mapping) or not extracted_output:
         raise ContractError("extracted_output must be a non-empty object")
     _validate_json_value(extracted_output, "extracted_output")
@@ -226,17 +240,6 @@ def evaluate_submission(
     actions = validate_trace(trace)
     if trace["case_id"] != case["case_id"]:
         raise ContractError("trace.case_id does not match case.case_id")
-
-    declared_assertions = [
-        *case["success_assertions"],
-        *case["negative_assertions"],
-    ]
-    unsupported = sorted(set(declared_assertions) - _SUPPORTED_ASSERTIONS)
-    if unsupported:
-        raise ContractError(
-            "case uses assertions not implemented by this evaluator: " + ", ".join(unsupported)
-        )
-
     counts = _counts(actions)
     checks: list[dict[str, Any]] = []
 
@@ -256,6 +259,10 @@ def evaluate_submission(
         }
     )
 
+    declared_assertions = [
+        *case["success_assertions"],
+        *case["negative_assertions"],
+    ]
     for assertion_id in declared_assertions:
         passed, detail = _evaluate_assertion(
             assertion_id,
@@ -300,7 +307,6 @@ def load_case_directory(path: Path) -> dict[str, dict[str, Any]]:
     case_files = sorted(path.glob("*.json"))
     if not case_files:
         raise ContractError(f"no case files found in {path}")
-
     cases: dict[str, dict[str, Any]] = {}
     for case_file in case_files:
         case = load_case_file(case_file)
