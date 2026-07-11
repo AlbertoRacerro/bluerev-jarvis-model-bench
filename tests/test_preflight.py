@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from pathlib import Path
 import json
+from pathlib import Path
 import sys
 import tempfile
 import unittest
@@ -89,23 +89,49 @@ class HermesWindowsLayoutTests(unittest.TestCase):
         self.assertEqual(source, "windows_managed_install")
         self.assertTrue(any(item["is_git"] for item in evidence))
 
-    def test_official_venv_directory_is_probed(self) -> None:
+    def test_official_venv_metadata_is_bound_without_executing_cli(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = Path(directory) / "hermes-agent"
             (repo / ".git").mkdir(parents=True)
             python_exe = repo / "venv" / "Scripts" / "python.exe"
             python_exe.parent.mkdir(parents=True)
             python_exe.write_text("", encoding="utf-8")
+            module_file = repo / "hermes_cli" / "main.py"
+            module_file.parent.mkdir(parents=True)
+            module_file.write_text("", encoding="utf-8")
+            metadata = json.dumps(
+                {
+                    "ok": True,
+                    "python_executable": str(python_exe),
+                    "python_prefix": str(repo / "venv"),
+                    "distribution_version": "1.0",
+                    "hermes_entry_point": "hermes_cli.main:main",
+                    "module_file": str(module_file),
+                }
+            )
+
+            def fake_run(command, **_kwargs):
+                if command[0] == str(python_exe):
+                    return {"ok": True, "stdout_tail": metadata}
+                if command[:3] == ["git", "rev-parse", "HEAD"]:
+                    return {"ok": True, "stdout_tail": "deadbeef"}
+                if command[:3] == ["git", "branch", "--show-current"]:
+                    return {"ok": True, "stdout_tail": "main"}
+                if command[:3] == ["git", "status", "--porcelain"]:
+                    return {"ok": True, "stdout_tail": ""}
+                return {"ok": True, "stdout_tail": "ok"}
+
             with (
                 isolated_environment({"HERMES_REPO": str(repo)}),
-                patch.object(preflight.shutil, "which", return_value=None),
                 patch.object(preflight, "_resolve_git_bash", return_value=(None, None, [])),
-                patch.object(preflight, "_run", return_value={"ok": True, "stdout_tail": "ok"}) as run,
+                patch.object(preflight, "_run", side_effect=fake_run) as run,
             ):
                 report = preflight.inspect_hermes()
         commands = [call.args[0] for call in run.call_args_list]
         self.assertTrue(any(command[0] == str(python_exe) for command in commands))
-        self.assertTrue(report["isolated_home"])
+        self.assertFalse(any("--help" in command or "--version" in command for command in commands))
+        self.assertTrue(report["ok"])
+        self.assertFalse(report["cli_executed"])
 
 
 class BuildReportTests(unittest.TestCase):
@@ -149,15 +175,19 @@ class BuildReportTests(unittest.TestCase):
         )
 
     def test_dirty_or_unknown_hermes_blocks_scoring(self) -> None:
-        for dirty, expected in ((True, "hermes_worktree_dirty"), (None, "hermes_worktree_state_unknown")):
-            with self.subTest(dirty=dirty), (
-                isolated_environment(),
-                patch.object(preflight, "inspect_ollama", return_value=ready_ollama()),
-                patch.object(preflight, "inspect_hermes", return_value=ready_hermes(dirty=dirty)),
-            ):
-                report = preflight.build_report()
-            self.assertFalse(report["scoring_ready"])
-            self.assertIn(expected, report["scoring_blocking_reasons"])
+        for dirty, expected in (
+            (True, "hermes_worktree_dirty"),
+            (None, "hermes_worktree_state_unknown"),
+        ):
+            with self.subTest(dirty=dirty):
+                with (
+                    isolated_environment(),
+                    patch.object(preflight, "inspect_ollama", return_value=ready_ollama()),
+                    patch.object(preflight, "inspect_hermes", return_value=ready_hermes(dirty=dirty)),
+                ):
+                    report = preflight.build_report()
+                self.assertFalse(report["scoring_ready"])
+                self.assertIn(expected, report["scoring_blocking_reasons"])
 
     def test_missing_workflow_identity_blocks_scoring(self) -> None:
         with (
