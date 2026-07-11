@@ -10,6 +10,7 @@ on:
       - "scripts/probe_model_residency.py"
       - "scripts/build_residency_shortlist.py"
       - "scripts/build_h2_context_plan.py"
+      - "tests/test_benchmark_runtime.py"
       - "tests/test_probe_model_residency.py"
       - "tests/test_build_residency_shortlist.py"
       - "tests/test_residency_shortlist_binding.py"
