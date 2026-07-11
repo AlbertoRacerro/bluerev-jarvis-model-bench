@@ -43,11 +43,10 @@ _OPENER = build_opener(ProxyHandler({}), _NoRedirect)
 def _is_loopback_http_endpoint(endpoint: str) -> bool:
     try:
         parsed = urlparse(endpoint)
-        host = parsed.hostname
         return bool(
             parsed.scheme == "http"
-            and host is not None
-            and ip_address(host).is_loopback
+            and parsed.hostname is not None
+            and ip_address(parsed.hostname).is_loopback
             and parsed.path == "/api/tags"
             and not parsed.params
             and not parsed.query
@@ -88,15 +87,12 @@ def _run(
         }
     except OSError as exc:
         return {"ok": False, "command": command, "error": type(exc).__name__}
-
-    stdout = completed.stdout.strip()
-    stderr = completed.stderr.strip()
     return {
         "ok": completed.returncode == 0,
         "command": command,
         "returncode": completed.returncode,
-        "stdout_tail": stdout[-2000:],
-        "stderr_tail": stderr[-2000:],
+        "stdout_tail": completed.stdout.strip()[-4000:],
+        "stderr_tail": completed.stderr.strip()[-4000:],
         "timed_out": False,
     }
 
@@ -105,10 +101,15 @@ def inspect_ollama() -> dict[str, Any]:
     endpoint = os.environ.get("OLLAMA_TAGS_URL", "http://127.0.0.1:11434/api/tags")
     version = _run(["ollama", "--version"])
     if not _is_loopback_http_endpoint(endpoint):
-        return {"ok": False, "endpoint": endpoint, "error": "NonLoopbackEndpoint", "version": version, "models": []}
+        return {
+            "ok": False,
+            "endpoint": endpoint,
+            "error": "NonLoopbackEndpoint",
+            "version": version,
+            "models": [],
+        }
     try:
-        request = Request(endpoint, method="GET")
-        with _OPENER.open(request, timeout=8) as response:
+        with _OPENER.open(Request(endpoint, method="GET"), timeout=8) as response:
             if response.geturl() != endpoint:
                 raise RuntimeError("loopback request was redirected")
             raw = response.read(_MAX_LOOPBACK_RESPONSE_BYTES + 1)
@@ -118,7 +119,13 @@ def inspect_ollama() -> dict[str, Any]:
         if not isinstance(payload, dict) or not isinstance(payload.get("models"), list):
             raise ValueError("invalid Ollama model inventory")
     except (OSError, TimeoutError, UnicodeError, json.JSONDecodeError, RuntimeError, ValueError) as exc:
-        return {"ok": False, "endpoint": endpoint, "error": type(exc).__name__, "version": version, "models": []}
+        return {
+            "ok": False,
+            "endpoint": endpoint,
+            "error": type(exc).__name__,
+            "version": version,
+            "models": [],
+        }
 
     models: list[dict[str, Any]] = []
     names: set[str] = set()
@@ -151,12 +158,10 @@ def _expanded_path(value: str) -> Path:
 
 def _hermes_repo_candidates() -> list[tuple[Path, str]]:
     candidates: list[tuple[Path, str]] = []
-    explicit = os.environ.get("HERMES_REPO")
-    if explicit:
-        candidates.append((_expanded_path(explicit), "environment:HERMES_REPO"))
-    install_dir = os.environ.get("HERMES_INSTALL_DIR")
-    if install_dir:
-        candidates.append((_expanded_path(install_dir), "environment:HERMES_INSTALL_DIR"))
+    for variable in ("HERMES_REPO", "HERMES_INSTALL_DIR"):
+        value = os.environ.get(variable)
+        if value:
+            candidates.append((_expanded_path(value), f"environment:{variable}"))
     hermes_home = os.environ.get("HERMES_HOME")
     if hermes_home:
         candidates.append((_expanded_path(hermes_home) / "hermes-agent", "environment:HERMES_HOME"))
@@ -190,33 +195,44 @@ def _resolve_hermes_repo() -> tuple[Path | None, str | None, list[dict[str, Any]
     return None, None, evidence
 
 
+def _resolve_hermes_python(repo: Path | None) -> tuple[Path | None, str | None, list[dict[str, Any]]]:
+    if repo is None:
+        return None, None, []
+    candidates = (
+        (repo / "venv" / "Scripts" / "python.exe", "official_windows_venv"),
+        (repo / ".venv" / "Scripts" / "python.exe", "legacy_windows_dotvenv"),
+        (repo / "venv" / "bin" / "python", "official_posix_venv"),
+        (repo / ".venv" / "bin" / "python", "legacy_posix_dotvenv"),
+    )
+    evidence: list[dict[str, Any]] = []
+    for path, source in candidates:
+        exists = path.is_file()
+        evidence.append({"path": str(path), "source": source, "exists": exists})
+        if exists:
+            return path.resolve(), source, evidence
+    return None, None, evidence
+
+
 def _resolve_git_bash() -> tuple[Path | None, str | None, list[dict[str, Any]]]:
     if os.name != "nt":
         candidate = shutil.which("bash")
         return (Path(candidate).resolve(), "path", []) if candidate else (None, None, [])
-
     candidates: list[tuple[Path, str]] = []
     explicit = os.environ.get("HERMES_GIT_BASH_PATH")
     if explicit:
         candidates.append((_expanded_path(explicit), "environment:HERMES_GIT_BASH_PATH"))
-    hermes_home = os.environ.get("HERMES_HOME")
-    local_app_data = os.environ.get("LOCALAPPDATA")
-    if hermes_home:
-        managed_home = _expanded_path(hermes_home)
-        candidates.extend(
-            [
-                (managed_home / "git" / "usr" / "bin" / "bash.exe", "hermes_home_usr"),
-                (managed_home / "git" / "bin" / "bash.exe", "hermes_home_bin"),
-            ]
-        )
-    if local_app_data:
-        base = _expanded_path(local_app_data) / "hermes" / "git"
-        candidates.extend(
-            [
-                (base / "usr" / "bin" / "bash.exe", "windows_managed_usr"),
-                (base / "bin" / "bash.exe", "windows_managed_bin"),
-            ]
-        )
+    for root_name, source in (("HERMES_HOME", "hermes_home"), ("LOCALAPPDATA", "windows_managed")):
+        value = os.environ.get(root_name)
+        if value:
+            base = _expanded_path(value)
+            if root_name == "LOCALAPPDATA":
+                base = base / "hermes"
+            candidates.extend(
+                [
+                    (base / "git" / "usr" / "bin" / "bash.exe", source + "_usr"),
+                    (base / "git" / "bin" / "bash.exe", source + "_bin"),
+                ]
+            )
     for variable in ("ProgramFiles", "ProgramFiles(x86)"):
         value = os.environ.get(variable)
         if value:
@@ -239,65 +255,69 @@ def _resolve_git_bash() -> tuple[Path | None, str | None, list[dict[str, Any]]]:
     return None, None, evidence
 
 
+def _path_within(path_value: Any, root: Path) -> bool:
+    if not isinstance(path_value, str) or not path_value:
+        return False
+    try:
+        Path(path_value).resolve().relative_to(root.resolve())
+        return True
+    except (OSError, ValueError):
+        return False
+
+
 def inspect_hermes() -> dict[str, Any]:
     repo, repo_source, repo_candidates = _resolve_hermes_repo()
+    python_exe, python_source, python_candidates = _resolve_hermes_python(repo)
     git_bash, git_bash_source, git_bash_candidates = _resolve_git_bash()
 
-    with tempfile.TemporaryDirectory(prefix="bluerev-hermes-preflight-") as temporary_home:
-        isolated_env, removed = sanitize_environment(os.environ, hermes_home=Path(temporary_home))
-        if git_bash:
-            isolated_env["HERMES_GIT_BASH_PATH"] = str(git_bash)
+    metadata_result: dict[str, Any] = {"ok": False, "error": "HermesVenvNotFound"}
+    metadata: dict[str, Any] | None = None
+    removed: list[str] = []
+    if repo and python_exe:
+        with tempfile.TemporaryDirectory(prefix="bluerev-hermes-preflight-") as temporary_home:
+            isolated_env, removed = sanitize_environment(os.environ, hermes_home=Path(temporary_home))
+            metadata_result = _run(
+                [str(python_exe), str(ROOT / "scripts" / "hermes_install_probe.py")],
+                cwd=ROOT,
+                environment=isolated_env,
+                timeout_seconds=30,
+            )
+        if metadata_result.get("ok"):
+            try:
+                parsed = json.loads(str(metadata_result.get("stdout_tail") or ""))
+                if isinstance(parsed, dict):
+                    metadata = parsed
+            except json.JSONDecodeError:
+                metadata_result["ok"] = False
+                metadata_result["error"] = "InvalidMetadataProbeJson"
 
-        attempts: list[tuple[list[str], Path | None]] = []
-        explicit_exe = os.environ.get("HERMES_EXE")
-        if explicit_exe:
-            attempts.extend([([explicit_exe, "--version"], None), ([explicit_exe, "--help"], None)])
-        discovered_exe = shutil.which("hermes")
-        if discovered_exe and discovered_exe != explicit_exe:
-            attempts.extend([([discovered_exe, "--version"], None), ([discovered_exe, "--help"], None)])
-        if repo:
-            for candidate in (
-                repo / "venv" / "Scripts" / "python.exe",
-                repo / ".venv" / "Scripts" / "python.exe",
-                repo / "venv" / "bin" / "python",
-                repo / ".venv" / "bin" / "python",
-            ):
-                if candidate.is_file():
-                    attempts.extend(
-                        [
-                            ([str(candidate), "-m", "hermes_cli.main", "--version"], repo),
-                            ([str(candidate), "-m", "hermes_cli.main", "--help"], repo),
-                        ]
-                    )
-                    break
+    module_bound = bool(repo and metadata and metadata.get("ok") is True and _path_within(metadata.get("module_file"), repo))
+    prefix_bound = bool(repo and metadata and _path_within(metadata.get("python_prefix"), repo))
+    if metadata_result.get("ok") and not (module_bound and prefix_bound):
+        metadata_result["ok"] = False
+        metadata_result["error"] = "HermesInstallationNotBoundToRepository"
 
-        results: list[dict[str, Any]] = []
-        selected: dict[str, Any] | None = None
-        for command, cwd in attempts:
-            result = _run(command, cwd=cwd, environment=isolated_env)
-            results.append(result)
-            if result.get("ok"):
-                selected = result
-                break
-        bash_result = _run([str(git_bash), "--version"], environment=isolated_env) if git_bash else {"ok": False, "error": "GitBashNotFound"}
-
-    commit = None
-    branch = None
-    dirty = None
+    bash_result = (
+        _run([str(git_bash), "--version"], timeout_seconds=20)
+        if git_bash
+        else {"ok": False, "error": "GitBashNotFound"}
+    )
+    commit = branch = None
+    dirty: bool | None = None
     if repo:
-        git_commit = _run(["git", "rev-parse", "HEAD"], cwd=repo)
-        if git_commit.get("ok"):
-            commit = git_commit.get("stdout_tail")
-        git_branch = _run(["git", "branch", "--show-current"], cwd=repo)
-        if git_branch.get("ok"):
-            branch = git_branch.get("stdout_tail") or None
-        git_status = _run(["git", "status", "--porcelain"], cwd=repo)
-        if git_status.get("ok"):
-            dirty = bool(git_status.get("stdout_tail"))
+        commit_result = _run(["git", "rev-parse", "HEAD"], cwd=repo)
+        branch_result = _run(["git", "branch", "--show-current"], cwd=repo)
+        status_result = _run(["git", "status", "--porcelain"], cwd=repo)
+        if commit_result.get("ok"):
+            commit = commit_result.get("stdout_tail")
+        if branch_result.get("ok"):
+            branch = branch_result.get("stdout_tail") or None
+        if status_result.get("ok"):
+            dirty = bool(status_result.get("stdout_tail"))
 
     bash_required = os.name == "nt"
     return {
-        "ok": selected is not None and (not bash_required or bash_result.get("ok") is True),
+        "ok": bool(repo and metadata_result.get("ok") and (not bash_required or bash_result.get("ok"))),
         "platform_mode": "native_windows" if os.name == "nt" else "posix_or_wsl",
         "repo": str(repo) if repo else None,
         "repo_source": repo_source,
@@ -305,8 +325,12 @@ def inspect_hermes() -> dict[str, Any]:
         "commit": commit,
         "branch": branch,
         "dirty": dirty,
-        "selected": selected,
-        "attempts": results,
+        "python": str(python_exe) if python_exe else None,
+        "python_source": python_source,
+        "python_candidates": python_candidates,
+        "installation_metadata": metadata,
+        "metadata_probe": metadata_result,
+        "cli_executed": False,
         "isolated_home": True,
         "sanitized_external_env_names": removed,
         "git_bash": {
@@ -334,14 +358,13 @@ def build_report() -> dict[str, Any]:
         "sha": os.environ.get("GITHUB_SHA"),
         "ref": os.environ.get("GITHUB_REF"),
     }
-
     blocking_reasons = [
         reason
         for condition, reason in (
             (not ollama.get("ok") and ollama.get("error") == "NonLoopbackEndpoint", "ollama_endpoint_not_loopback"),
             (not ollama.get("ok") and ollama.get("error") != "NonLoopbackEndpoint", "ollama_unreachable_or_invalid"),
             (ollama.get("ok") and not ollama.get("models"), "no_ollama_models"),
-            (not hermes.get("ok"), "hermes_unavailable_or_windows_shell_unready"),
+            (not hermes.get("ok"), "hermes_installation_or_windows_shell_unready"),
             (current_external_names, "external_api_environment_present_after_sanitization"),
         )
         if condition
@@ -355,7 +378,6 @@ def build_report() -> dict[str, Any]:
             (any(not workflow.get(field) for field in ("run_id", "run_attempt", "sha", "ref")), "workflow_identity_incomplete"),
             (ollama.get("ok") and not (ollama.get("version") or {}).get("ok"), "ollama_version_unavailable"),
             (bool(models) and any(not model.get("name") or not model.get("digest") for model in models), "ollama_model_identity_incomplete"),
-            (hermes.get("ok") and not hermes.get("repo"), "hermes_repository_unavailable"),
             (hermes.get("ok") and not hermes.get("commit"), "hermes_commit_unavailable"),
             (hermes.get("ok") and hermes.get("dirty") is None, "hermes_worktree_state_unknown"),
             (hermes.get("ok") and hermes.get("dirty") is True, "hermes_worktree_dirty"),
@@ -364,7 +386,6 @@ def build_report() -> dict[str, Any]:
         )
         if condition
     )
-
     return {
         "schema_version": "bench.preflight.v1",
         "created_at_utc": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
