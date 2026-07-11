@@ -15,13 +15,13 @@ for path in (ROOT, SRC):
 
 from bench.contracts import ContractError
 from bench.direct_execution_v3 import execute_direct_smoke
+from bench.loopback_http import open_loopback
 from scripts.benchmark_runtime import (
     isolated_process_environment,
     run_captured,
     safe_reset_directory,
     sanitize_environment,
 )
-from scripts import run_direct_smoke_job as base_job
 
 ARTIFACT_ROOT = ROOT / "artifacts"
 ARTIFACTS = ARTIFACT_ROOT / "direct-smoke"
@@ -106,7 +106,6 @@ def capture() -> int:
         )
         if preflight_report.get("scoring_ready") is not True:
             raise ContractError("trusted preflight is not scoring-ready")
-
         workflow_run_id = clean_env.get("GITHUB_RUN_ID")
         workflow_attempt = clean_env.get("GITHUB_RUN_ATTEMPT")
         if not workflow_run_id or not workflow_attempt:
@@ -121,7 +120,7 @@ def capture() -> int:
                 case_path=CASE_PATH,
                 preflight_path=ARTIFACTS / "preflight.json",
                 output_root=ARTIFACTS / "runs",
-                opener=base_job._open_loopback,
+                opener=open_loopback,
             )
         summary["execution"] = {
             "infrastructure_exit_code": 0,
