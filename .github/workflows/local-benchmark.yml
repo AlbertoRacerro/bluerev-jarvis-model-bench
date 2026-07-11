@@ -12,6 +12,7 @@ permissions:
 concurrency:
   group: local-benchmark-runner
   cancel-in-progress: false
+  queue: max
 
 jobs:
   preflight:
