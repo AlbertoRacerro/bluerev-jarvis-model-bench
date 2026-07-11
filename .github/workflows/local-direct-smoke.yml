@@ -62,6 +62,7 @@ jobs:
           INBOX_ISSUE: "24"
           SUMMARY_PATH: artifacts/direct-smoke/job-summary.json
           JOB_STATUS: ${{ job.status }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
           ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
           ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
           ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
@@ -82,7 +83,7 @@ jobs:
             const payload = {
               schema_version: "bench.workflow-inbox.v1",
               run_id: Number(context.runId),
-              run_attempt: Number(context.runAttempt),
+              run_attempt: Number(process.env.RUN_ATTEMPT),
               workflow: context.workflow,
               event_name: context.eventName,
               sha: context.sha,
@@ -111,6 +112,7 @@ jobs:
                 case_definition_sha256:
                   execution.case_definition_sha256 ?? null,
                 manifest_sha256: execution.manifest_sha256 ?? null,
+                skipped_reason: execution.skipped_reason ?? null,
               },
               summary_error: summaryError,
             };
