@@ -15,6 +15,7 @@ from scripts.benchmark_runtime import run_captured, safe_reset_directory, saniti
 ARTIFACT_ROOT = ROOT / "artifacts"
 ARTIFACTS = ARTIFACT_ROOT / "model-residency"
 TEST_PATTERNS = (
+    "test_benchmark_runtime.py",
     "test_probe_model_residency.py",
     "test_build_residency_shortlist.py",
     "test_residency_shortlist_binding.py",
@@ -46,14 +47,12 @@ def tests() -> int:
             artifact_dir=ARTIFACTS,
             timeout_seconds=300,
         )
-        stdout_path = ARTIFACTS / f"{name}.stdout.log"
-        stderr_path = ARTIFACTS / f"{name}.stderr.log"
         combined.extend(
             [
                 f"===== {pattern} stdout =====\n",
-                stdout_path.read_text(encoding="utf-8"),
+                (ARTIFACTS / f"{name}.stdout.log").read_text(encoding="utf-8"),
                 f"\n===== {pattern} stderr =====\n",
-                stderr_path.read_text(encoding="utf-8"),
+                (ARTIFACTS / f"{name}.stderr.log").read_text(encoding="utf-8"),
                 "\n",
             ]
         )
