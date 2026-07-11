@@ -11,7 +11,8 @@ on:
       - "fixtures/bench-1/**"
       - "scripts/run_direct_smoke*.py"
       - "src/bench/**"
-      - "tests/**"
+      - "tests/test_direct_execution*.py"
+      - "tests/test_run_direct_smoke*.py"
 
 permissions:
   contents: read
