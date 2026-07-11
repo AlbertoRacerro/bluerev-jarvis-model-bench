@@ -3,15 +3,14 @@ name: Local model residency qualification
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
       - ".github/workflows/local-model-residency.yml"
       - "scripts/benchmark_runtime.py"
+      - "scripts/run_residency_job.py"
       - "scripts/probe_model_residency.py"
       - "scripts/build_residency_shortlist.py"
       - "scripts/build_h2_context_plan.py"
-      - "tests/test_benchmark_runtime.py"
       - "tests/test_probe_model_residency.py"
       - "tests/test_build_residency_shortlist.py"
       - "tests/test_residency_shortlist_binding.py"
@@ -28,24 +27,20 @@ jobs:
     timeout-minutes: 5
     continue-on-error: true
     steps:
-      - name: Publish queued lifecycle metadata
+      - uses: actions/github-script@v7
         continue-on-error: true
-        uses: actions/github-script@v7
         env:
           INBOX_ISSUE: "24"
-          RUN_ATTEMPT: ${{ github.run_attempt }}
         with:
           script: |
             const payload = {
               schema_version: "bench.workflow-lifecycle.v1",
               lifecycle: "queued",
               run_id: Number(context.runId),
-              run_attempt: Number(process.env.RUN_ATTEMPT),
+              run_attempt: Number(context.runAttempt ?? process.env.GITHUB_RUN_ATTEMPT ?? 1),
               workflow: context.workflow,
-              event_name: context.eventName,
               sha: context.sha,
               ref: context.ref,
-              html_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
             };
             await github.rest.issues.createComment({
               owner: context.repo.owner,
@@ -64,66 +59,38 @@ jobs:
     timeout-minutes: 180
     defaults:
       run:
-        shell: pwsh
+        shell: powershell
 
     steps:
-      - name: Check out trusted default branch
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: main
           persist-credentials: false
           clean: true
 
-      - name: Prepare residency artifact directory
+      - name: Prepare artifact directory
         run: |
-          $ErrorActionPreference = 'Stop'
           $env:PYTHONUTF8 = '1'
-          & python -c "from pathlib import Path; from scripts.benchmark_runtime import safe_reset_directory; safe_reset_directory(Path('artifacts/model-residency'), allowed_root=Path('artifacts'))"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:PYTHONIOENCODING = 'utf-8'
+          python -m scripts.run_residency_job prepare
 
-      - name: Run H1 and H2 deterministic tests
+      - name: Run deterministic tests
         id: tests
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $log = 'artifacts/model-residency/tests.log'
-          Set-Content -LiteralPath $log -Value '' -Encoding utf8
-          $patterns = @(
-            'test_benchmark_runtime.py',
-            'test_probe_model_residency.py',
-            'test_build_residency_shortlist.py',
-            'test_residency_shortlist_binding.py',
-            'test_build_h2_context_plan.py'
-          )
-          foreach ($pattern in $patterns) {
-            & python -m unittest discover -s tests -p $pattern -v >> $log 2>&1
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          }
+        run: python -m scripts.run_residency_job tests
 
-      - name: Run sequential model residency probe
+      - name: Run sequential residency probe
         id: probe
-        run: |
-          $ErrorActionPreference = 'Stop'
-          & python scripts/probe_model_residency.py --output-dir artifacts/model-residency > artifacts/model-residency/probe-stdout.log 2>&1
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        run: python -m scripts.run_residency_job probe
 
-      - name: Validate H1 evidence and build shortlist
+      - name: Validate evidence and shortlist
         id: shortlist
-        run: |
-          $ErrorActionPreference = 'Stop'
-          & python scripts/build_residency_shortlist.py --output-dir artifacts/model-residency > artifacts/model-residency/shortlist-stdout.log 2>&1
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        run: python -m scripts.run_residency_job shortlist
 
-      - name: Bind H2 context qualification plan
+      - name: Build bound H2 plan
         id: h2_plan
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $manifest = 'artifacts/model-residency/shortlist-manifest.json'
-          $digest = (Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash.ToLowerInvariant()
-          Set-Content -LiteralPath 'artifacts/model-residency/shortlist-manifest.sha256' -Value $digest -Encoding ascii
-          & python scripts/build_h2_context_plan.py --output-dir artifacts/model-residency --expected-shortlist-manifest-sha256 $digest > artifacts/model-residency/h2-plan-stdout.log 2>&1
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        run: python -m scripts.run_residency_job h2-plan
 
-      - name: Upload immutable residency artifact
+      - name: Upload immutable artifact
         id: upload
         if: always()
         uses: actions/upload-artifact@v4
@@ -133,18 +100,13 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish structured residency result to automation inbox
+      - name: Publish structured result
         if: always()
         continue-on-error: true
         uses: actions/github-script@v7
         env:
           INBOX_ISSUE: "24"
-          REPORT_PATH: artifacts/model-residency/report.json
-          MANIFEST_PATH: artifacts/model-residency/manifest.json
-          SHORTLIST_PATH: artifacts/model-residency/shortlist.json
-          SHORTLIST_MANIFEST_PATH: artifacts/model-residency/shortlist-manifest.json
-          H2_PLAN_PATH: artifacts/model-residency/h2-context-plan.json
-          H2_PLAN_MANIFEST_PATH: artifacts/model-residency/h2-context-plan-manifest.json
+          ROOT_PATH: artifacts/model-residency
           JOB_STATUS: ${{ job.status }}
           RUN_ATTEMPT: ${{ github.run_attempt }}
           TESTS_OUTCOME: ${{ steps.tests.outcome }}
@@ -156,46 +118,26 @@ jobs:
           ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
         with:
           script: |
-            const crypto = require("crypto");
             const fs = require("fs");
-            const readJson = (path) => {
-              try { return {value: JSON.parse(fs.readFileSync(path, "utf8")), error: null}; }
+            const path = require("path");
+            const read = (name) => {
+              try { return {value: JSON.parse(fs.readFileSync(path.join(process.env.ROOT_PATH, name), "utf8")), error: null}; }
               catch (error) { return {value: null, error: `${error.name}: ${error.message}`}; }
             };
-            const hashFile = (path) => {
-              try { return {value: crypto.createHash("sha256").update(fs.readFileSync(path)).digest("hex"), error: null}; }
-              catch (error) { return {value: null, error: `${error.name}: ${error.message}`}; }
-            };
-            const reportRead = readJson(process.env.REPORT_PATH);
-            const shortlistRead = readJson(process.env.SHORTLIST_PATH);
-            const h2PlanRead = readJson(process.env.H2_PLAN_PATH);
-            const manifestHash = hashFile(process.env.MANIFEST_PATH);
-            const shortlistManifestHash = hashFile(process.env.SHORTLIST_MANIFEST_PATH);
-            const h2PlanManifestHash = hashFile(process.env.H2_PLAN_MANIFEST_PATH);
-            const report = reportRead.value;
-            const shortlist = shortlistRead.value;
-            const h2Plan = h2PlanRead.value;
-            const models = (report?.models ?? []).map((entry) => ({
-              name: entry?.model?.name ?? null,
-              digest: entry?.model?.digest ?? null,
-              classification: entry?.classification ?? null,
-              residency_ratio: entry?.residency_ratio ?? null,
-              probe_duration_seconds: entry?.probe_duration_seconds ?? null,
-              error: entry?.error ?? null,
-            }));
-            const selectModels = (entries) => (entries ?? []).map((entry) => ({
-              name: entry?.name ?? null,
-              digest: entry?.digest ?? null,
-              residency_ratio: entry?.residency_ratio ?? null,
-              deferred_reason: entry?.deferred_reason ?? null,
-              canonical_name: entry?.canonical_name ?? null,
+            const report = read("report.json");
+            const shortlist = read("shortlist.json");
+            const plan = read("h2-context-plan.json");
+            const names = (items) => (items ?? []).map((item) => ({
+              name: item?.name ?? item?.model?.name ?? null,
+              digest: item?.digest ?? item?.model?.digest ?? null,
+              classification: item?.classification ?? null,
+              deferred_reason: item?.deferred_reason ?? null,
+              canonical_name: item?.canonical_name ?? null,
             }));
             const payload = {
               schema_version: "bench.model-residency-inbox.v5",
               run_id: Number(context.runId),
               run_attempt: Number(process.env.RUN_ATTEMPT),
-              workflow: context.workflow,
-              event_name: context.eventName,
               sha: context.sha,
               ref: context.ref,
               job_status: process.env.JOB_STATUS,
@@ -210,33 +152,18 @@ jobs:
                 url: process.env.ARTIFACT_URL || null,
                 digest: process.env.ARTIFACT_DIGEST || null,
               },
-              manifest_sha256: manifestHash.value,
-              shortlist_manifest_sha256: shortlistManifestHash.value,
-              h2_plan_manifest_sha256: h2PlanManifestHash.value,
-              profile: report?.profile ?? null,
-              explicit_exclusions: report?.explicit_exclusions ?? null,
-              initial_gpu: report?.initial_gpu ?? null,
-              infrastructure_error: report?.infrastructure_error ?? null,
-              classification_counts: report?.classification_counts ?? null,
-              models,
+              infrastructure_error: report.value?.infrastructure_error ?? null,
+              classification_counts: report.value?.classification_counts ?? null,
+              models: names(report.value?.models),
               shortlist: {
-                status: shortlist?.status ?? null,
-                counts: shortlist?.counts ?? null,
-                primary_h2: selectModels(shortlist?.primary_h2),
-                secondary_partial_vram: selectModels(shortlist?.secondary_partial_vram),
-                deferred: selectModels(shortlist?.deferred),
+                status: shortlist.value?.status ?? null,
+                counts: shortlist.value?.counts ?? null,
+                primary_h2: names(shortlist.value?.primary_h2),
+                secondary_partial_vram: names(shortlist.value?.secondary_partial_vram),
+                deferred: names(shortlist.value?.deferred),
               },
-              h2_plan: {
-                status: h2Plan?.status ?? null,
-                profiles: h2Plan?.profiles ?? null,
-                counts: h2Plan?.counts ?? null,
-              },
-              report_error: reportRead.error,
-              shortlist_error: shortlistRead.error,
-              h2_plan_error: h2PlanRead.error,
-              manifest_error: manifestHash.error,
-              shortlist_manifest_error: shortlistManifestHash.error,
-              h2_plan_manifest_error: h2PlanManifestHash.error,
+              h2_plan: {status: plan.value?.status ?? null, counts: plan.value?.counts ?? null},
+              errors: {report: report.error, shortlist: shortlist.error, h2_plan: plan.error},
             };
             await github.rest.issues.createComment({
               owner: context.repo.owner,
