@@ -35,8 +35,13 @@ class ManifestTests(unittest.TestCase):
             "case_id": "case-001",
             "repetition": 1,
             "status": "preliminary",
-            "environment": {},
-            "artifacts": {},
+            "environment": {"runner": "local"},
+            "artifacts": {
+                "artifact.json": {
+                    "path": "artifact.json",
+                    "sha256": "a" * 64,
+                }
+            },
         }
 
     def test_accepts_valid_manifest(self) -> None:
@@ -58,6 +63,47 @@ class ManifestTests(unittest.TestCase):
         manifest = self.valid_manifest()
         manifest["repetition"] = 0
         with self.assertRaisesRegex(ContractError, "repetition"):
+            validate_manifest(manifest)
+
+    def test_rejects_boolean_repetition(self) -> None:
+        manifest = self.valid_manifest()
+        manifest["repetition"] = True
+        with self.assertRaisesRegex(ContractError, "repetition"):
+            validate_manifest(manifest)
+
+    def test_rejects_empty_artifacts(self) -> None:
+        manifest = self.valid_manifest()
+        manifest["artifacts"] = {}
+        with self.assertRaisesRegex(ContractError, "non-empty"):
+            validate_manifest(manifest)
+
+    def test_rejects_artifact_path_drift(self) -> None:
+        manifest = self.valid_manifest()
+        manifest["artifacts"]["artifact.json"]["path"] = "other.json"
+        with self.assertRaisesRegex(ContractError, "must equal"):
+            validate_manifest(manifest)
+
+    def test_rejects_unsafe_artifact_path(self) -> None:
+        manifest = self.valid_manifest()
+        manifest["artifacts"] = {
+            "../artifact.json": {
+                "path": "../artifact.json",
+                "sha256": "a" * 64,
+            }
+        }
+        with self.assertRaisesRegex(ContractError, "safe relative"):
+            validate_manifest(manifest)
+
+    def test_rejects_malformed_artifact_digest(self) -> None:
+        manifest = self.valid_manifest()
+        manifest["artifacts"]["artifact.json"]["sha256"] = "bad"
+        with self.assertRaisesRegex(ContractError, "64 lowercase hex"):
+            validate_manifest(manifest)
+
+    def test_rejects_invalid_timestamp(self) -> None:
+        manifest = self.valid_manifest()
+        manifest["created_at_utc"] = "not-a-time"
+        with self.assertRaisesRegex(ContractError, "RFC3339"):
             validate_manifest(manifest)
 
 
