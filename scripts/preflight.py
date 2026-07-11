@@ -10,9 +10,8 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-from urllib.error import URLError
 from urllib.parse import urlparse
-from urllib.request import urlopen
+from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
@@ -33,13 +32,32 @@ KNOWN_EXTERNAL_KEYS = (
 )
 
 DEFAULT_WINDOWS_HERMES_REPO = Path(r"C:\AI\hermes-agent")
+_MAX_LOOPBACK_RESPONSE_BYTES = 4_000_000
+
+
+class _NoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[no-untyped-def]
+        return None
+
+
+_OPENER = build_opener(ProxyHandler({}), _NoRedirect)
 
 
 def _is_loopback_http_endpoint(endpoint: str) -> bool:
     try:
         parsed = urlparse(endpoint)
         host = parsed.hostname
-        return parsed.scheme == "http" and host is not None and ip_address(host).is_loopback
+        return bool(
+            parsed.scheme == "http"
+            and host is not None
+            and ip_address(host).is_loopback
+            and parsed.path == "/api/tags"
+            and not parsed.params
+            and not parsed.query
+            and not parsed.fragment
+            and parsed.username is None
+            and parsed.password is None
+        )
     except ValueError:
         return False
 
@@ -82,9 +100,17 @@ def inspect_ollama() -> dict[str, Any]:
             "models": [],
         }
     try:
-        with urlopen(endpoint, timeout=8) as response:  # noqa: S310 - loopback endpoint by contract
-            payload = json.load(response)
-    except (OSError, URLError, TimeoutError, json.JSONDecodeError) as exc:
+        request = Request(endpoint, method="GET")
+        with _OPENER.open(request, timeout=8) as response:
+            if response.geturl() != endpoint:
+                raise RuntimeError("loopback request was redirected")
+            raw = response.read(_MAX_LOOPBACK_RESPONSE_BYTES + 1)
+        if len(raw) > _MAX_LOOPBACK_RESPONSE_BYTES:
+            raise ValueError("loopback response exceeds size limit")
+        payload = json.loads(raw.decode("utf-8"))
+        if not isinstance(payload, dict) or not isinstance(payload.get("models"), list):
+            raise ValueError("invalid Ollama model inventory")
+    except (OSError, TimeoutError, UnicodeError, json.JSONDecodeError, RuntimeError, ValueError) as exc:
         return {
             "ok": False,
             "endpoint": endpoint,
@@ -94,18 +120,42 @@ def inspect_ollama() -> dict[str, Any]:
         }
 
     models = []
-    for item in payload.get("models", []):
+    names: set[str] = set()
+    for item in payload["models"]:
         if not isinstance(item, dict):
-            continue
+            return {
+                "ok": False,
+                "endpoint": endpoint,
+                "error": "InvalidModelInventory",
+                "version": version,
+                "models": [],
+            }
+        name = item.get("name") or item.get("model")
+        digest = item.get("digest")
+        if (
+            not isinstance(name, str)
+            or not name
+            or name in names
+            or not isinstance(digest, str)
+            or not digest
+        ):
+            return {
+                "ok": False,
+                "endpoint": endpoint,
+                "error": "InvalidModelInventory",
+                "version": version,
+                "models": [],
+            }
+        names.add(name)
         models.append(
             {
-                "name": item.get("name") or item.get("model"),
-                "digest": item.get("digest"),
+                "name": name,
+                "digest": digest,
                 "size": item.get("size"),
                 "modified_at": item.get("modified_at"),
             }
         )
-    models.sort(key=lambda item: str(item.get("name") or ""))
+    models.sort(key=lambda item: item["name"].casefold())
     return {
         "ok": True,
         "endpoint": endpoint,
@@ -207,7 +257,7 @@ def build_report() -> dict[str, Any]:
             (
                 not ollama.get("ok")
                 and ollama.get("error") != "NonLoopbackEndpoint",
-                "ollama_unreachable",
+                "ollama_unreachable_or_invalid",
             ),
             (ollama.get("ok") and not ollama.get("models"), "no_ollama_models"),
             (not hermes.get("ok"), "hermes_unavailable"),
@@ -278,7 +328,7 @@ def main() -> int:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps(report, indent=2, sort_keys=True))
-    return 0 if report["status"] == "ready" and report["local_only"] else 2
+    return 0 if report["scoring_ready"] is True else 2
 
 
 if __name__ == "__main__":
