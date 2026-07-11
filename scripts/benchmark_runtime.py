@@ -5,101 +5,45 @@ import os
 import shutil
 import stat
 import subprocess
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
-# Hermes can consume credentials from many providers and tool integrations.  Keep this
-# list explicit so the benchmark evidence records exactly what was removed without
-# ever serializing secret values.
 EXTERNAL_ENV_NAMES = frozenset(
     {
-        "ALIBABA_API_KEY",
-        "ANTHROPIC_API_KEY",
-        "ANTHROPIC_BASE_URL",
-        "AWS_ACCESS_KEY_ID",
-        "AWS_PROFILE",
-        "AWS_SECRET_ACCESS_KEY",
-        "AWS_SESSION_TOKEN",
-        "AZURE_API_KEY",
-        "AZURE_OPENAI_API_KEY",
-        "AZURE_OPENAI_ENDPOINT",
-        "BRAVE_API_KEY",
-        "BROWSERBASE_API_KEY",
-        "BROWSER_USE_API_KEY",
-        "CLAUDE_CODE_OAUTH_TOKEN",
-        "DASHSCOPE_API_KEY",
-        "DAYTONA_API_KEY",
-        "DEEPSEEK_API_KEY",
-        "ELEVENLABS_API_KEY",
-        "EXA_API_KEY",
-        "FAL_KEY",
-        "FIRECRAWL_API_KEY",
-        "FIREWORKS_API_KEY",
-        "GEMINI_API_KEY",
-        "GH_TOKEN",
-        "GITHUB_TOKEN",
-        "GLM_API_KEY",
-        "GOOGLE_API_KEY",
-        "GROQ_API_KEY",
-        "HF_TOKEN",
-        "HONCHO_API_KEY",
-        "HUGGINGFACE_API_KEY",
-        "KILO_API_KEY",
-        "KIMI_API_KEY",
-        "MINIMAX_API_KEY",
-        "NOUS_API_KEY",
-        "NOVITA_API_KEY",
-        "NVIDIA_API_KEY",
-        "OLLAMA_API_KEY",
-        "OLLAMA_BASE_URL",
-        "OLLAMA_HOST",
-        "OPENAI_API_KEY",
-        "OPENAI_BASE_URL",
-        "OPENCODE_API_KEY",
-        "OPENROUTER_API_KEY",
-        "OPENROUTER_BASE_URL",
-        "SLACK_APP_TOKEN",
-        "SLACK_BOT_TOKEN",
-        "STEPFUN_API_KEY",
-        "TAVILY_API_KEY",
-        "TELEGRAM_BOT_TOKEN",
-        "TOKENHUB_API_KEY",
-        "WHATSAPP_ENABLED",
-        "XAI_API_KEY",
-        "XIAOMI_API_KEY",
-        "ZAI_API_KEY",
+        "ALIBABA_API_KEY", "ANTHROPIC_API_KEY", "ANTHROPIC_BASE_URL",
+        "AWS_ACCESS_KEY_ID", "AWS_PROFILE", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN",
+        "AZURE_API_KEY", "AZURE_OPENAI_API_KEY", "AZURE_OPENAI_ENDPOINT",
+        "BRAVE_API_KEY", "BROWSERBASE_API_KEY", "BROWSER_USE_API_KEY",
+        "CLAUDE_CODE_OAUTH_TOKEN", "DASHSCOPE_API_KEY", "DAYTONA_API_KEY",
+        "DEEPSEEK_API_KEY", "ELEVENLABS_API_KEY", "EXA_API_KEY", "FAL_KEY",
+        "FIRECRAWL_API_KEY", "FIREWORKS_API_KEY", "GEMINI_API_KEY", "GH_TOKEN",
+        "GITHUB_TOKEN", "GLM_API_KEY", "GOOGLE_API_KEY", "GROQ_API_KEY", "HF_TOKEN",
+        "HONCHO_API_KEY", "HUGGINGFACE_API_KEY", "KILO_API_KEY", "KIMI_API_KEY",
+        "MINIMAX_API_KEY", "NOUS_API_KEY", "NOVITA_API_KEY", "NVIDIA_API_KEY",
+        "OLLAMA_API_KEY", "OLLAMA_BASE_URL", "OLLAMA_HOST", "OPENAI_API_KEY",
+        "OPENAI_BASE_URL", "OPENCODE_API_KEY", "OPENROUTER_API_KEY",
+        "OPENROUTER_BASE_URL", "SLACK_APP_TOKEN", "SLACK_BOT_TOKEN",
+        "STEPFUN_API_KEY", "TAVILY_API_KEY", "TELEGRAM_BOT_TOKEN", "TOKENHUB_API_KEY",
+        "WHATSAPP_ENABLED", "XAI_API_KEY", "XIAOMI_API_KEY", "ZAI_API_KEY",
     }
 )
 
 PROXY_ENV_NAMES = frozenset(
-    {
-        "ALL_PROXY",
-        "HTTP_PROXY",
-        "HTTPS_PROXY",
-        "NO_PROXY",
-        "all_proxy",
-        "http_proxy",
-        "https_proxy",
-        "no_proxy",
-    }
+    {"ALL_PROXY", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "all_proxy", "http_proxy", "https_proxy", "no_proxy"}
 )
-
 REMOVED_ENV_REPORT = "BENCH_REMOVED_EXTERNAL_ENV_NAMES"
 
 
 def external_env_names(environment: Mapping[str, str]) -> list[str]:
-    present: set[str] = set()
-    for name, value in environment.items():
-        if value and name.upper() in EXTERNAL_ENV_NAMES:
-            present.add(name.upper())
-    return sorted(present)
+    return sorted(
+        {name.upper() for name, value in environment.items() if value and name.upper() in EXTERNAL_ENV_NAMES}
+    )
 
 
 def sanitize_environment(
-    environment: Mapping[str, str],
-    *,
-    hermes_home: Path | None = None,
+    environment: Mapping[str, str], *, hermes_home: Path | None = None
 ) -> tuple[dict[str, str], list[str]]:
     result = dict(environment)
     removed = external_env_names(result)
@@ -107,7 +51,6 @@ def sanitize_environment(
     for name in list(result):
         if name.upper() in blocked:
             result.pop(name, None)
-
     result["NO_PROXY"] = "*"
     result["no_proxy"] = "*"
     result["PYTHONUTF8"] = "1"
@@ -116,6 +59,18 @@ def sanitize_environment(
     if hermes_home is not None:
         result["HERMES_HOME"] = str(hermes_home.resolve())
     return result, removed
+
+
+@contextmanager
+def isolated_process_environment(environment: Mapping[str, str]) -> Iterator[None]:
+    original = dict(os.environ)
+    try:
+        os.environ.clear()
+        os.environ.update(environment)
+        yield
+    finally:
+        os.environ.clear()
+        os.environ.update(original)
 
 
 def parse_removed_environment_report(environment: Mapping[str, str]) -> list[str]:
@@ -171,15 +126,8 @@ def run_captured(
     error_type: str | None = None
     try:
         completed = subprocess.run(
-            list(command),
-            cwd=cwd,
-            env=dict(environment),
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=timeout_seconds,
-            check=False,
+            list(command), cwd=cwd, env=dict(environment), capture_output=True,
+            text=True, encoding="utf-8", errors="replace", timeout=timeout_seconds, check=False,
         )
         exit_code = completed.returncode
         stdout = completed.stdout
@@ -200,9 +148,6 @@ def run_captured(
     (artifact_dir / f"{name}.stderr.log").write_text(stderr, encoding="utf-8")
     (artifact_dir / f"{name}.exit").write_text(f"{exit_code}\n", encoding="utf-8")
     return {
-        "command": list(command),
-        "exit_code": exit_code,
-        "timeout_seconds": timeout_seconds,
-        "timed_out": timed_out,
-        "error_type": error_type,
+        "command": list(command), "exit_code": exit_code, "timeout_seconds": timeout_seconds,
+        "timed_out": timed_out, "error_type": error_type,
     }
