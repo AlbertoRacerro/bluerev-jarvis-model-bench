@@ -9,9 +9,11 @@ on:
       - ".github/workflows/local-model-residency.yml"
       - "scripts/probe_model_residency.py"
       - "scripts/build_residency_shortlist.py"
+      - "scripts/build_h2_context_plan.py"
       - "tests/test_probe_model_residency.py"
       - "tests/test_build_residency_shortlist.py"
       - "tests/test_residency_shortlist_binding.py"
+      - "tests/test_build_h2_context_plan.py"
       - "candidates/models.local.json"
 
 permissions:
@@ -58,6 +60,11 @@ jobs:
           if errorlevel 1 exit /b 1
           python scripts\build_residency_shortlist.py --output-dir artifacts\model-residency > artifacts\model-residency\shortlist-stdout.log 2>&1
           if errorlevel 1 exit /b 1
+          python -c "import hashlib,pathlib; p=pathlib.Path(r'artifacts\model-residency\shortlist-manifest.json'); print(hashlib.sha256(p.read_bytes()).hexdigest())" > artifacts\model-residency\shortlist-manifest.sha256
+          if errorlevel 1 exit /b 1
+          set /p SHORTLIST_MANIFEST_SHA256=<artifacts\model-residency\shortlist-manifest.sha256
+          python scripts\build_h2_context_plan.py --output-dir artifacts\model-residency --expected-shortlist-manifest-sha256 %SHORTLIST_MANIFEST_SHA256% > artifacts\model-residency\h2-plan-stdout.log 2>&1
+          if errorlevel 1 exit /b 1
           exit /b 0
 
       - name: Upload immutable residency artifact
@@ -79,6 +86,8 @@ jobs:
           MANIFEST_PATH: artifacts/model-residency/manifest.json
           SHORTLIST_PATH: artifacts/model-residency/shortlist.json
           SHORTLIST_MANIFEST_PATH: artifacts/model-residency/shortlist-manifest.json
+          H2_PLAN_PATH: artifacts/model-residency/h2-context-plan.json
+          H2_PLAN_MANIFEST_PATH: artifacts/model-residency/h2-context-plan-manifest.json
           JOB_STATUS: ${{ job.status }}
           ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
           ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
@@ -110,12 +119,17 @@ jobs:
 
             const reportRead = readJson(process.env.REPORT_PATH);
             const shortlistRead = readJson(process.env.SHORTLIST_PATH);
+            const h2PlanRead = readJson(process.env.H2_PLAN_PATH);
             const manifestHash = hashFile(process.env.MANIFEST_PATH);
             const shortlistManifestHash = hashFile(
               process.env.SHORTLIST_MANIFEST_PATH
             );
+            const h2PlanManifestHash = hashFile(
+              process.env.H2_PLAN_MANIFEST_PATH
+            );
             const report = reportRead.value;
             const shortlist = shortlistRead.value;
+            const h2Plan = h2PlanRead.value;
 
             const models = (report?.models ?? []).map((entry) => ({
               name: entry?.model?.name ?? null,
@@ -133,7 +147,7 @@ jobs:
               }));
 
             const payload = {
-              schema_version: "bench.model-residency-inbox.v2",
+              schema_version: "bench.model-residency-inbox.v3",
               run_id: Number(context.runId),
               run_attempt: Number(context.runAttempt),
               workflow: context.workflow,
@@ -148,6 +162,7 @@ jobs:
               },
               manifest_sha256: manifestHash.value,
               shortlist_manifest_sha256: shortlistManifestHash.value,
+              h2_plan_manifest_sha256: h2PlanManifestHash.value,
               profile: report?.profile ?? null,
               explicit_exclusions: report?.explicit_exclusions ?? null,
               initial_gpu: report?.initial_gpu ?? null,
@@ -162,14 +177,21 @@ jobs:
                   shortlist?.secondary_partial_vram
                 ),
               },
+              h2_plan: {
+                status: h2Plan?.status ?? null,
+                profiles: h2Plan?.profiles ?? null,
+                counts: h2Plan?.counts ?? null,
+              },
               report_error: reportRead.error,
               shortlist_error: shortlistRead.error,
+              h2_plan_error: h2PlanRead.error,
               manifest_error: manifestHash.error,
               shortlist_manifest_error: shortlistManifestHash.error,
+              h2_plan_manifest_error: h2PlanManifestHash.error,
             };
 
             const body = [
-              "<!-- bench-model-residency-v2 -->",
+              "<!-- bench-model-residency-v3 -->",
               "```json",
               JSON.stringify(payload, null, 2),
               "```",
