@@ -73,14 +73,22 @@ def capture() -> int:
         "tests": tests,
         "inventory": inventory,
         "execution": {
-            "infrastructure_exit_code": None,
+            "infrastructure_exit_code": 0,
             "execution_completed": False,
             "candidate_passed": None,
             "candidate_result_status": None,
+            "skipped_reason": None,
         },
     }
 
     if tests["exit_code"] != 0 or inventory["exit_code"] != 0:
+        summary["execution"] = {
+            "infrastructure_exit_code": 0,
+            "execution_completed": False,
+            "candidate_passed": None,
+            "candidate_result_status": None,
+            "skipped_reason": "prerequisite_failure",
+        }
         _write_summary(summary)
         return 0
 
@@ -108,6 +116,7 @@ def capture() -> int:
         )
         summary["execution"] = {
             "infrastructure_exit_code": 0,
+            "skipped_reason": None,
             **execution,
         }
     except (ContractError, OSError, ValueError, TypeError) as exc:
@@ -121,6 +130,7 @@ def capture() -> int:
             "execution_completed": False,
             "candidate_passed": None,
             "candidate_result_status": None,
+            "skipped_reason": None,
             "error": error,
         }
 
@@ -136,10 +146,8 @@ def enforce() -> int:
         summary = json.loads(SUMMARY_PATH.read_text(encoding="utf-8"))
         test_exit = int(summary["tests"]["exit_code"])
         inventory_exit = int(summary["inventory"]["exit_code"])
-        execution_exit = int(summary["execution"]["infrastructure_exit_code"])
-        execution_completed = summary["execution"]["execution_completed"] is True
-        result_status = summary["execution"]["candidate_result_status"]
-        case_sha256 = summary["execution"]["case_definition_sha256"]
+        execution = summary["execution"]
+        execution_exit = int(execution["infrastructure_exit_code"])
     except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
         print(
             f"invalid direct-smoke job summary: {type(exc).__name__}: {exc}",
@@ -152,14 +160,22 @@ def enforce() -> int:
         failures.append(f"deterministic tests exited {test_exit}")
     if inventory_exit != 0:
         failures.append(f"runtime inventory exited {inventory_exit}")
-    if execution_exit != 0:
-        failures.append(f"direct execution infrastructure exited {execution_exit}")
-    if not execution_completed:
-        failures.append("direct execution did not complete")
-    if result_status not in {"passed", "failed", "invalid"}:
-        failures.append(f"unsupported candidate_result_status={result_status!r}")
-    if not isinstance(case_sha256, str) or not _SHA256.fullmatch(case_sha256):
-        failures.append("case definition digest is missing or malformed")
+
+    prerequisites_ok = test_exit == 0 and inventory_exit == 0
+    if prerequisites_ok:
+        execution_completed = execution.get("execution_completed") is True
+        result_status = execution.get("candidate_result_status")
+        case_sha256 = execution.get("case_definition_sha256")
+        if execution_exit != 0:
+            failures.append(f"direct execution infrastructure exited {execution_exit}")
+        if not execution_completed:
+            failures.append("direct execution did not complete")
+        if result_status not in {"passed", "failed", "invalid"}:
+            failures.append(f"unsupported candidate_result_status={result_status!r}")
+        if not isinstance(case_sha256, str) or not _SHA256.fullmatch(case_sha256):
+            failures.append("case definition digest is missing or malformed")
+    elif execution.get("skipped_reason") != "prerequisite_failure":
+        failures.append("direct execution skip reason is missing or invalid")
 
     if failures:
         print("; ".join(failures), file=sys.stderr)
@@ -167,7 +183,8 @@ def enforce() -> int:
 
     print(
         "direct-smoke infrastructure gate passed; "
-        f"result_status={result_status}; case_definition_sha256={case_sha256}"
+        f"result_status={execution.get('candidate_result_status')}; "
+        f"case_definition_sha256={execution.get('case_definition_sha256')}"
     )
     return 0
 
