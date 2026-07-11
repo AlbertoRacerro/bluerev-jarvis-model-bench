@@ -55,9 +55,23 @@ def _artifact_record(manifest: Mapping[str, Any], name: str) -> Mapping[str, Any
     return record
 
 
-def validate_shortlist_binding(output_dir: Path) -> tuple[dict[str, Any], dict[str, Any]]:
+def validate_shortlist_binding(
+    output_dir: Path,
+    expected_manifest_sha256: str,
+) -> tuple[dict[str, Any], dict[str, Any]]:
     shortlist_path = output_dir / "shortlist.json"
     manifest_path = output_dir / "shortlist-manifest.json"
+    if (
+        len(expected_manifest_sha256) != 64
+        or any(
+            character not in "0123456789abcdef"
+            for character in expected_manifest_sha256
+        )
+    ):
+        raise H2PlanError("expected shortlist manifest digest is invalid")
+    if sha256(manifest_path) != expected_manifest_sha256:
+        raise H2PlanError("shortlist manifest root digest mismatch")
+
     shortlist = load_json(shortlist_path)
     manifest = load_json(manifest_path)
 
@@ -112,8 +126,14 @@ def _normalize_candidate(entry: Any) -> dict[str, str]:
     return {"name": name, "digest": digest}
 
 
-def build_plan(output_dir: Path) -> dict[str, Any]:
-    shortlist, _manifest = validate_shortlist_binding(output_dir)
+def build_plan(
+    output_dir: Path,
+    expected_manifest_sha256: str,
+) -> dict[str, Any]:
+    shortlist, _manifest = validate_shortlist_binding(
+        output_dir,
+        expected_manifest_sha256,
+    )
     primary = [_normalize_candidate(entry) for entry in shortlist["primary_h2"]]
     names = [entry["name"] for entry in primary]
     digests = [entry["digest"] for entry in primary]
@@ -173,8 +193,8 @@ def write_json(path: Path, value: Any) -> None:
     )
 
 
-def run(output_dir: Path) -> dict[str, Any]:
-    plan = build_plan(output_dir)
+def run(output_dir: Path, expected_manifest_sha256: str) -> dict[str, Any]:
+    plan = build_plan(output_dir, expected_manifest_sha256)
     write_json(output_dir / "h2-context-plan.json", plan)
     write_json(
         output_dir / "h2-context-plan-manifest.json",
@@ -199,9 +219,13 @@ def run(output_dir: Path) -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--expected-shortlist-manifest-sha256", required=True)
     args = parser.parse_args()
     try:
-        result = run(args.output_dir)
+        result = run(
+            args.output_dir,
+            args.expected_shortlist_manifest_sha256,
+        )
     except H2PlanError as exc:
         write_json(
             args.output_dir / "h2-context-plan-error.json",
