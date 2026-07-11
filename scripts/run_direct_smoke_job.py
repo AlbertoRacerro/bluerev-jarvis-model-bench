@@ -106,13 +106,20 @@ def capture() -> int:
         "tests": tests,
         "inventory": inventory,
         "execution": {
-            "infrastructure_exit_code": None,
+            "infrastructure_exit_code": 0,
             "execution_completed": False,
             "candidate_passed": None,
+            "skipped_reason": None,
         },
     }
 
     if tests["exit_code"] != 0 or inventory["exit_code"] != 0:
+        summary["execution"] = {
+            "infrastructure_exit_code": 0,
+            "execution_completed": False,
+            "candidate_passed": None,
+            "skipped_reason": "prerequisite_failure",
+        }
         _write_summary(summary)
         return 0
 
@@ -140,6 +147,7 @@ def capture() -> int:
         )
         summary["execution"] = {
             "infrastructure_exit_code": 0,
+            "skipped_reason": None,
             **execution,
         }
     except (ContractError, OSError, ValueError, TypeError) as exc:
@@ -155,6 +163,7 @@ def capture() -> int:
             "infrastructure_exit_code": 2,
             "execution_completed": False,
             "candidate_passed": None,
+            "skipped_reason": None,
             "error": error,
         }
 
@@ -170,8 +179,8 @@ def enforce() -> int:
         summary = json.loads(SUMMARY_PATH.read_text(encoding="utf-8"))
         test_exit = int(summary["tests"]["exit_code"])
         inventory_exit = int(summary["inventory"]["exit_code"])
-        execution_exit = int(summary["execution"]["infrastructure_exit_code"])
-        execution_completed = summary["execution"]["execution_completed"] is True
+        execution = summary["execution"]
+        execution_exit = int(execution["infrastructure_exit_code"])
     except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
         print(f"invalid direct-smoke job summary: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 2
@@ -181,16 +190,21 @@ def enforce() -> int:
         failures.append(f"deterministic tests exited {test_exit}")
     if inventory_exit != 0:
         failures.append(f"runtime inventory exited {inventory_exit}")
-    if execution_exit != 0:
-        failures.append(f"direct execution infrastructure exited {execution_exit}")
-    if not execution_completed:
-        failures.append("direct execution did not complete")
+
+    prerequisites_ok = test_exit == 0 and inventory_exit == 0
+    if prerequisites_ok:
+        if execution_exit != 0:
+            failures.append(f"direct execution infrastructure exited {execution_exit}")
+        if execution.get("execution_completed") is not True:
+            failures.append("direct execution did not complete")
+    elif execution.get("skipped_reason") != "prerequisite_failure":
+        failures.append("direct execution skip reason is missing or invalid")
 
     if failures:
         print("; ".join(failures), file=sys.stderr)
         return 1
 
-    candidate_passed = summary["execution"].get("candidate_passed") is True
+    candidate_passed = execution.get("candidate_passed") is True
     print(f"direct-smoke infrastructure gate passed; candidate_passed={candidate_passed}")
     return 0
 
