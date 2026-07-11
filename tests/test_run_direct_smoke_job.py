@@ -19,6 +19,7 @@ class DirectSmokeJobGateTests(unittest.TestCase):
         execution_exit=0,
         completed=True,
         candidate_passed=False,
+        skipped_reason=None,
     ):
         path = root / "job-summary.json"
         path.write_text(
@@ -31,6 +32,7 @@ class DirectSmokeJobGateTests(unittest.TestCase):
                         "infrastructure_exit_code": execution_exit,
                         "execution_completed": completed,
                         "candidate_passed": candidate_passed,
+                        "skipped_reason": skipped_reason,
                     },
                 }
             ),
@@ -50,6 +52,17 @@ class DirectSmokeJobGateTests(unittest.TestCase):
     def test_infrastructure_failure_fails_gate(self):
         with tempfile.TemporaryDirectory() as directory:
             path = self.write_summary(Path(directory), execution_exit=2, completed=False)
+            with patch.object(run_direct_smoke_job, "SUMMARY_PATH", path):
+                self.assertEqual(run_direct_smoke_job.enforce(), 1)
+
+    def test_prerequisite_failure_is_not_treated_as_invalid_summary(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = self.write_summary(
+                Path(directory),
+                test_exit=1,
+                completed=False,
+                skipped_reason="prerequisite_failure",
+            )
             with patch.object(run_direct_smoke_job, "SUMMARY_PATH", path):
                 self.assertEqual(run_direct_smoke_job.enforce(), 1)
 

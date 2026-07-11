@@ -54,6 +54,7 @@ jobs:
           SUMMARY_PATH: artifacts/job-summary.json
           PREFLIGHT_PATH: artifacts/preflight.json
           JOB_STATUS: ${{ job.status }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
           ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
           ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
           ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
@@ -75,7 +76,7 @@ jobs:
             const payload = {
               schema_version: "bench.workflow-inbox.v1",
               run_id: Number(context.runId),
-              run_attempt: Number(context.runAttempt),
+              run_attempt: Number(process.env.RUN_ATTEMPT),
               workflow: context.workflow,
               event_name: context.eventName,
               sha: context.sha,

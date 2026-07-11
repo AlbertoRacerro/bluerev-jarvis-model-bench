@@ -9,8 +9,10 @@ from unittest.mock import patch
 from scripts.probe_model_residency import (
     ProbeError,
     _is_exact_loopback_url,
+    build_report,
     classify_residency,
     is_user_excluded,
+    list_installed_models,
     model_artifact_slug,
     parse_nvidia_smi_csv,
     stop_all_running_models,
@@ -62,12 +64,38 @@ class ModelResidencyProbeTests(unittest.TestCase):
             ],
         )
 
+    def test_invalid_gpu_metrics_are_rejected(self):
+        with self.assertRaisesRegex(ProbeError, "invalid metrics"):
+            parse_nvidia_smi_csv("0, NVIDIA RTX, 100, 101, 0\n")
+
     def test_residency_classification_boundaries(self):
         self.assertEqual(classify_residency(1000, 1000), ("full_vram", 1.0))
         self.assertEqual(classify_residency(1000, 980), ("full_vram", 0.98))
         self.assertEqual(classify_residency(1000, 979), ("partial_vram", 0.979))
         self.assertEqual(classify_residency(1000, 0), ("cpu_only", 0.0))
         self.assertEqual(classify_residency(None, 0), ("unknown", None))
+
+    def test_installed_inventory_rejects_malformed_entry(self):
+        with patch(
+            "scripts.probe_model_residency._request_json",
+            return_value={"models": [{"name": "broken", "size": 1}]},
+        ):
+            with self.assertRaisesRegex(ProbeError, "no digest"):
+                list_installed_models()
+
+    def test_installed_inventory_rejects_duplicate_identity(self):
+        inventory = {
+            "models": [
+                {"name": "same", "digest": "a", "size": 1},
+                {"name": "same", "digest": "b", "size": 1},
+            ]
+        }
+        with patch(
+            "scripts.probe_model_residency._request_json",
+            return_value=inventory,
+        ):
+            with self.assertRaisesRegex(ProbeError, "duplicate name"):
+                list_installed_models()
 
     def test_explicit_gemma_27b_exclusion_is_narrow(self):
         self.assertTrue(is_user_excluded("gemma4:27b"))
@@ -92,6 +120,15 @@ class ModelResidencyProbeTests(unittest.TestCase):
         ):
             with self.assertRaisesRegex(ProbeError, "could not verify model unload"):
                 stop_all_running_models()
+
+    def test_initial_gpu_failure_is_infrastructure_error(self):
+        with patch(
+            "scripts.probe_model_residency.gpu_snapshot",
+            return_value={"ok": False, "gpus": []},
+        ):
+            report = build_report(Path("unused"))
+        self.assertIsNotNone(report["infrastructure_error"])
+        self.assertEqual(report["models"], [])
 
     def test_manifest_binds_report_and_per_model_results(self):
         with tempfile.TemporaryDirectory() as directory:

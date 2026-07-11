@@ -120,24 +120,41 @@ def _run(command: list[str], *, timeout: int = 60) -> dict[str, Any]:
 
 def parse_nvidia_smi_csv(text: str) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
+    indexes: set[int] = set()
     for raw_row in csv.reader(line for line in text.splitlines() if line.strip()):
         if len(raw_row) != 5:
             raise ProbeError("unexpected nvidia-smi CSV shape")
-        index, name, total_mib, used_mib, utilization = (
+        index_raw, name, total_raw, used_raw, utilization_raw = (
             item.strip() for item in raw_row
         )
         try:
-            rows.append(
-                {
-                    "index": int(index),
-                    "name": name,
-                    "memory_total_mib": int(total_mib),
-                    "memory_used_mib": int(used_mib),
-                    "utilization_gpu_percent": int(utilization),
-                }
-            )
+            index = int(index_raw)
+            total = int(total_raw)
+            used = int(used_raw)
+            utilization = int(utilization_raw)
         except ValueError as exc:
             raise ProbeError("nvidia-smi CSV contains non-integer metrics") from exc
+        if (
+            index < 0
+            or index in indexes
+            or not name
+            or total <= 0
+            or used < 0
+            or used > total
+            or utilization < 0
+            or utilization > 100
+        ):
+            raise ProbeError("nvidia-smi CSV contains invalid metrics")
+        indexes.add(index)
+        rows.append(
+            {
+                "index": index,
+                "name": name,
+                "memory_total_mib": total,
+                "memory_used_mib": used,
+                "utilization_gpu_percent": utilization,
+            }
+        )
     if not rows:
         raise ProbeError("nvidia-smi returned no GPUs")
     return rows
@@ -196,34 +213,59 @@ def model_artifact_slug(model_name: str) -> str:
 
 def list_installed_models() -> list[dict[str, Any]]:
     payload = _request_json(TAGS_URL, expected_path="/api/tags", timeout=30)
+    raw_models = payload.get("models")
+    if not isinstance(raw_models, list) or not raw_models:
+        raise ProbeError("Ollama returned no installed model array")
+
     models: list[dict[str, Any]] = []
-    for item in payload.get("models", []):
+    names: set[str] = set()
+    digests: set[str] = set()
+    for index, item in enumerate(raw_models):
         if not isinstance(item, dict):
-            continue
+            raise ProbeError(f"Ollama model inventory entry {index} is not an object")
         name = item.get("name") or item.get("model")
+        digest = item.get("digest")
+        size = item.get("size")
         if not isinstance(name, str) or not name:
-            continue
+            raise ProbeError(f"Ollama model inventory entry {index} has no name")
+        if not isinstance(digest, str) or not digest:
+            raise ProbeError(f"Ollama model {name} has no digest")
+        if not isinstance(size, int) or isinstance(size, bool) or size <= 0:
+            raise ProbeError(f"Ollama model {name} has invalid size")
+        if name in names:
+            raise ProbeError(f"Ollama model inventory has duplicate name: {name}")
+        if digest in digests:
+            raise ProbeError(f"Ollama model inventory has duplicate digest: {digest}")
+        names.add(name)
+        digests.add(digest)
         models.append(
             {
                 "name": name,
-                "digest": item.get("digest"),
-                "size": item.get("size"),
+                "digest": digest,
+                "size": size,
                 "modified_at": item.get("modified_at"),
             }
         )
     models.sort(key=lambda item: item["name"].casefold())
-    if not models:
-        raise ProbeError("Ollama returned no installed models")
     return models
 
 
 def running_models() -> list[dict[str, Any]]:
     payload = _request_json(PS_URL, expected_path="/api/ps", timeout=30)
-    return [
-        dict(item)
-        for item in payload.get("models", [])
-        if isinstance(item, dict)
-    ]
+    raw_models = payload.get("models")
+    if not isinstance(raw_models, list):
+        raise ProbeError("Ollama running-model response has no model array")
+    models: list[dict[str, Any]] = []
+    names: set[str] = set()
+    for index, item in enumerate(raw_models):
+        if not isinstance(item, dict):
+            raise ProbeError(f"Ollama running-model entry {index} is not an object")
+        name = item.get("name") or item.get("model")
+        if not isinstance(name, str) or not name or name in names:
+            raise ProbeError("Ollama running-model identity is invalid or duplicated")
+        names.add(name)
+        models.append(dict(item))
+    return models
 
 
 def _running_name(item: dict[str, Any]) -> str | None:
@@ -326,6 +368,9 @@ def probe_model(model: dict[str, Any], output_dir: Path) -> dict[str, Any]:
 
     cleanup_before = stop_all_running_models()
     baseline_gpu = gpu_snapshot()
+    if baseline_gpu.get("ok") is not True:
+        raise ProbeError(f"GPU snapshot failed before model: {model_name}")
+
     started = time.monotonic()
     generate_response: dict[str, Any] | None = None
     ps_entry: dict[str, Any] | None = None
@@ -360,6 +405,8 @@ def probe_model(model: dict[str, Any], output_dir: Path) -> dict[str, Any]:
     duration_seconds = time.monotonic() - started
     loaded_gpu = gpu_snapshot()
     cleanup_after = stop_model(model_name)
+    if loaded_gpu.get("ok") is not True:
+        raise ProbeError(f"GPU snapshot failed after loading model: {model_name}")
 
     if error is not None or ps_entry is None:
         classification = "load_failed"
@@ -369,6 +416,13 @@ def probe_model(model: dict[str, Any], output_dir: Path) -> dict[str, Any]:
             ps_entry.get("size"),
             ps_entry.get("size_vram"),
         )
+        if classification == "unknown":
+            error = {
+                "type": "ProbeError",
+                "detail": "Ollama returned invalid residency metrics",
+            }
+            classification = "load_failed"
+            residency_ratio = None
 
     result = {
         "model": model,
@@ -396,6 +450,8 @@ def build_report(output_dir: Path) -> dict[str, Any]:
     infrastructure_error: dict[str, str] | None = None
 
     try:
+        if initial_gpu.get("ok") is not True:
+            raise ProbeError("initial GPU snapshot failed")
         installed = list_installed_models()
         initial_cleanup = stop_all_running_models()
         for model in installed:

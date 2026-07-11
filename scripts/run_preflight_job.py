@@ -16,6 +16,7 @@ from scripts import preflight
 
 ARTIFACTS = ROOT / "artifacts"
 SUMMARY_PATH = ARTIFACTS / "job-summary.json"
+PREFLIGHT_PATH = ARTIFACTS / "preflight.json"
 
 
 def _run_and_capture(
@@ -90,13 +91,18 @@ def enforce() -> int:
     if not SUMMARY_PATH.exists():
         print(f"missing preflight job summary: {SUMMARY_PATH}", file=sys.stderr)
         return 2
+    if not PREFLIGHT_PATH.exists():
+        print(f"missing preflight report: {PREFLIGHT_PATH}", file=sys.stderr)
+        return 2
 
     try:
         summary = json.loads(SUMMARY_PATH.read_text(encoding="utf-8"))
+        report = json.loads(PREFLIGHT_PATH.read_text(encoding="utf-8"))
         test_exit = int(summary["tests"]["exit_code"])
         inventory_exit = int(summary["inventory"]["exit_code"])
+        scoring_ready = report["scoring_ready"] is True
     except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
-        print(f"invalid preflight job summary: {type(exc).__name__}: {exc}", file=sys.stderr)
+        print(f"invalid preflight evidence: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 2
 
     failures: list[str] = []
@@ -104,6 +110,9 @@ def enforce() -> int:
         failures.append(f"deterministic tests exited {test_exit}")
     if inventory_exit != 0:
         failures.append(f"runtime inventory exited {inventory_exit}")
+    if not scoring_ready:
+        reasons = report.get("scoring_blocking_reasons")
+        failures.append(f"scoring_ready is false; reasons={reasons!r}")
 
     if failures:
         print("; ".join(failures), file=sys.stderr)
