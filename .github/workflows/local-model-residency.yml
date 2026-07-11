@@ -37,7 +37,26 @@ jobs:
           ref: main
           persist-credentials: false
 
-      - name: Run deterministic tests and sequential residency probe
+      - name: Prepare residency artifact directory
+        shell: cmd
+        run: if not exist artifacts\model-residency mkdir artifacts\model-residency
+
+      - name: Run H1 and H2 deterministic tests
+        id: tests
+        shell: cmd
+        run: |
+          type nul > artifacts\model-residency\tests.log
+          python -m unittest discover -s tests -p "test_probe_model_residency.py" -v >> artifacts\model-residency\tests.log 2>&1
+          if errorlevel 1 exit /b 1
+          python -m unittest discover -s tests -p "test_build_residency_shortlist.py" -v >> artifacts\model-residency\tests.log 2>&1
+          if errorlevel 1 exit /b 1
+          python -m unittest discover -s tests -p "test_residency_shortlist_binding.py" -v >> artifacts\model-residency\tests.log 2>&1
+          if errorlevel 1 exit /b 1
+          python -m unittest discover -s tests -p "test_build_h2_context_plan.py" -v >> artifacts\model-residency\tests.log 2>&1
+          if errorlevel 1 exit /b 1
+
+      - name: Run sequential model residency probe
+        id: probe
         shell: cmd
         env:
           OPENAI_API_KEY: ""
@@ -52,20 +71,22 @@ jobs:
           DASHSCOPE_API_KEY: ""
           NO_PROXY: "*"
           no_proxy: "*"
+        run: python scripts\probe_model_residency.py --output-dir artifacts\model-residency > artifacts\model-residency\probe-stdout.log 2>&1
+
+      - name: Validate H1 evidence and build shortlist
+        id: shortlist
+        shell: cmd
+        run: python scripts\build_residency_shortlist.py --output-dir artifacts\model-residency > artifacts\model-residency\shortlist-stdout.log 2>&1
+
+      - name: Bind H2 context qualification plan
+        id: h2_plan
+        shell: cmd
         run: |
-          if not exist artifacts\model-residency mkdir artifacts\model-residency
-          python -m unittest discover -s tests -v > artifacts\model-residency\tests.log 2>&1
-          if errorlevel 1 exit /b 1
-          python scripts\probe_model_residency.py --output-dir artifacts\model-residency > artifacts\model-residency\probe-stdout.log 2>&1
-          if errorlevel 1 exit /b 1
-          python scripts\build_residency_shortlist.py --output-dir artifacts\model-residency > artifacts\model-residency\shortlist-stdout.log 2>&1
-          if errorlevel 1 exit /b 1
           python -c "import hashlib,pathlib; p=pathlib.Path(r'artifacts\model-residency\shortlist-manifest.json'); print(hashlib.sha256(p.read_bytes()).hexdigest())" > artifacts\model-residency\shortlist-manifest.sha256
           if errorlevel 1 exit /b 1
           set /p SHORTLIST_MANIFEST_SHA256=<artifacts\model-residency\shortlist-manifest.sha256
           python scripts\build_h2_context_plan.py --output-dir artifacts\model-residency --expected-shortlist-manifest-sha256 %SHORTLIST_MANIFEST_SHA256% > artifacts\model-residency\h2-plan-stdout.log 2>&1
           if errorlevel 1 exit /b 1
-          exit /b 0
 
       - name: Upload immutable residency artifact
         id: upload
@@ -89,6 +110,10 @@ jobs:
           H2_PLAN_PATH: artifacts/model-residency/h2-context-plan.json
           H2_PLAN_MANIFEST_PATH: artifacts/model-residency/h2-context-plan-manifest.json
           JOB_STATUS: ${{ job.status }}
+          TESTS_OUTCOME: ${{ steps.tests.outcome }}
+          PROBE_OUTCOME: ${{ steps.probe.outcome }}
+          SHORTLIST_OUTCOME: ${{ steps.shortlist.outcome }}
+          H2_PLAN_OUTCOME: ${{ steps.h2_plan.outcome }}
           ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
           ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
           ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
@@ -147,7 +172,7 @@ jobs:
               }));
 
             const payload = {
-              schema_version: "bench.model-residency-inbox.v3",
+              schema_version: "bench.model-residency-inbox.v4",
               run_id: Number(context.runId),
               run_attempt: Number(context.runAttempt),
               workflow: context.workflow,
@@ -155,6 +180,12 @@ jobs:
               sha: context.sha,
               ref: context.ref,
               job_status: process.env.JOB_STATUS,
+              phases: {
+                tests: process.env.TESTS_OUTCOME || null,
+                probe: process.env.PROBE_OUTCOME || null,
+                shortlist: process.env.SHORTLIST_OUTCOME || null,
+                h2_plan: process.env.H2_PLAN_OUTCOME || null,
+              },
               artifact: {
                 id: process.env.ARTIFACT_ID || null,
                 url: process.env.ARTIFACT_URL || null,
@@ -191,7 +222,7 @@ jobs:
             };
 
             const body = [
-              "<!-- bench-model-residency-v3 -->",
+              "<!-- bench-model-residency-v4 -->",
               "```json",
               JSON.stringify(payload, null, 2),
               "```",
