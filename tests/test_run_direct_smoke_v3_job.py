@@ -24,6 +24,7 @@ class DirectSmokeV3JobGateTests(unittest.TestCase):
                         "candidate_passed": True,
                         "candidate_result_status": "passed",
                         "case_definition_sha256": case_digest,
+                        "skipped_reason": None,
                     },
                 }
             ),
@@ -53,6 +54,29 @@ class DirectSmokeV3JobGateTests(unittest.TestCase):
     def test_non_hex_case_digest_fails_gate(self):
         with tempfile.TemporaryDirectory() as directory:
             path = self.write_summary(Path(directory), "g" * 64)
+            with patch.object(run_direct_smoke_v3_job, "SUMMARY_PATH", path):
+                self.assertEqual(run_direct_smoke_v3_job.enforce(), 1)
+
+    def test_prerequisite_failure_is_reported_without_invalid_summary(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "job-summary.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "bench.direct-smoke-job.v3",
+                        "tests": {"exit_code": 1},
+                        "inventory": {"exit_code": 0},
+                        "execution": {
+                            "infrastructure_exit_code": 0,
+                            "execution_completed": False,
+                            "candidate_passed": None,
+                            "candidate_result_status": None,
+                            "skipped_reason": "prerequisite_failure",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
             with patch.object(run_direct_smoke_v3_job, "SUMMARY_PATH", path):
                 self.assertEqual(run_direct_smoke_v3_job.enforce(), 1)
 
