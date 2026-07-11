@@ -52,19 +52,14 @@ def load_json(path: Path) -> dict[str, Any]:
     except ShortlistError:
         raise
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-        raise ShortlistError(
-            f"cannot read {path.name}: {type(exc).__name__}"
-        ) from exc
+        raise ShortlistError(f"cannot read {path.name}: {type(exc).__name__}") from exc
     if not isinstance(value, dict):
         raise ShortlistError(f"{path.name} must contain an object")
     return value
 
 
 def write_json(path: Path, value: Any) -> None:
-    path.write_text(
-        json.dumps(value, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def sha256(path: Path) -> str:
@@ -132,13 +127,24 @@ def _validate_gpu_snapshot(snapshot: Any, *, label: str) -> list[dict[str, Any]]
             or used > total
             or not isinstance(utilization, int)
             or isinstance(utilization, bool)
-            or utilization < 0
-            or utilization > 100
+            or not 0 <= utilization <= 100
         ):
             raise ShortlistError(f"{label} GPU metrics are invalid")
         indexes.add(index)
         normalized.append(dict(gpu))
     return normalized
+
+
+def _validate_process_identity(process: Mapping[str, Any], name: str, digest: str) -> None:
+    identities = [
+        value
+        for value in (process.get("name"), process.get("model"))
+        if value is not None
+    ]
+    if not identities or any(value != name for value in identities):
+        raise ShortlistError(f"{name} Ollama process identity is inconsistent")
+    if process.get("digest") != digest:
+        raise ShortlistError(f"{name} Ollama process digest is inconsistent")
 
 
 def normalize_entry(entry: Mapping[str, Any]) -> dict[str, Any]:
@@ -147,17 +153,11 @@ def normalize_entry(entry: Mapping[str, Any]) -> dict[str, Any]:
         raise ShortlistError("model identity is missing")
     name = model.get("name")
     digest = model.get("digest")
-    if (
-        not isinstance(name, str)
-        or not name
-        or not isinstance(digest, str)
-        or not digest
-    ):
+    if not isinstance(name, str) or not name or not isinstance(digest, str) or not digest:
         raise ShortlistError("model name or digest is invalid")
     classification = entry.get("classification")
     if classification not in VALID_CLASSES:
         raise ShortlistError(f"{name} has unsupported classification")
-
     if entry.get("profile") != EXPECTED_PROFILE:
         raise ShortlistError(f"{name} profile does not match fixed H1 contract")
 
@@ -172,10 +172,7 @@ def normalize_entry(entry: Mapping[str, Any]) -> dict[str, Any]:
         return result
 
     cleanup = entry.get("cleanup_after")
-    if (
-        not isinstance(cleanup, Mapping)
-        or cleanup.get("verified_absent") is not True
-    ):
+    if not isinstance(cleanup, Mapping) or cleanup.get("verified_absent") is not True:
         raise ShortlistError(f"{name} cleanup was not verified")
     _validate_gpu_snapshot(entry.get("gpu_before"), label=f"{name} before-load")
     _validate_gpu_snapshot(entry.get("gpu_loaded"), label=f"{name} loaded")
@@ -200,15 +197,10 @@ def normalize_entry(entry: Mapping[str, Any]) -> dict[str, Any]:
     generate = entry.get("ollama_generate")
     if not isinstance(generate, Mapping) or generate.get("done") is not True:
         raise ShortlistError(f"{name} lacks completed Ollama generation evidence")
-
     process = entry.get("ollama_ps_entry")
     if not isinstance(process, Mapping):
         raise ShortlistError(f"{name} lacks Ollama residency evidence")
-    if process.get("name") not in {None, name} and process.get("model") not in {None, name}:
-        raise ShortlistError(f"{name} Ollama process identity is inconsistent")
-    process_digest = process.get("digest")
-    if process_digest is not None and process_digest != digest:
-        raise ShortlistError(f"{name} Ollama process digest is inconsistent")
+    _validate_process_identity(process, name, digest)
     if process.get("context_length") != EXPECTED_PROFILE["num_ctx"]:
         raise ShortlistError(f"{name} Ollama context length is not fixed H1 4K")
 
@@ -217,20 +209,14 @@ def normalize_entry(entry: Mapping[str, Any]) -> dict[str, Any]:
     ratio = entry.get("residency_ratio")
     if not isinstance(size, int) or isinstance(size, bool) or size <= 0:
         raise ShortlistError(f"{name} has invalid model size")
-    if (
-        not isinstance(size_vram, int)
-        or isinstance(size_vram, bool)
-        or size_vram < 0
-    ):
+    if not isinstance(size_vram, int) or isinstance(size_vram, bool) or size_vram < 0:
         raise ShortlistError(f"{name} has invalid VRAM size")
     expected_ratio = size_vram / size
-    if not isinstance(ratio, (int, float)) or isinstance(ratio, bool):
-        raise ShortlistError(f"{name} has invalid residency ratio")
-    if not math.isfinite(float(ratio)) or not math.isclose(
-        float(ratio),
-        expected_ratio,
-        rel_tol=1e-9,
-        abs_tol=1e-12,
+    if (
+        not isinstance(ratio, (int, float))
+        or isinstance(ratio, bool)
+        or not math.isfinite(float(ratio))
+        or not math.isclose(float(ratio), expected_ratio, rel_tol=1e-9, abs_tol=1e-12)
     ):
         raise ShortlistError(f"{name} residency ratio is inconsistent")
     expected_class = (
@@ -250,10 +236,7 @@ def normalize_entry(entry: Mapping[str, Any]) -> dict[str, Any]:
     return result
 
 
-def validate_per_model_evidence(
-    output_dir: Path,
-    report: Mapping[str, Any],
-) -> None:
+def validate_per_model_evidence(output_dir: Path, report: Mapping[str, Any]) -> None:
     report_models = report.get("models")
     if not isinstance(report_models, list):
         raise ShortlistError("residency report models must be an array")
@@ -294,27 +277,19 @@ def build_shortlist(report: Mapping[str, Any]) -> dict[str, Any]:
         raise ShortlistError("residency workflow identity is incomplete")
     if workflow.get("ref") != "refs/heads/main":
         raise ShortlistError("residency evidence is not bound to trusted main")
-
-    profile = report.get("profile")
-    if profile != EXPECTED_PROFILE:
+    if report.get("profile") != EXPECTED_PROFILE:
         raise ShortlistError("report does not match the complete fixed H1 profile")
     if report.get("explicit_exclusions") != EXPECTED_EXCLUSIONS:
         raise ShortlistError("report exclusions do not match the H1 contract")
 
     gpus = _validate_gpu_snapshot(report.get("initial_gpu"), label="initial")
-    initial_cleanup = report.get("initial_cleanup")
-    if not isinstance(initial_cleanup, list):
+    if not isinstance(report.get("initial_cleanup"), list):
         raise ShortlistError("initial cleanup evidence is invalid")
-
     raw_models = report.get("models")
     if not isinstance(raw_models, list) or not raw_models:
         raise ShortlistError("residency report has no model results")
 
-    models = [
-        normalize_entry(entry)
-        for entry in raw_models
-        if isinstance(entry, Mapping)
-    ]
+    models = [normalize_entry(entry) for entry in raw_models if isinstance(entry, Mapping)]
     if len(models) != len(raw_models):
         raise ShortlistError("residency report contains a non-object model result")
     names = [entry["name"] for entry in models]
@@ -324,38 +299,31 @@ def build_shortlist(report: Mapping[str, Any]) -> dict[str, Any]:
 
     counts: dict[str, int] = {}
     for entry in models:
-        key = entry["classification"]
-        counts[key] = counts.get(key, 0) + 1
+        classification = entry["classification"]
+        counts[classification] = counts.get(classification, 0) + 1
     if report.get("classification_counts") != counts:
         raise ShortlistError("classification counts do not match model results")
 
     primary = sorted(
-        [entry for entry in models if entry["classification"] == "full_vram"],
+        (entry for entry in models if entry["classification"] == "full_vram"),
         key=lambda entry: entry["name"].casefold(),
     )
     partial = sorted(
-        [
-            entry
-            for entry in models
-            if entry["classification"] == "partial_vram"
-        ],
-        key=lambda entry: (
-            -entry["residency_ratio"],
-            entry["name"].casefold(),
-        ),
+        (entry for entry in models if entry["classification"] == "partial_vram"),
+        key=lambda entry: (-entry["residency_ratio"], entry["name"].casefold()),
     )
     deferred = sorted(
-        [
+        (
             entry
             for entry in models
             if entry["classification"] not in {"full_vram", "partial_vram"}
-        ],
+        ),
         key=lambda entry: entry["name"].casefold(),
     )
     return {
         "schema_version": SHORTLIST_SCHEMA,
         "status": "ready" if primary else "blocked_no_full_vram_models",
-        "profile": dict(profile),
+        "profile": dict(EXPECTED_PROFILE),
         "gpus": gpus,
         "counts": {
             "model_results": len(models),
@@ -428,12 +396,7 @@ def run(output_dir: Path) -> dict[str, Any]:
                     "sha256": sha256(path),
                     "size_bytes": path.stat().st_size,
                 }
-                for path in (
-                    report_path,
-                    manifest_path,
-                    shortlist_path,
-                    markdown_path,
-                )
+                for path in (report_path, manifest_path, shortlist_path, markdown_path)
             },
         },
     )
