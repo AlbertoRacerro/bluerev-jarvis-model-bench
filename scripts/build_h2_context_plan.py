@@ -11,6 +11,22 @@ SHORTLIST_SCHEMA = "bench.model-shortlist.v1"
 SHORTLIST_MANIFEST_SCHEMA = "bench.model-shortlist-manifest.v1"
 H2_PLAN_SCHEMA = "bench.h2-context-plan.v1"
 ALLOWED_CONTEXTS = (16384, 32768)
+EXPECTED_H1_PROFILE = {
+    "name": "h1-4k-residency",
+    "num_ctx": 4096,
+    "num_predict": 1,
+    "temperature": 0,
+    "seed": 4242,
+    "keep_alive": "5m",
+    "request_timeout_seconds": 420,
+}
+EXPECTED_SHORTLIST_ARTIFACTS = {
+    "report.json",
+    "manifest.json",
+    "shortlist.json",
+    "shortlist.md",
+}
+_SHA256_CHARS = frozenset("0123456789abcdef")
 
 
 class H2PlanError(RuntimeError):
@@ -45,14 +61,59 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _artifact_record(manifest: Mapping[str, Any], name: str) -> Mapping[str, Any]:
-    artifacts = manifest.get("artifacts")
-    if not isinstance(artifacts, Mapping):
-        raise H2PlanError("shortlist manifest artifacts are missing")
+def _valid_sha256(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(character in _SHA256_CHARS for character in value)
+    )
+
+
+def _validate_artifact_record(
+    output_dir: Path,
+    artifacts: Mapping[str, Any],
+    name: str,
+) -> None:
     record = artifacts.get(name)
     if not isinstance(record, Mapping):
         raise H2PlanError(f"shortlist manifest lacks {name}")
-    return record
+    path = output_dir / name
+    try:
+        path.resolve().relative_to(output_dir.resolve())
+    except ValueError as exc:
+        raise H2PlanError(f"shortlist artifact path escapes output: {name}") from exc
+    if not path.is_file():
+        raise H2PlanError(f"shortlist artifact is missing: {name}")
+    if record.get("sha256") != sha256(path):
+        raise H2PlanError(f"shortlist digest mismatch: {name}")
+    if record.get("size_bytes") != path.stat().st_size:
+        raise H2PlanError(f"shortlist size mismatch: {name}")
+
+
+def _validate_workflow_binding(source: Mapping[str, Any]) -> None:
+    workflow = source.get("workflow")
+    if not isinstance(workflow, Mapping) or any(
+        not workflow.get(field)
+        for field in ("run_id", "run_attempt", "event_name", "sha", "ref")
+    ):
+        raise H2PlanError("shortlist workflow binding is incomplete")
+    if workflow.get("ref") != "refs/heads/main":
+        raise H2PlanError("shortlist is not bound to trusted main")
+
+
+def _candidate_identity(entry: Any, expected_class: str) -> tuple[str, str]:
+    if not isinstance(entry, Mapping):
+        raise H2PlanError(f"{expected_class} candidate must be an object")
+    name = entry.get("name")
+    digest = entry.get("digest")
+    classification = entry.get("classification")
+    if not isinstance(name, str) or not name:
+        raise H2PlanError(f"{expected_class} candidate name is invalid")
+    if not _valid_sha256(digest):
+        raise H2PlanError(f"{name} digest is invalid")
+    if classification != expected_class:
+        raise H2PlanError(f"{name} is not a {expected_class} candidate")
+    return name, digest
 
 
 def validate_shortlist_binding(
@@ -61,69 +122,84 @@ def validate_shortlist_binding(
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     shortlist_path = output_dir / "shortlist.json"
     manifest_path = output_dir / "shortlist-manifest.json"
-    if (
-        len(expected_manifest_sha256) != 64
-        or any(
-            character not in "0123456789abcdef"
-            for character in expected_manifest_sha256
-        )
-    ):
+    if not _valid_sha256(expected_manifest_sha256):
         raise H2PlanError("expected shortlist manifest digest is invalid")
     if sha256(manifest_path) != expected_manifest_sha256:
         raise H2PlanError("shortlist manifest root digest mismatch")
 
     shortlist = load_json(shortlist_path)
     manifest = load_json(manifest_path)
-
     if shortlist.get("schema_version") != SHORTLIST_SCHEMA:
         raise H2PlanError("unsupported shortlist schema")
     if manifest.get("schema_version") != SHORTLIST_MANIFEST_SCHEMA:
         raise H2PlanError("unsupported shortlist manifest schema")
 
-    record = _artifact_record(manifest, "shortlist.json")
-    if record.get("sha256") != sha256(shortlist_path):
-        raise H2PlanError("shortlist digest mismatch: shortlist.json")
-    if record.get("size_bytes") != shortlist_path.stat().st_size:
-        raise H2PlanError("shortlist size mismatch: shortlist.json")
+    artifacts = manifest.get("artifacts")
+    if not isinstance(artifacts, Mapping):
+        raise H2PlanError("shortlist manifest artifacts are missing")
+    if set(artifacts) != EXPECTED_SHORTLIST_ARTIFACTS:
+        raise H2PlanError("shortlist manifest inventory mismatch")
+    for name in sorted(EXPECTED_SHORTLIST_ARTIFACTS):
+        _validate_artifact_record(output_dir, artifacts, name)
 
+    if shortlist.get("profile") != EXPECTED_H1_PROFILE:
+        raise H2PlanError("shortlist profile is not the complete fixed H1 contract")
     source = shortlist.get("source")
     if not isinstance(source, Mapping):
         raise H2PlanError("shortlist source binding is missing")
+    _validate_workflow_binding(source)
+
     report_sha = source.get("report_sha256")
     residency_manifest_sha = source.get("residency_manifest_sha256")
-    if not isinstance(report_sha, str) or len(report_sha) != 64:
-        raise H2PlanError("shortlist report digest is invalid")
-    if not isinstance(residency_manifest_sha, str) or len(residency_manifest_sha) != 64:
-        raise H2PlanError("shortlist residency manifest digest is invalid")
+    if report_sha != sha256(output_dir / "report.json"):
+        raise H2PlanError("shortlist report source digest mismatch")
+    if residency_manifest_sha != sha256(output_dir / "manifest.json"):
+        raise H2PlanError("shortlist residency manifest source digest mismatch")
 
     status = shortlist.get("status")
     primary = shortlist.get("primary_h2")
     partial = shortlist.get("secondary_partial_vram")
+    deferred = shortlist.get("deferred")
+    counts = shortlist.get("counts")
     if status not in {"ready", "blocked_no_full_vram_models"}:
         raise H2PlanError("shortlist status is invalid")
-    if not isinstance(primary, list) or not isinstance(partial, list):
+    if not all(isinstance(group, list) for group in (primary, partial, deferred)):
         raise H2PlanError("shortlist candidate groups are invalid")
+    if not isinstance(counts, Mapping):
+        raise H2PlanError("shortlist counts are missing")
+    expected_counts = {
+        "model_results": len(primary) + len(partial) + len(deferred),
+        "primary_h2": len(primary),
+        "secondary_partial_vram": len(partial),
+        "deferred": len(deferred),
+    }
+    if dict(counts) != expected_counts:
+        raise H2PlanError("shortlist counts do not match candidate groups")
     if status == "ready" and not primary:
         raise H2PlanError("ready shortlist has no primary H2 models")
     if status == "blocked_no_full_vram_models" and primary:
         raise H2PlanError("blocked shortlist contains primary H2 models")
 
+    identities: list[tuple[str, str]] = []
+    identities.extend(_candidate_identity(entry, "full_vram") for entry in primary)
+    identities.extend(_candidate_identity(entry, "partial_vram") for entry in partial)
+    for entry in deferred:
+        if not isinstance(entry, Mapping):
+            raise H2PlanError("deferred candidate must be an object")
+        classification = entry.get("classification")
+        if classification not in {"cpu_only", "load_failed", "excluded"}:
+            raise H2PlanError("deferred candidate classification is invalid")
+        name = entry.get("name")
+        digest = entry.get("digest")
+        if not isinstance(name, str) or not name or not _valid_sha256(digest):
+            raise H2PlanError("deferred candidate identity is invalid")
+        identities.append((name, digest))
+    names = [name for name, _digest in identities]
+    digests = [digest for _name, digest in identities]
+    if len(names) != len(set(names)) or len(digests) != len(set(digests)):
+        raise H2PlanError("shortlist candidate identities are not unique")
+
     return shortlist, manifest
-
-
-def _normalize_candidate(entry: Any) -> dict[str, str]:
-    if not isinstance(entry, Mapping):
-        raise H2PlanError("primary H2 candidate must be an object")
-    name = entry.get("name")
-    digest = entry.get("digest")
-    classification = entry.get("classification")
-    if not isinstance(name, str) or not name:
-        raise H2PlanError("primary H2 candidate name is invalid")
-    if not isinstance(digest, str) or not digest:
-        raise H2PlanError(f"{name} digest is invalid")
-    if classification != "full_vram":
-        raise H2PlanError(f"{name} is not a full-VRAM candidate")
-    return {"name": name, "digest": digest}
 
 
 def build_plan(
@@ -134,13 +210,13 @@ def build_plan(
         output_dir,
         expected_manifest_sha256,
     )
-    primary = [_normalize_candidate(entry) for entry in shortlist["primary_h2"]]
-    names = [entry["name"] for entry in primary]
-    digests = [entry["digest"] for entry in primary]
-    if len(names) != len(set(names)) or len(digests) != len(set(digests)):
-        raise H2PlanError("primary H2 candidates are not unique")
-
-    source = shortlist["source"]
+    primary = [
+        {"name": name, "digest": digest}
+        for name, digest in (
+            _candidate_identity(entry, "full_vram")
+            for entry in shortlist["primary_h2"]
+        )
+    ]
     cases = [
         {
             "candidate": candidate,
@@ -156,6 +232,7 @@ def build_plan(
         }
         for candidate in sorted(primary, key=lambda item: item["name"].casefold())
     ]
+    source = shortlist["source"]
     return {
         "schema_version": H2_PLAN_SCHEMA,
         "status": "ready" if primary else "blocked_no_full_vram_models",
@@ -176,6 +253,7 @@ def build_plan(
             ),
             "report_sha256": source["report_sha256"],
             "residency_manifest_sha256": source["residency_manifest_sha256"],
+            "workflow": source["workflow"],
         },
         "profiles": list(ALLOWED_CONTEXTS),
         "cases": cases,
@@ -206,6 +284,8 @@ def run(output_dir: Path, expected_manifest_sha256: str) -> dict[str, Any]:
                     "size_bytes": (output_dir / name).stat().st_size,
                 }
                 for name in (
+                    "report.json",
+                    "manifest.json",
                     "shortlist.json",
                     "shortlist-manifest.json",
                     "h2-context-plan.json",

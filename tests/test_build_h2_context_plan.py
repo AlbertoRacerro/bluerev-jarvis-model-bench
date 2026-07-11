@@ -30,31 +30,67 @@ class H2ContextPlanTests(unittest.TestCase):
         primary = primary if primary is not None else [
             {
                 "name": "model-a",
-                "digest": "sha256:model-a",
+                "digest": "a" * 64,
                 "classification": "full_vram",
                 "residency_ratio": 1.0,
             }
         ]
+        report = {"schema_version": "bench.model-residency.v1"}
+        residency_manifest = {
+            "schema_version": "bench.model-residency-manifest.v1"
+        }
+        write_json(root / "report.json", report)
+        write_json(root / "manifest.json", residency_manifest)
         shortlist = {
             "schema_version": "bench.model-shortlist.v1",
             "status": "ready" if primary else "blocked_no_full_vram_models",
+            "profile": {
+                "name": "h1-4k-residency",
+                "num_ctx": 4096,
+                "num_predict": 1,
+                "temperature": 0,
+                "seed": 4242,
+                "keep_alive": "5m",
+                "request_timeout_seconds": 420,
+            },
             "source": {
-                "report_sha256": "a" * 64,
-                "residency_manifest_sha256": "b" * 64,
+                "report_sha256": digest(root / "report.json"),
+                "residency_manifest_sha256": digest(root / "manifest.json"),
+                "workflow": {
+                    "run_id": "1",
+                    "run_attempt": "1",
+                    "event_name": "workflow_dispatch",
+                    "sha": "abc",
+                    "ref": "refs/heads/main",
+                },
+            },
+            "counts": {
+                "model_results": len(primary),
+                "primary_h2": len(primary),
+                "secondary_partial_vram": 0,
+                "deferred": 0,
             },
             "primary_h2": primary,
             "secondary_partial_vram": [],
+            "deferred": [],
         }
         write_json(root / "shortlist.json", shortlist)
+        (root / "shortlist.md").write_text("# shortlist\n", encoding="utf-8")
         write_json(
             root / "shortlist-manifest.json",
             {
                 "schema_version": "bench.model-shortlist-manifest.v1",
                 "artifacts": {
-                    "shortlist.json": {
-                        "sha256": digest(root / "shortlist.json"),
-                        "size_bytes": (root / "shortlist.json").stat().st_size,
+                    name: {
+                        "sha256": digest(root / name),
+                        "size_bytes": (root / name).stat().st_size,
                     }
+                    for name in (
+                        "report.json",
+                        "manifest.json",
+                        "shortlist.json",
+                        "shortlist.md",
+                    )
                 },
             },
         )
@@ -79,6 +115,19 @@ class H2ContextPlanTests(unittest.TestCase):
             )
             self.assertTrue(plan["cases"][0]["contexts"][0]["required"])
             self.assertFalse(plan["cases"][0]["contexts"][1]["required"])
+            manifest = json.loads(
+                (root / "h2-context-plan-manifest.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(
+                set(manifest["artifacts"]),
+                {
+                    "report.json",
+                    "manifest.json",
+                    "shortlist.json",
+                    "shortlist-manifest.json",
+                    "h2-context-plan.json",
+                },
+            )
 
     def test_blocks_without_full_vram_models(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -121,6 +170,38 @@ class H2ContextPlanTests(unittest.TestCase):
             with self.assertRaisesRegex(H2PlanError, "root digest mismatch"):
                 build_plan(root, trusted_manifest_digest)
 
+    def test_rejects_incomplete_manifest_inventory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.make_fixture(root)
+            manifest = json.loads(
+                (root / "shortlist-manifest.json").read_text(encoding="utf-8")
+            )
+            del manifest["artifacts"]["report.json"]
+            write_json(root / "shortlist-manifest.json", manifest)
+            with self.assertRaisesRegex(H2PlanError, "inventory mismatch"):
+                build_plan(root, digest(root / "shortlist-manifest.json"))
+
+    def test_rejects_source_digest_not_matching_bound_report(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.make_fixture(root)
+            shortlist = json.loads(
+                (root / "shortlist.json").read_text(encoding="utf-8")
+            )
+            shortlist["source"]["report_sha256"] = "f" * 64
+            write_json(root / "shortlist.json", shortlist)
+            manifest = json.loads(
+                (root / "shortlist-manifest.json").read_text(encoding="utf-8")
+            )
+            manifest["artifacts"]["shortlist.json"] = {
+                "sha256": digest(root / "shortlist.json"),
+                "size_bytes": (root / "shortlist.json").stat().st_size,
+            }
+            write_json(root / "shortlist-manifest.json", manifest)
+            with self.assertRaisesRegex(H2PlanError, "report source digest mismatch"):
+                build_plan(root, digest(root / "shortlist-manifest.json"))
+
     def test_rejects_partial_vram_promotion(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -129,15 +210,12 @@ class H2ContextPlanTests(unittest.TestCase):
                 primary=[
                     {
                         "name": "partial",
-                        "digest": "sha256:partial",
+                        "digest": "b" * 64,
                         "classification": "partial_vram",
                     }
                 ],
             )
-            with self.assertRaisesRegex(
-                H2PlanError,
-                "not a full-VRAM candidate",
-            ):
+            with self.assertRaisesRegex(H2PlanError, "not a full_vram candidate"):
                 build_plan(root, digest(root / "shortlist-manifest.json"))
 
     def test_rejects_duplicate_candidate_identity(self) -> None:
@@ -145,7 +223,7 @@ class H2ContextPlanTests(unittest.TestCase):
             root = Path(tmp)
             duplicate = {
                 "name": "model-a",
-                "digest": "sha256:model-a",
+                "digest": "a" * 64,
                 "classification": "full_vram",
             }
             self.make_fixture(root, primary=[duplicate, dict(duplicate)])
