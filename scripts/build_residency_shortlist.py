@@ -11,6 +11,16 @@ from typing import Any
 REPORT_SCHEMA = "bench.model-residency.v1"
 MANIFEST_SCHEMA = "bench.model-residency-manifest.v1"
 SHORTLIST_SCHEMA = "bench.model-shortlist.v1"
+EXPECTED_PROFILE = {
+    "name": "h1-4k-residency",
+    "num_ctx": 4096,
+    "num_predict": 1,
+    "temperature": 0,
+    "seed": 4242,
+    "keep_alive": "5m",
+    "request_timeout_seconds": 420,
+}
+EXPECTED_EXCLUSIONS = ["gemma4:27b"]
 VALID_CLASSES = {
     "full_vram",
     "partial_vram",
@@ -90,6 +100,47 @@ def validate_manifest(output_dir: Path, manifest: Mapping[str, Any]) -> None:
             raise ShortlistError(f"residency size mismatch: {relative}")
 
 
+def _validate_gpu_snapshot(snapshot: Any, *, label: str) -> list[dict[str, Any]]:
+    if not isinstance(snapshot, Mapping) or snapshot.get("ok") is not True:
+        raise ShortlistError(f"{label} GPU snapshot is unsuccessful")
+    gpus = snapshot.get("gpus")
+    if not isinstance(gpus, list) or not gpus:
+        raise ShortlistError(f"{label} GPU snapshot has no devices")
+    normalized: list[dict[str, Any]] = []
+    indexes: set[int] = set()
+    for gpu in gpus:
+        if not isinstance(gpu, Mapping):
+            raise ShortlistError(f"{label} GPU entry is invalid")
+        index = gpu.get("index")
+        name = gpu.get("name")
+        total = gpu.get("memory_total_mib")
+        used = gpu.get("memory_used_mib")
+        utilization = gpu.get("utilization_gpu_percent")
+        if (
+            not isinstance(index, int)
+            or isinstance(index, bool)
+            or index < 0
+            or index in indexes
+            or not isinstance(name, str)
+            or not name
+            or not isinstance(total, int)
+            or isinstance(total, bool)
+            or total <= 0
+            or not isinstance(used, int)
+            or isinstance(used, bool)
+            or used < 0
+            or used > total
+            or not isinstance(utilization, int)
+            or isinstance(utilization, bool)
+            or utilization < 0
+            or utilization > 100
+        ):
+            raise ShortlistError(f"{label} GPU metrics are invalid")
+        indexes.add(index)
+        normalized.append(dict(gpu))
+    return normalized
+
+
 def normalize_entry(entry: Mapping[str, Any]) -> dict[str, Any]:
     model = entry.get("model")
     if not isinstance(model, Mapping):
@@ -107,6 +158,9 @@ def normalize_entry(entry: Mapping[str, Any]) -> dict[str, Any]:
     if classification not in VALID_CLASSES:
         raise ShortlistError(f"{name} has unsupported classification")
 
+    if entry.get("profile") != EXPECTED_PROFILE:
+        raise ShortlistError(f"{name} profile does not match fixed H1 contract")
+
     result: dict[str, Any] = {
         "name": name,
         "digest": digest,
@@ -123,11 +177,16 @@ def normalize_entry(entry: Mapping[str, Any]) -> dict[str, Any]:
         or cleanup.get("verified_absent") is not True
     ):
         raise ShortlistError(f"{name} cleanup was not verified")
+    _validate_gpu_snapshot(entry.get("gpu_before"), label=f"{name} before-load")
+    _validate_gpu_snapshot(entry.get("gpu_loaded"), label=f"{name} loaded")
+
     duration = entry.get("probe_duration_seconds")
     if (
         not isinstance(duration, (int, float))
         or isinstance(duration, bool)
+        or not math.isfinite(float(duration))
         or duration < 0
+        or duration > EXPECTED_PROFILE["request_timeout_seconds"] + 120
     ):
         raise ShortlistError(f"{name} has invalid probe duration")
     result["probe_duration_seconds"] = float(duration)
@@ -138,9 +197,21 @@ def normalize_entry(entry: Mapping[str, Any]) -> dict[str, Any]:
         result["error"] = dict(entry["error"])
         return result
 
+    generate = entry.get("ollama_generate")
+    if not isinstance(generate, Mapping) or generate.get("done") is not True:
+        raise ShortlistError(f"{name} lacks completed Ollama generation evidence")
+
     process = entry.get("ollama_ps_entry")
     if not isinstance(process, Mapping):
         raise ShortlistError(f"{name} lacks Ollama residency evidence")
+    if process.get("name") not in {None, name} and process.get("model") not in {None, name}:
+        raise ShortlistError(f"{name} Ollama process identity is inconsistent")
+    process_digest = process.get("digest")
+    if process_digest is not None and process_digest != digest:
+        raise ShortlistError(f"{name} Ollama process digest is inconsistent")
+    if process.get("context_length") != EXPECTED_PROFILE["num_ctx"]:
+        raise ShortlistError(f"{name} Ollama context length is not fixed H1 4K")
+
     size = process.get("size")
     size_vram = process.get("size_vram")
     ratio = entry.get("residency_ratio")
@@ -155,7 +226,7 @@ def normalize_entry(entry: Mapping[str, Any]) -> dict[str, Any]:
     expected_ratio = size_vram / size
     if not isinstance(ratio, (int, float)) or isinstance(ratio, bool):
         raise ShortlistError(f"{name} has invalid residency ratio")
-    if not math.isclose(
+    if not math.isfinite(float(ratio)) or not math.isclose(
         float(ratio),
         expected_ratio,
         rel_tol=1e-9,
@@ -214,16 +285,27 @@ def build_shortlist(report: Mapping[str, Any]) -> dict[str, Any]:
         raise ShortlistError("unsupported residency report schema")
     if report.get("infrastructure_error") is not None:
         raise ShortlistError("residency report contains an infrastructure error")
-    gpu = report.get("initial_gpu")
-    if (
-        not isinstance(gpu, Mapping)
-        or gpu.get("ok") is not True
-        or not gpu.get("gpus")
+
+    workflow = report.get("workflow")
+    if not isinstance(workflow, Mapping) or any(
+        not workflow.get(field)
+        for field in ("run_id", "run_attempt", "event_name", "sha", "ref")
     ):
-        raise ShortlistError("successful GPU evidence is missing")
+        raise ShortlistError("residency workflow identity is incomplete")
+    if workflow.get("ref") != "refs/heads/main":
+        raise ShortlistError("residency evidence is not bound to trusted main")
+
     profile = report.get("profile")
-    if not isinstance(profile, Mapping) or profile.get("num_ctx") != 4096:
-        raise ShortlistError("report is not the fixed H1 4K profile")
+    if profile != EXPECTED_PROFILE:
+        raise ShortlistError("report does not match the complete fixed H1 profile")
+    if report.get("explicit_exclusions") != EXPECTED_EXCLUSIONS:
+        raise ShortlistError("report exclusions do not match the H1 contract")
+
+    gpus = _validate_gpu_snapshot(report.get("initial_gpu"), label="initial")
+    initial_cleanup = report.get("initial_cleanup")
+    if not isinstance(initial_cleanup, list):
+        raise ShortlistError("initial cleanup evidence is invalid")
+
     raw_models = report.get("models")
     if not isinstance(raw_models, list) or not raw_models:
         raise ShortlistError("residency report has no model results")
@@ -274,7 +356,7 @@ def build_shortlist(report: Mapping[str, Any]) -> dict[str, Any]:
         "schema_version": SHORTLIST_SCHEMA,
         "status": "ready" if primary else "blocked_no_full_vram_models",
         "profile": dict(profile),
-        "gpus": gpu["gpus"],
+        "gpus": gpus,
         "counts": {
             "model_results": len(models),
             "primary_h2": len(primary),
