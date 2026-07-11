@@ -20,14 +20,51 @@ permissions:
   contents: read
   issues: write
 
-concurrency:
-  group: local-benchmark-runner
-  cancel-in-progress: false
-  queue: max
-
 jobs:
+  announce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Publish queued lifecycle metadata
+        uses: actions/github-script@v7
+        env:
+          INBOX_ISSUE: "24"
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        with:
+          script: |
+            const payload = {
+              schema_version: "bench.workflow-lifecycle.v1",
+              lifecycle: "queued",
+              run_id: Number(context.runId),
+              run_attempt: Number(process.env.RUN_ATTEMPT),
+              workflow: context.workflow,
+              event_name: context.eventName,
+              sha: context.sha,
+              ref: context.ref,
+              html_url:
+                `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            };
+            const body = [
+              "<!-- bench-workflow-lifecycle-v1 -->",
+              "```json",
+              JSON.stringify(payload, null, 2),
+              "```",
+            ].join("\n");
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number(process.env.INBOX_ISSUE),
+              body,
+            });
+
   residency:
+    needs: announce
     if: github.ref == 'refs/heads/main'
+    concurrency:
+      group: local-benchmark-runner
+      cancel-in-progress: false
+      queue: max
     runs-on: [self-hosted, Windows, X64, bluerev-bench]
     timeout-minutes: 180
 
