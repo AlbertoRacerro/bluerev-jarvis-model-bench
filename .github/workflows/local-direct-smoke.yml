@@ -3,8 +3,7 @@ name: Local direct-model smoke
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
       - ".github/workflows/local-direct-smoke.yml"
       - "candidates/models.local.json"
@@ -13,7 +12,6 @@ on:
       - "scripts/preflight.py"
       - "scripts/run_direct_smoke*.py"
       - "src/bench/**"
-      - "tests/test_benchmark_runtime.py"
       - "tests/test_preflight.py"
       - "tests/test_direct_execution*.py"
       - "tests/test_run_direct_smoke*.py"
@@ -28,9 +26,8 @@ jobs:
     timeout-minutes: 5
     continue-on-error: true
     steps:
-      - name: Publish queued lifecycle metadata
+      - uses: actions/github-script@v7
         continue-on-error: true
-        uses: actions/github-script@v7
         env:
           INBOX_ISSUE: "24"
           RUN_ATTEMPT: ${{ github.run_attempt }}
@@ -42,10 +39,8 @@ jobs:
               run_id: Number(context.runId),
               run_attempt: Number(process.env.RUN_ATTEMPT),
               workflow: context.workflow,
-              event_name: context.eventName,
               sha: context.sha,
               ref: context.ref,
-              html_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
             };
             await github.rest.issues.createComment({
               owner: context.repo.owner,
@@ -64,25 +59,22 @@ jobs:
     timeout-minutes: 25
     defaults:
       run:
-        shell: pwsh
+        shell: powershell
 
     steps:
-      - name: Check out trusted default branch
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: main
           persist-credentials: false
           clean: true
 
-      - name: Capture tests, preflight, and bounded direct execution
+      - name: Capture tests, preflight, and bounded execution
         run: |
-          $ErrorActionPreference = 'Stop'
           $env:PYTHONUTF8 = '1'
           $env:PYTHONIOENCODING = 'utf-8'
-          & python -m scripts.run_direct_smoke_v3_job capture
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m scripts.run_direct_smoke_v3_job capture
 
-      - name: Upload immutable direct-smoke artifact
+      - name: Upload immutable artifact
         id: upload
         if: always()
         uses: actions/upload-artifact@v4
@@ -94,12 +86,9 @@ jobs:
 
       - name: Enforce infrastructure and evidence gate
         if: always()
-        run: |
-          $ErrorActionPreference = 'Stop'
-          & python -m scripts.run_direct_smoke_v3_job enforce
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        run: python -m scripts.run_direct_smoke_v3_job enforce
 
-      - name: Publish structured result to automation inbox
+      - name: Publish structured result
         if: always()
         continue-on-error: true
         uses: actions/github-script@v7
@@ -115,16 +104,13 @@ jobs:
           script: |
             const fs = require("fs");
             let summary = null;
-            let summaryError = null;
+            let error = null;
             try { summary = JSON.parse(fs.readFileSync(process.env.SUMMARY_PATH, "utf8")); }
-            catch (error) { summaryError = `${error.name}: ${error.message}`; }
-            const execution = summary?.execution ?? {};
+            catch (caught) { error = `${caught.name}: ${caught.message}`; }
             const payload = {
               schema_version: "bench.workflow-inbox.v2",
               run_id: Number(context.runId),
               run_attempt: Number(process.env.RUN_ATTEMPT),
-              workflow: context.workflow,
-              event_name: context.eventName,
               sha: context.sha,
               ref: context.ref,
               job_status: process.env.JOB_STATUS,
@@ -136,22 +122,8 @@ jobs:
               tests: summary?.tests ?? null,
               inventory: summary?.inventory ?? null,
               sanitization: summary?.sanitization ?? null,
-              execution: {
-                infrastructure_exit_code: execution.infrastructure_exit_code ?? null,
-                execution_completed: execution.execution_completed ?? null,
-                candidate_id: execution.candidate_id ?? null,
-                case_id: execution.case_id ?? null,
-                candidate_result_status: execution.candidate_result_status ?? null,
-                candidate_passed: execution.candidate_passed ?? null,
-                termination_reason: execution.termination_reason ?? null,
-                eval_count: execution.eval_count ?? null,
-                num_predict: execution.num_predict ?? null,
-                case_definition_sha256: execution.case_definition_sha256 ?? null,
-                manifest_sha256: execution.manifest_sha256 ?? null,
-                skipped_reason: execution.skipped_reason ?? null,
-                error: execution.error ?? null,
-              },
-              summary_error: summaryError,
+              execution: summary?.execution ?? null,
+              summary_error: error,
             };
             await github.rest.issues.createComment({
               owner: context.repo.owner,
