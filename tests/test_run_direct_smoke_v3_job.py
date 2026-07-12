@@ -22,6 +22,7 @@ class DirectSmokeV3JobGateTests(unittest.TestCase):
             json.dumps(
                 {
                     "schema_version": "bench.direct-smoke-job.v3",
+                    "test_scope": "direct-contract",
                     "tests": {"exit_code": 0},
                     "inventory": {"exit_code": 0},
                     "execution": {
@@ -87,6 +88,7 @@ class DirectSmokeV3JobGateTests(unittest.TestCase):
                 json.dumps(
                     {
                         "schema_version": "bench.direct-smoke-job.v3",
+                        "test_scope": "direct-contract",
                         "tests": {"exit_code": 1},
                         "inventory": {"exit_code": 0},
                         "execution": {
