@@ -6,7 +6,14 @@ from unittest import mock
 import unittest
 from pathlib import Path
 
-from scripts.run_direct_smoke_v3_job import EXPECTED_PLAN_SHA256, h2_oneshot_enabled
+from scripts.run_direct_smoke_v3_job import (
+    BATCH_COUNT,
+    BATCH_SIZE,
+    EXPECTED_PLAN_SHA256,
+    FIRST_BATCH_ATTEMPT,
+    h2_batch_index,
+    h2_oneshot_enabled,
+)
 from scripts import run_h2_context_bound_job as bound
 
 
@@ -20,11 +27,17 @@ class H2OneShotBridgeTests(unittest.TestCase):
                         "schema_version": "bench.h2-primary-oneshot.v1",
                         "enabled": True,
                         "plan_sha256": EXPECTED_PLAN_SHA256,
+                        "first_batch_attempt": FIRST_BATCH_ATTEMPT,
+                        "batch_size": BATCH_SIZE,
+                        "batch_count": BATCH_COUNT,
                     }
                 ),
                 encoding="utf-8",
             )
-            with mock.patch.dict("os.environ", {"GITHUB_RUN_ID": "29106127334"}):
+            with mock.patch.dict(
+                "os.environ",
+                {"GITHUB_RUN_ID": "29106127334", "GITHUB_RUN_ATTEMPT": "7"},
+            ):
                 self.assertTrue(h2_oneshot_enabled(path))
 
     def test_rejects_extra_fields_and_wrong_digest(self) -> None:
@@ -37,12 +50,18 @@ class H2OneShotBridgeTests(unittest.TestCase):
                 "extra": True,
             }
             path.write_text(json.dumps(value), encoding="utf-8")
-            with mock.patch.dict("os.environ", {"GITHUB_RUN_ID": "29106127334"}):
+            with mock.patch.dict(
+                "os.environ",
+                {"GITHUB_RUN_ID": "29106127334", "GITHUB_RUN_ATTEMPT": "7"},
+            ):
                 self.assertFalse(h2_oneshot_enabled(path))
 
     def test_missing_marker_preserves_direct_smoke_path(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            with mock.patch.dict("os.environ", {"GITHUB_RUN_ID": "29106127334"}):
+            with mock.patch.dict(
+                "os.environ",
+                {"GITHUB_RUN_ID": "29106127334", "GITHUB_RUN_ATTEMPT": "7"},
+            ):
                 self.assertFalse(h2_oneshot_enabled(Path(tmp) / "missing.json"))
 
     def test_rejects_any_other_workflow_run(self) -> None:
@@ -54,12 +73,39 @@ class H2OneShotBridgeTests(unittest.TestCase):
                         "schema_version": "bench.h2-primary-oneshot.v1",
                         "enabled": True,
                         "plan_sha256": EXPECTED_PLAN_SHA256,
+                        "first_batch_attempt": FIRST_BATCH_ATTEMPT,
+                        "batch_size": BATCH_SIZE,
+                        "batch_count": BATCH_COUNT,
                     }
                 ),
                 encoding="utf-8",
             )
-            with mock.patch.dict("os.environ", {"GITHUB_RUN_ID": "other"}):
+            with mock.patch.dict(
+                "os.environ",
+                {"GITHUB_RUN_ID": "other", "GITHUB_RUN_ATTEMPT": "7"},
+            ):
                 self.assertFalse(h2_oneshot_enabled(path))
+
+    def test_maps_attempts_seven_through_ten_to_four_batches(self) -> None:
+        for attempt, expected in ((7, 0), (8, 1), (9, 2), (10, 3)):
+            with self.subTest(attempt=attempt):
+                with mock.patch.dict(
+                    "os.environ",
+                    {
+                        "GITHUB_RUN_ID": "29106127334",
+                        "GITHUB_RUN_ATTEMPT": str(attempt),
+                    },
+                ):
+                    self.assertEqual(h2_batch_index(), expected)
+        for attempt in (6, 11):
+            with mock.patch.dict(
+                "os.environ",
+                {
+                    "GITHUB_RUN_ID": "29106127334",
+                    "GITHUB_RUN_ATTEMPT": str(attempt),
+                },
+            ):
+                self.assertIsNone(h2_batch_index())
 
 
 class H2CheckoutBindingTests(unittest.TestCase):
