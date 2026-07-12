@@ -34,7 +34,23 @@ jobs:
         run: |
           $env:PYTHONUTF8 = '1'
           $env:PYTHONIOENCODING = 'utf-8'
-          python -m scripts.run_deterministic_ci capture
+          $artifactDir = Join-Path $PWD 'artifacts\deterministic-ci'
+          New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+          $stdoutPath = Join-Path $artifactDir 'launcher.stdout.log'
+          $stderrPath = Join-Path $artifactDir 'launcher.stderr.log'
+          $global:LASTEXITCODE = 0
+          $previousErrorAction = $ErrorActionPreference
+          $ErrorActionPreference = 'Continue'
+          python -m scripts.run_deterministic_ci capture 1> $stdoutPath 2> $stderrPath
+          $captureExit = $LASTEXITCODE
+          $ErrorActionPreference = $previousErrorAction
+          Set-Content -Path (Join-Path $artifactDir 'launcher.exit') -Value $captureExit -Encoding ascii
+          if (Test-Path $stdoutPath) { Get-Content $stdoutPath | Write-Host }
+          if (Test-Path $stderrPath) { Get-Content $stderrPath | Write-Host }
+          if ($captureExit -ne 0) {
+            Write-Host "::error::deterministic capture launcher exited $captureExit"
+          }
+          exit 0
 
       - name: Upload deterministic evidence
         id: upload
@@ -59,6 +75,7 @@ jobs:
           INBOX_ISSUE: "24"
           STATUS_ISSUE: "49"
           SUMMARY_PATH: artifacts/deterministic-ci/summary.json
+          LAUNCHER_EXIT_PATH: artifacts/deterministic-ci/launcher.exit
           JOB_STATUS: ${{ job.status }}
           RUN_ATTEMPT: ${{ github.run_attempt }}
           CAPTURE_OUTCOME: ${{ steps.capture.outcome }}
@@ -71,10 +88,13 @@ jobs:
             const updateLatestStatus = require('./.github/scripts/update_latest_status.js');
             let summary = null;
             let summaryError = null;
+            let launcherExit = null;
             try { summary = JSON.parse(fs.readFileSync(process.env.SUMMARY_PATH, 'utf8')); }
             catch (error) { summaryError = `${error.name}: ${error.message}`; }
+            try { launcherExit = Number(fs.readFileSync(process.env.LAUNCHER_EXIT_PATH, 'utf8').trim()); }
+            catch (_) { launcherExit = null; }
             const payload = {
-              schema_version: 'bench.deterministic-ci-inbox.v1',
+              schema_version: 'bench.deterministic-ci-inbox.v2',
               run_id: Number(context.runId),
               run_attempt: Number(process.env.RUN_ATTEMPT),
               workflow: context.workflow,
@@ -86,10 +106,12 @@ jobs:
                 capture: process.env.CAPTURE_OUTCOME,
                 enforce: process.env.ENFORCE_OUTCOME,
               },
+              launcher_exit: launcherExit,
               artifact: {
                 url: process.env.ARTIFACT_URL || null,
                 digest: process.env.ARTIFACT_DIGEST || null,
               },
+              capture_error: summary?.capture_error ?? null,
               compileall: summary?.compileall ?? null,
               tests: summary?.tests ?? null,
               sanitization: summary?.sanitization ?? null,
@@ -107,5 +129,5 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: Number(process.env.INBOX_ISSUE),
-              body: `<!-- bench-deterministic-ci-v1 -->\n\`\`\`json\n${JSON.stringify(payload, null, 2)}\n\`\`\``,
+              body: `<!-- bench-deterministic-ci-v2 -->\n\`\`\`json\n${JSON.stringify(payload, null, 2)}\n\`\`\``,
             });
