@@ -1,0 +1,39 @@
+name: H3 branch validation
+
+on:
+  push:
+    branches: [bench/h3-primary-32k]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          clean: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile remote H3 blobs
+        run: |
+          python -m py_compile \
+            scripts/probe_h3_context.py \
+            scripts/run_h3_context_job.py \
+            scripts/run_h3_context_bound_job.py \
+            scripts/run_direct_smoke_v3_job.py \
+            scripts/run_direct_smoke_v3_job_base.py \
+            tests/test_probe_h3_context.py \
+            tests/test_run_h3_context_job.py \
+            tests/test_h3_oneshot_bridge.py
+      - name: Run focused remote tests
+        run: |
+          python -m unittest -v \
+            tests.test_probe_h3_context \
+            tests.test_run_h3_context_job \
+            tests.test_h3_oneshot_bridge \
+            tests.test_run_direct_smoke_v3_job
