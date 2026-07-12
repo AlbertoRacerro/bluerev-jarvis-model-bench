@@ -29,43 +29,14 @@ jobs:
           persist-credentials: false
           clean: true
 
+      - name: Prepare deterministic evidence directory
+        run: |
+          New-Item -ItemType Directory -Force -Path 'artifacts\deterministic-ci' | Out-Null
+          Set-Content -Path 'artifacts\deterministic-ci\workflow-step-started.txt' -Value 'started' -Encoding ascii
+
       - name: Capture compile and deterministic tests
         id: capture
-        run: |
-          $env:PYTHONUTF8 = '1'
-          $env:PYTHONIOENCODING = 'utf-8'
-          $launcherDir = Join-Path $env:RUNNER_TEMP "bluerev-deterministic-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
-          if (Test-Path $launcherDir) { Remove-Item -Recurse -Force $launcherDir }
-          New-Item -ItemType Directory -Force -Path $launcherDir | Out-Null
-          $stdoutPath = Join-Path $launcherDir 'launcher.stdout.log'
-          $stderrPath = Join-Path $launcherDir 'launcher.stderr.log'
-          $errorPath = Join-Path $launcherDir 'launcher.powershell-error.log'
-          $captureExit = 127
-          try {
-            $pythonCommand = Get-Command python -ErrorAction Stop
-            $process = Start-Process `
-              -FilePath $pythonCommand.Source `
-              -ArgumentList @('-m', 'scripts.run_deterministic_ci', 'capture') `
-              -WorkingDirectory $PWD `
-              -NoNewWindow `
-              -Wait `
-              -PassThru `
-              -RedirectStandardOutput $stdoutPath `
-              -RedirectStandardError $stderrPath
-            $captureExit = $process.ExitCode
-          } catch {
-            $_ | Out-String | Set-Content -Path $errorPath -Encoding utf8
-          }
-          $artifactDir = Join-Path $PWD 'artifacts\deterministic-ci'
-          New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
-          Set-Content -Path (Join-Path $artifactDir 'launcher.exit') -Value $captureExit -Encoding ascii
-          foreach ($path in @($stdoutPath, $stderrPath, $errorPath)) {
-            if (Test-Path $path) { Copy-Item -Force $path $artifactDir }
-          }
-          if (Test-Path $stdoutPath) { Get-Content $stdoutPath | ForEach-Object { Write-Host $_ } }
-          if (Test-Path $stderrPath) { Get-Content $stderrPath | ForEach-Object { Write-Host $_ } }
-          if (Test-Path $errorPath) { Get-Content $errorPath | ForEach-Object { Write-Host $_ } }
-          if ($captureExit -ne 0) { exit $captureExit }
+        run: '& .\scripts\run_deterministic_capture.ps1'
 
       - name: Upload deterministic evidence
         id: upload
@@ -109,7 +80,7 @@ jobs:
             try { launcherExit = Number(fs.readFileSync(process.env.LAUNCHER_EXIT_PATH, 'utf8').trim()); }
             catch (_) { launcherExit = null; }
             const payload = {
-              schema_version: 'bench.deterministic-ci-inbox.v3',
+              schema_version: 'bench.deterministic-ci-inbox.v4',
               run_id: Number(context.runId),
               run_attempt: Number(process.env.RUN_ATTEMPT),
               workflow: context.workflow,
@@ -144,5 +115,5 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: Number(process.env.INBOX_ISSUE),
-              body: `<!-- bench-deterministic-ci-v3 -->\n\`\`\`json\n${JSON.stringify(payload, null, 2)}\n\`\`\``,
+              body: `<!-- bench-deterministic-ci-v4 -->\n\`\`\`json\n${JSON.stringify(payload, null, 2)}\n\`\`\``,
             });
