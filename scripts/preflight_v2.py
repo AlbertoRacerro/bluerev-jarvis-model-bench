@@ -47,7 +47,20 @@ def _direct_lane(
     workflow: dict[str, str | None],
     runner_name: str | None,
 ) -> dict[str, Any]:
-    models = ollama.get("models") or []
+    raw_models = ollama.get("models")
+    models = raw_models if isinstance(raw_models, list) else []
+    identity_invalid = (
+        raw_models is not None
+        and (
+            not isinstance(raw_models, list)
+            or any(
+                not isinstance(model, dict)
+                or not model.get("name")
+                or not model.get("digest")
+                for model in models
+            )
+        )
+    )
     blocking_reasons = [
         reason
         for condition, reason in (
@@ -83,15 +96,7 @@ def _direct_lane(
                 and not (ollama.get("version") or {}).get("ok"),
                 "ollama_version_unavailable",
             ),
-            (
-                bool(models)
-                and any(
-                    not model.get("name") or not model.get("digest")
-                    for model in models
-                    if isinstance(model, dict)
-                ),
-                "ollama_model_identity_incomplete",
-            ),
+            (identity_invalid, "ollama_model_identity_incomplete"),
             (
                 removed_external_names == ["invalid_sanitization_report"],
                 "environment_sanitization_report_invalid",
@@ -99,7 +104,7 @@ def _direct_lane(
         )
         if condition
     )
-    runner_ready = bool(ollama.get("ok") and models)
+    runner_ready = bool(ollama.get("ok") and models and not identity_invalid)
     return {
         "evaluated": True,
         "runner_ready": runner_ready,
