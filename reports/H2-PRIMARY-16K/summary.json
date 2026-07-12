@@ -1,0 +1,117 @@
+{
+  "artifacts": [
+    {
+      "archive_sha256": "eafaa873eb06e7189d35e275e30def93f9251a9798726d9e807b5b3212371c8d",
+      "archive_size_bytes": 18933,
+      "artifact_id": 8262746093,
+      "artifact_name": "direct-smoke-29106127334-7",
+      "batch_index": 0,
+      "checked_out_sha": "8c6b73d8263c0603dfd286debec3bd4c3377746f",
+      "manifest_sha256": "7d4eacfebcbe8cec81eb34c3b8fec4d8bf3104063212859ce9bb02712935e145",
+      "report_sha256": "6298c89fbcee96caf922a396f9ccaf13d1dde8c1e1ea8f92854a8695b66ef560",
+      "selection": {"batch_index": 0, "batch_size": 3, "end": 3, "expected_count": 3, "mode": "batch", "start": 0, "total_candidates": 12},
+      "status_counts": {"context_mismatch": 0, "cpu_offload": 1, "load_failed": 0, "qualified_16k": 2},
+      "tracked_clean": true,
+      "workflow_run_attempt": 7,
+      "workflow_run_id": 29106127334
+    },
+    {
+      "archive_sha256": "67f61f42743e431b888859b81a634ce01cd3f3b53adf55348f707c82f745491b",
+      "archive_size_bytes": 19207,
+      "artifact_id": 8262773664,
+      "artifact_name": "direct-smoke-29106127334-8",
+      "batch_index": 1,
+      "checked_out_sha": "8c6b73d8263c0603dfd286debec3bd4c3377746f",
+      "manifest_sha256": "1866a81683b7fbff822ada948dc2631b6664500e7cc052672c4a7a0bd1c7416e",
+      "report_sha256": "44dcb0d3e08c102290837446c1dcc50d06518206b4c38f33f31fa2ef601af03c",
+      "selection": {"batch_index": 1, "batch_size": 3, "end": 6, "expected_count": 3, "mode": "batch", "start": 3, "total_candidates": 12},
+      "status_counts": {"context_mismatch": 0, "cpu_offload": 0, "load_failed": 0, "qualified_16k": 3},
+      "tracked_clean": true,
+      "workflow_run_attempt": 8,
+      "workflow_run_id": 29106127334
+    },
+    {
+      "archive_sha256": "eb75d00825678c9eb6f0e3f33629e92994560fb670ccf03a2b7c965902e7ca19",
+      "archive_size_bytes": 19058,
+      "artifact_id": 8263396715,
+      "artifact_name": "direct-smoke-29106127334-9",
+      "batch_index": 2,
+      "checked_out_sha": "8c6b73d8263c0603dfd286debec3bd4c3377746f",
+      "manifest_sha256": "55ab3533931274dc4995102e1181bce170617df4b8aac24253cbf38e0fe51d6a",
+      "report_sha256": "b3f4620b4290641c6243acf6b53743bd40f6fdd3d97f77b8e903392c1c1fb3ed",
+      "selection": {"batch_index": 2, "batch_size": 3, "end": 9, "expected_count": 3, "mode": "batch", "start": 6, "total_candidates": 12},
+      "status_counts": {"context_mismatch": 0, "cpu_offload": 1, "load_failed": 0, "qualified_16k": 2},
+      "tracked_clean": true,
+      "workflow_run_attempt": 9,
+      "workflow_run_id": 29106127334
+    },
+    {
+      "archive_sha256": "273644b16aea27cce22ec2ae72bc4b5b486690a7c31b96a977ca135d711376cd",
+      "archive_size_bytes": 18418,
+      "artifact_id": 8263542022,
+      "artifact_name": "direct-smoke-29106127334-10",
+      "batch_index": 3,
+      "checked_out_sha": "8c6b73d8263c0603dfd286debec3bd4c3377746f",
+      "manifest_sha256": "b2d3e3bdbdc01272102c5e48b018a4151ff64f4cf732c3bf483717e5de68fd79",
+      "report_sha256": "526d960703a0818feafd8e7ec30f95db09d8894f70db28dc88945ab950583f5b",
+      "selection": {"batch_index": 3, "batch_size": 3, "end": 12, "expected_count": 3, "mode": "batch", "start": 9, "total_candidates": 12},
+      "status_counts": {"context_mismatch": 0, "cpu_offload": 0, "load_failed": 0, "qualified_16k": 3},
+      "tracked_clean": true,
+      "workflow_run_attempt": 10,
+      "workflow_run_id": 29106127334
+    }
+  ],
+  "counts": {"artifacts": 4, "candidates": 12, "context_mismatch": 0, "cpu_offload": 2, "load_failed": 0, "qualified_16k": 10},
+  "integrity": {
+    "all_archives_match_github_digest": true,
+    "all_cleanup_verified": true,
+    "all_context_lengths_16384": true,
+    "all_manifests_verified": true,
+    "external_providers_used": false,
+    "hermes_executed": false,
+    "jarvisos_accessed": false,
+    "secret_values_recorded": false,
+    "unique_candidate_digests": true,
+    "unique_candidate_names": true
+  },
+  "limitations": [
+    "This qualification measures runtime context allocation, GPU residency, cleanup, and short-generation throughput; it does not rank semantic model quality.",
+    "Throughput uses a 32-token bounded generation and is diagnostic, not a production benchmark.",
+    "Models classified cpu_offload are retained as secondary-lane evidence and are not promoted to the primary 32K gate."
+  ],
+  "primary_32k": [
+    {"digest": "38044be4f923e5a55264ed7df4eaac2676651a905f735197c504045140c02bd3", "name": "gemma4:12b-it-qat"},
+    {"digest": "6e3590af5e19106c55a25aec936d7e55a0d23b602bb276ad32321f8a49a3c1d0", "name": "hf.co/empero-ai/Qwable-9B-Claude-Fable-5-GGUF:Q4_K_M"},
+    {"digest": "7c3d0c28e4db742c4c6cd2925627acb09b610faec86a32ac872190aee8bc67d0", "name": "hf.co/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF:Q4_K_M"},
+    {"digest": "9273fd7794224d33f1ce2364c395df1eeb049e56705d635b29cfc51dfd6d157e", "name": "hf.co/GnLOLot/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-GGUF:Q4_K_M"},
+    {"digest": "0714a296bfcc73c72cc5042ab6754d77ae3871e42ce864d50243f3f116ec33e7", "name": "hf.co/tvall43/Qwen3.6-14B-A3B-FableVibes-GGUF:Q4_K_M"},
+    {"digest": "036489398bf6af6874783c754592a90f12a036b20cbbf47a867a3ac938868aff", "name": "hf.co/yuxinlu1/gemma-4-12B-agentic-fable5-composer2.5-v2-3.5x-tau2-GGUF:Q4_K_M"},
+    {"digest": "5434f64afb3f2b49f0c8d5e6950313a119303b6dbea21ce542e1f82122427391", "name": "hf.co/yuxinlu1/gemma-4-12B-coder-fable5-composer2.5-v1-GGUF:Q4_K_M"},
+    {"digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41", "name": "qwen3:8b"},
+    {"digest": "466701318bae40cfcf42682a17dc8b5a1e2e99a19fb157cdc0cd09a2abc7a991", "name": "qwythos-hermes-64k:latest"},
+    {"digest": "f1b4ecbbe67a7adef8f8f975cdbfb3eb08a04b8d91737b2b96e7b761187c668d", "name": "qwythos-hermes-safe:latest"}
+  ],
+  "profile": {"allow_cpu_offload": false, "keep_alive": "5m", "local_only": true, "max_parallel_models": 1, "name": "h2-primary-16k-context", "num_ctx": 16384, "num_predict": 32, "seed": 4242, "sequential_models": true, "temperature": 0},
+  "qualification_scope": "hardware_runtime_context_residency_only",
+  "results": [
+    {"batch_index": 0, "cleanup_verified": true, "context_length": 16384, "digest": "63fb193b3a9b4322a18e8c6b250ca2e70a5ff531e962dbf95ba089b2566f2fa5", "error": null, "generation_tokens_per_second": 16.747, "name": "deepseek-coder-v2:16b", "probe_duration_seconds": 26.297, "prompt_tokens_per_second": 54.81, "residency_ratio": 0.7313813231562666, "sequence": 0, "size_bytes": 14148897339, "size_vram_bytes": 10348239257, "status": "cpu_offload"},
+    {"batch_index": 0, "cleanup_verified": true, "context_length": 16384, "digest": "38044be4f923e5a55264ed7df4eaac2676651a905f735197c504045140c02bd3", "error": null, "generation_tokens_per_second": 25.648, "name": "gemma4:12b-it-qat", "probe_duration_seconds": 20.531, "prompt_tokens_per_second": 66.012, "residency_ratio": 1.0, "sequence": 1, "size_bytes": 7609736232, "size_vram_bytes": 7609736232, "status": "qualified_16k"},
+    {"batch_index": 0, "cleanup_verified": true, "context_length": 16384, "digest": "6e3590af5e19106c55a25aec936d7e55a0d23b602bb276ad32321f8a49a3c1d0", "error": null, "generation_tokens_per_second": 33.225, "name": "hf.co/empero-ai/Qwable-9B-Claude-Fable-5-GGUF:Q4_K_M", "probe_duration_seconds": 17.75, "prompt_tokens_per_second": 39.828, "residency_ratio": 1.0, "sequence": 2, "size_bytes": 6113858682, "size_vram_bytes": 6113858682, "status": "qualified_16k"},
+    {"batch_index": 1, "cleanup_verified": true, "context_length": 16384, "digest": "7c3d0c28e4db742c4c6cd2925627acb09b610faec86a32ac872190aee8bc67d0", "error": null, "generation_tokens_per_second": 32.546, "name": "hf.co/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF:Q4_K_M", "probe_duration_seconds": 19.344, "prompt_tokens_per_second": 303.898, "residency_ratio": 1.0, "sequence": 3, "size_bytes": 6372416552, "size_vram_bytes": 6372416552, "status": "qualified_16k"},
+    {"batch_index": 1, "cleanup_verified": true, "context_length": 16384, "digest": "9273fd7794224d33f1ce2364c395df1eeb049e56705d635b29cfc51dfd6d157e", "error": null, "generation_tokens_per_second": 97.693, "name": "hf.co/GnLOLot/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-GGUF:Q4_K_M", "probe_duration_seconds": 9.39, "prompt_tokens_per_second": 248.578, "residency_ratio": 1.0, "sequence": 4, "size_bytes": 1083944467, "size_vram_bytes": 1083944467, "status": "qualified_16k"},
+    {"batch_index": 1, "cleanup_verified": true, "context_length": 16384, "digest": "0714a296bfcc73c72cc5042ab6754d77ae3871e42ce864d50243f3f116ec33e7", "error": null, "generation_tokens_per_second": 41.61, "name": "hf.co/tvall43/Qwen3.6-14B-A3B-FableVibes-GGUF:Q4_K_M", "probe_duration_seconds": 24.656, "prompt_tokens_per_second": 23.408, "residency_ratio": 1.0, "sequence": 5, "size_bytes": 8918159849, "size_vram_bytes": 8918159849, "status": "qualified_16k"},
+    {"batch_index": 2, "cleanup_verified": true, "context_length": 16384, "digest": "036489398bf6af6874783c754592a90f12a036b20cbbf47a867a3ac938868aff", "error": null, "generation_tokens_per_second": 23.014, "name": "hf.co/yuxinlu1/gemma-4-12B-agentic-fable5-composer2.5-v2-3.5x-tau2-GGUF:Q4_K_M", "probe_duration_seconds": 20.016, "prompt_tokens_per_second": 76.669, "residency_ratio": 1.0, "sequence": 6, "size_bytes": 8329311027, "size_vram_bytes": 8329311027, "status": "qualified_16k"},
+    {"batch_index": 2, "cleanup_verified": true, "context_length": 16384, "digest": "5434f64afb3f2b49f0c8d5e6950313a119303b6dbea21ce542e1f82122427391", "error": null, "generation_tokens_per_second": 23.171, "name": "hf.co/yuxinlu1/gemma-4-12B-coder-fable5-composer2.5-v1-GGUF:Q4_K_M", "probe_duration_seconds": 21.188, "prompt_tokens_per_second": 61.359, "residency_ratio": 1.0, "sequence": 7, "size_bytes": 8329311027, "size_vram_bytes": 8329311027, "status": "qualified_16k"},
+    {"batch_index": 2, "cleanup_verified": true, "context_length": 16384, "digest": "bdbd181c33f2ed1b31c972991882db3cf4d192569092138a7d29e973cd9debe8", "error": null, "generation_tokens_per_second": 11.094, "name": "qwen3:14b", "probe_duration_seconds": 24.578, "prompt_tokens_per_second": 63.317, "residency_ratio": 0.8445791119608268, "sequence": 8, "size_bytes": 12181412247, "size_vram_bytes": 10288166338, "status": "cpu_offload"},
+    {"batch_index": 3, "cleanup_verified": true, "context_length": 16384, "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41", "error": null, "generation_tokens_per_second": 82.255, "name": "qwen3:8b", "probe_duration_seconds": 11.234, "prompt_tokens_per_second": 247.007, "residency_ratio": 1.0, "sequence": 9, "size_bytes": 7402726358, "size_vram_bytes": 7402726358, "status": "qualified_16k"},
+    {"batch_index": 3, "cleanup_verified": true, "context_length": 16384, "digest": "466701318bae40cfcf42682a17dc8b5a1e2e99a19fb157cdc0cd09a2abc7a991", "error": null, "generation_tokens_per_second": 72.726, "name": "qwythos-hermes-64k:latest", "probe_duration_seconds": 11.891, "prompt_tokens_per_second": 1229.964, "residency_ratio": 1.0, "sequence": 10, "size_bytes": 6372416552, "size_vram_bytes": 6372416552, "status": "qualified_16k"},
+    {"batch_index": 3, "cleanup_verified": true, "context_length": 16384, "digest": "f1b4ecbbe67a7adef8f8f975cdbfb3eb08a04b8d91737b2b96e7b761187c668d", "error": null, "generation_tokens_per_second": 72.551, "name": "qwythos-hermes-safe:latest", "probe_duration_seconds": 9.735, "prompt_tokens_per_second": 1032.448, "residency_ratio": 1.0, "sequence": 11, "size_bytes": 6372416552, "size_vram_bytes": 6372416552, "status": "qualified_16k"}
+  ],
+  "schema_version": "bench.h2-primary-16k-summary.v1",
+  "secondary_offload": [
+    {"digest": "63fb193b3a9b4322a18e8c6b250ca2e70a5ff531e962dbf95ba089b2566f2fa5", "name": "deepseek-coder-v2:16b", "residency_ratio": 0.7313813231562666},
+    {"digest": "bdbd181c33f2ed1b31c972991882db3cf4d192569092138a7d29e973cd9debe8", "name": "qwen3:14b", "residency_ratio": 0.8445791119608268}
+  ],
+  "source": {"execution_commit_sha": "8c6b73d8263c0603dfd286debec3bd4c3377746f", "h1_artifact_sha256": "6458a0fcce21bf74850ced340f0172089c67143955af2c6177696d1e45045540", "h2_plan_sha256": "cce4863f87520dae70ea97fcd75a88d4ada0dff874202376cc9223ea6c29868a", "workflow_attempts": [7, 8, 9, 10], "workflow_run_id": 29106127334},
+  "status": "complete"
+}
