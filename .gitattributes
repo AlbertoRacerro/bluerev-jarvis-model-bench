@@ -1,0 +1,4 @@
+# Immutable source evidence must have identical bytes on Windows and Linux.
+fixtures/h3/h2-primary-32k-plan.json text eol=lf
+reports/H2-PRIMARY-16K/summary.json text eol=lf
+reports/H2-PRIMARY-16K/manifest.json text eol=lf
