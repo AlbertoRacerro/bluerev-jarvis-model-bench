@@ -1,0 +1,62 @@
+{
+  "batching": {
+    "batch_count": 5,
+    "batch_size": 2,
+    "max_parallel_batches": 1
+  },
+  "candidates": [
+    {"candidate_id":"gemma4-12b-it-qat","digest":"38044be4f923e5a55264ed7df4eaac2676651a905f735197c504045140c02bd3","model_tag":"gemma4:12b-it-qat","sequence":0},
+    {"candidate_id":"qwable-9b-fable5","digest":"6e3590af5e19106c55a25aec936d7e55a0d23b602bb276ad32321f8a49a3c1d0","model_tag":"hf.co/empero-ai/Qwable-9B-Claude-Fable-5-GGUF:Q4_K_M","sequence":1},
+    {"candidate_id":"qwythos-mythos-9b","digest":"7c3d0c28e4db742c4c6cd2925627acb09b610faec86a32ac872190aee8bc67d0","model_tag":"hf.co/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF:Q4_K_M","sequence":2},
+    {"candidate_id":"minicpm5-fable-1b-control","digest":"9273fd7794224d33f1ce2364c395df1eeb049e56705d635b29cfc51dfd6d157e","model_tag":"hf.co/GnLOLot/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-GGUF:Q4_K_M","sequence":3},
+    {"candidate_id":"qwen3.6-fablevibes-14b-a3b","digest":"0714a296bfcc73c72cc5042ab6754d77ae3871e42ce864d50243f3f116ec33e7","model_tag":"hf.co/tvall43/Qwen3.6-14B-A3B-FableVibes-GGUF:Q4_K_M","sequence":4},
+    {"candidate_id":"gemma4-fable-agentic-12b","digest":"036489398bf6af6874783c754592a90f12a036b20cbbf47a867a3ac938868aff","model_tag":"hf.co/yuxinlu1/gemma-4-12B-agentic-fable5-composer2.5-v2-3.5x-tau2-GGUF:Q4_K_M","sequence":5},
+    {"candidate_id":"gemma4-fable-coder-12b","digest":"5434f64afb3f2b49f0c8d5e6950313a119303b6dbea21ce542e1f82122427391","model_tag":"hf.co/yuxinlu1/gemma-4-12B-coder-fable5-composer2.5-v1-GGUF:Q4_K_M","sequence":6},
+    {"candidate_id":"qwen3-8b","digest":"500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41","model_tag":"qwen3:8b","sequence":7},
+    {"candidate_id":"qwythos-hermes-64k","digest":"466701318bae40cfcf42682a17dc8b5a1e2e99a19fb157cdc0cd09a2abc7a991","model_tag":"qwythos-hermes-64k:latest","sequence":8},
+    {"candidate_id":"qwythos-hermes-safe","digest":"f1b4ecbbe67a7adef8f8f975cdbfb3eb08a04b8d91737b2b96e7b761187c668d","model_tag":"qwythos-hermes-safe:latest","sequence":9}
+  ],
+  "cases": [
+    {"capability":"HO-STOP","case_definition_sha256":"e8ccd6fe15a196129e9f56e7606e5b95bf49b68948510c5a758ec7851a27412f","case_id":"ho-stop-reuse-explicit-002","path":"fixtures/bench-1/ho-stop-reuse-explicit-002.json"},
+    {"capability":"HO-ROUTE","case_definition_sha256":"0631669e3e805a1344a94e0c32f601288f99f485bddb5f5e146d005221e72d37","case_id":"ho-route-local-coder-001","path":"fixtures/bench-1/ho-route-local-coder-001.json"}
+  ],
+  "comparison_policy": {
+    "compare_only_complete_valid_pairs": true,
+    "global_composite_score_allowed": false,
+    "invalid_results_are_not_failures": true,
+    "minimum_repetitions": 3,
+    "ties_remain_ties": true
+  },
+  "counts": {"candidate_case_pairs":20,"candidates":10,"cases":2,"repetitions_per_pair":3,"total_runs":60},
+  "execution": {
+    "cleanup_after_each_run": true,
+    "cleanup_before_each_run": true,
+    "endpoint": "http://127.0.0.1:11434/api/generate",
+    "external_providers_allowed": false,
+    "hermes_execution_allowed": false,
+    "jarvisos_access_allowed": false,
+    "keep_alive": 0,
+    "lane": "direct",
+    "local_only": true,
+    "max_parallel_models": 1,
+    "num_ctx": 4096,
+    "num_predict": 1024,
+    "seed": 4242,
+    "temperature": 0,
+    "timeout_seconds": 180
+  },
+  "repetitions": 3,
+  "schema_version": "bench.direct-semantic-plan.v1",
+  "scope": "BENCH-1 direct semantic replay",
+  "source": {
+    "candidate_registry_path": "candidates/bench1-h3-primary.json",
+    "candidate_registry_sha256": "f370a0e87e7693d03a7ba9e074217a5e88641a5ea08d698a86211216bf84e750",
+    "h3_closeout_commit_sha": "7c82dc8335208c87c14a1dd0e1ae1de066bcba74",
+    "h3_manifest_path": "reports/H3-PRIMARY-32K/manifest.json",
+    "h3_manifest_sha256": "10521b1cbc3762878a5b932d673d34d8744cade9acafd1f8da4dc386bbf0db3c",
+    "h3_summary_path": "reports/H3-PRIMARY-32K/summary.json",
+    "h3_summary_sha256": "4e92a93269f3c574c86224f24535122aa14e1976508adeac69a49ea6fdf3bfcf",
+    "route_contract_commit_sha": "68a7fd7b4b25ee91803c7eabf133159327b6519a"
+  },
+  "status": "ready"
+}
