@@ -11,6 +11,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
+from scripts.windows_job import WindowsJob
+
 EXTERNAL_ENV_NAMES = frozenset(
     {
         "ALIBABA_API_KEY", "ANTHROPIC_API_KEY", "ANTHROPIC_BASE_URL", "ANTHROPIC_TOKEN",
@@ -124,6 +126,18 @@ def _text(value: str | bytes | None) -> str:
     return value
 
 
+def _merge_capture(partial: str, final: str) -> str:
+    if not partial:
+        return final
+    if not final:
+        return partial
+    if final.startswith(partial):
+        return final
+    if partial.startswith(final):
+        return partial
+    return partial + final
+
+
 def _append_detail(current: str | None, detail: str) -> str:
     return detail if not current else current + "; " + detail
 
@@ -138,22 +152,38 @@ def _wait_bounded(process: subprocess.Popen[str], timeout_seconds: int) -> tuple
         return process.poll() is not None, f"{type(exc).__name__}: {exc}"
 
 
-def _kill_process_tree(process: subprocess.Popen[str]) -> dict[str, Any]:
+def _kill_process_tree(
+    process: subprocess.Popen[str],
+    *,
+    windows_job: WindowsJob | None = None,
+) -> dict[str, Any]:
+    job_evidence = windows_job.evidence() if windows_job else None
     evidence: dict[str, Any] = {
-        "attempted": False,
+        "attempted": True,
         "platform": "windows" if os.name == "nt" else "posix",
         "method": None,
+        "job_terminate_succeeded": None,
         "taskkill_exit_code": None,
         "fallback_kill_attempted": False,
         "wait_succeeded": process.poll() is not None,
-        "success": process.poll() is not None,
+        "success": False,
         "error": None,
+        "windows_job": job_evidence,
     }
-    if process.poll() is not None:
-        return evidence
 
-    evidence["attempted"] = True
-    if os.name == "nt":
+    job_terminated = False
+    if os.name == "nt" and windows_job is not None and windows_job.assigned:
+        evidence["method"] = "windows-job-object"
+        job_terminated = windows_job.terminate(124)
+        evidence["job_terminate_succeeded"] = job_terminated
+        evidence["windows_job"] = windows_job.evidence()
+        if not job_terminated and windows_job.error:
+            evidence["error"] = _append_detail(
+                evidence["error"],
+                windows_job.error,
+            )
+
+    if os.name == "nt" and not job_terminated:
         evidence["method"] = "taskkill-tree"
         try:
             killed = subprocess.run(
@@ -166,7 +196,7 @@ def _kill_process_tree(process: subprocess.Popen[str]) -> dict[str, Any]:
                 check=False,
             )
             evidence["taskkill_exit_code"] = killed.returncode
-            if killed.returncode != 0:
+            if killed.returncode != 0 and process.poll() is None:
                 detail = (killed.stderr or killed.stdout or "taskkill failed").strip()
                 evidence["error"] = _append_detail(
                     evidence["error"],
@@ -177,7 +207,7 @@ def _kill_process_tree(process: subprocess.Popen[str]) -> dict[str, Any]:
                 evidence["error"],
                 f"taskkill {type(exc).__name__}: {exc}",
             )
-    else:
+    elif os.name != "nt":
         evidence["method"] = "process-group-sigkill"
         try:
             os.killpg(process.pid, signal.SIGKILL)
@@ -206,7 +236,10 @@ def _kill_process_tree(process: subprocess.Popen[str]) -> dict[str, Any]:
     if wait_error:
         evidence["error"] = _append_detail(evidence["error"], wait_error)
     evidence["wait_succeeded"] = waited
-    evidence["success"] = process.poll() is not None
+    evidence["success"] = bool(
+        (job_terminated or process.poll() is not None)
+        and (os.name != "nt" or job_terminated or evidence["taskkill_exit_code"] == 0)
+    )
     return evidence
 
 
@@ -243,6 +276,10 @@ def run_captured(
     error_type: str | None = None
     tree_kill: dict[str, Any] | None = None
     capture_error: str | None = None
+    process: subprocess.Popen[str] | None = None
+    windows_job = WindowsJob() if os.name == "nt" else None
+    if windows_job is not None:
+        windows_job.create()
     creationflags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
     try:
         process = subprocess.Popen(
@@ -257,6 +294,8 @@ def run_captured(
             creationflags=creationflags,
             start_new_session=os.name != "nt",
         )
+        if windows_job is not None and windows_job.handle is not None:
+            windows_job.assign(process.pid)
         try:
             stdout, stderr = process.communicate(timeout=timeout_seconds)
             exit_code = process.returncode
@@ -265,11 +304,14 @@ def run_captured(
             error_type = "TimeoutExpired"
             stdout = _text(exc.stdout)
             stderr = _text(exc.stderr)
-            tree_kill = _kill_process_tree(process)
+            tree_kill = _kill_process_tree(
+                process,
+                windows_job=windows_job,
+            )
             try:
                 final_stdout, final_stderr = process.communicate(timeout=5)
-                stdout += _text(final_stdout)
-                stderr += _text(final_stderr)
+                stdout = _merge_capture(stdout, _text(final_stdout))
+                stderr = _merge_capture(stderr, _text(final_stderr))
             except subprocess.TimeoutExpired:
                 capture_error = "communicate timed out after tree termination"
                 for stream in (process.stdout, process.stderr):
@@ -285,6 +327,14 @@ def run_captured(
         exit_code = 127
         error_type = type(exc).__name__
         stderr = _append_detail(stderr, f"{type(exc).__name__}: {exc}")
+        if process is not None and process.poll() is None:
+            tree_kill = _kill_process_tree(
+                process,
+                windows_job=windows_job,
+            )
+    finally:
+        if windows_job is not None:
+            windows_job.close()
 
     if timed_out and tree_kill is not None and tree_kill.get("success") is not True:
         stderr = _append_detail(stderr, "process tree termination was not verified")
@@ -296,6 +346,9 @@ def run_captured(
     (artifact_dir / f"{name}.stderr.log").write_text(_text(stderr), encoding="utf-8")
     (artifact_dir / f"{name}.exit").write_text(f"{exit_code}\n", encoding="utf-8")
     if tree_kill is not None:
+        tree_kill["windows_job_after_close"] = (
+            windows_job.evidence() if windows_job is not None else None
+        )
         (artifact_dir / f"{name}.termination.json").write_text(
             json.dumps(tree_kill, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
@@ -308,5 +361,6 @@ def run_captured(
         "error_type": error_type,
         "tree_kill_succeeded": tree_kill.get("success") if tree_kill else None,
         "tree_kill": tree_kill,
+        "windows_job": windows_job.evidence() if windows_job is not None else None,
         "capture_error": capture_error,
     }
