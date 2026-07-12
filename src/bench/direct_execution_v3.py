@@ -12,23 +12,19 @@ from .contracts import ContractError, validate_manifest
 SCHEMA_VERSION = "bench.direct-smoke.v3"
 
 
-def verify_candidate_visible_response_contract(case: Mapping[str, Any]) -> None:
-    """Bind evaluator-only expectations to data visible to the candidate."""
-    if "reused_supplied_result" not in case.get("success_assertions", []):
-        return
-
+def _validated_response_contract(
+    case: Mapping[str, Any],
+) -> tuple[Mapping[str, Any], Mapping[str, Any], str, list[str]]:
     inputs = case.get("inputs")
     expected = case.get("expected")
     if not isinstance(inputs, Mapping) or not isinstance(expected, Mapping):
         raise ContractError(
-            "HO-STOP response contract requires object inputs and expected"
+            "candidate-visible response contract requires object inputs and expected"
         )
-    if "supplied_result" not in inputs:
-        raise ContractError("HO-STOP case must expose inputs.supplied_result")
 
     response_contract = inputs.get("response_contract")
     if not isinstance(response_contract, Mapping):
-        raise ContractError("HO-STOP case must expose inputs.response_contract")
+        raise ContractError("case must expose inputs.response_contract")
     if set(response_contract) != {"output_field", "required_actions"}:
         raise ContractError(
             "inputs.response_contract must contain exactly output_field and required_actions"
@@ -57,22 +53,69 @@ def verify_candidate_visible_response_contract(case: Mapping[str, Any]) -> None:
             "inputs.response_contract.required_actions must be unique non-empty strings"
         )
 
-    supplied_result = inputs["supplied_result"]
-    expected_visible_contract = {
-        output_field: supplied_result,
-        "actions": required_actions,
-    }
-    if dict(expected) != expected_visible_contract:
-        raise ContractError(
-            "evaluator expected output/actions do not match candidate-visible response_contract"
-        )
-
     allowed_actions = case.get("allowed_actions")
     if not isinstance(allowed_actions, list) or any(
         action not in allowed_actions for action in required_actions
     ):
         raise ContractError(
             "response_contract requires actions outside allowed_actions"
+        )
+    return inputs, expected, output_field, list(required_actions)
+
+
+def verify_candidate_visible_response_contract(case: Mapping[str, Any]) -> None:
+    """Bind evaluator-only expectations to response requirements visible to the candidate."""
+    success_assertions = set(case.get("success_assertions", []))
+    reuse_required = "reused_supplied_result" in success_assertions
+    route_required = "selected_route_equals_expected" in success_assertions
+    if not reuse_required and not route_required:
+        return
+    if reuse_required and route_required:
+        raise ContractError("case cannot require both reuse and route response contracts")
+
+    inputs, expected, output_field, required_actions = _validated_response_contract(case)
+
+    if reuse_required:
+        if "supplied_result" not in inputs:
+            raise ContractError("HO-STOP case must expose inputs.supplied_result")
+        if output_field != "final":
+            raise ContractError(
+                "HO-STOP response_contract.output_field must be final"
+            )
+        expected_visible_contract = {
+            output_field: inputs["supplied_result"],
+            "actions": required_actions,
+        }
+        if dict(expected) != expected_visible_contract:
+            raise ContractError(
+                "evaluator expected output/actions do not match candidate-visible response_contract"
+            )
+        return
+
+    if output_field != "selected_route":
+        raise ContractError(
+            "HO-ROUTE response_contract.output_field must be selected_route"
+        )
+    if set(expected) != {"selected_route", "actions"}:
+        raise ContractError(
+            "HO-ROUTE expected must contain exactly selected_route and actions"
+        )
+    if expected.get("actions") != required_actions:
+        raise ContractError(
+            "evaluator expected actions do not match candidate-visible response_contract"
+        )
+    eligible_routes = inputs.get("eligible_routes")
+    selected_route = expected.get("selected_route")
+    if (
+        not isinstance(eligible_routes, list)
+        or not eligible_routes
+        or any(not isinstance(route, str) or not route for route in eligible_routes)
+        or len(eligible_routes) != len(set(eligible_routes))
+    ):
+        raise ContractError("HO-ROUTE inputs.eligible_routes must be unique non-empty strings")
+    if selected_route not in eligible_routes:
+        raise ContractError(
+            "evaluator expected selected_route is outside candidate-visible eligible_routes"
         )
 
 
