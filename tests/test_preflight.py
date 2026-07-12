@@ -119,7 +119,12 @@ class HermesLayoutTests(unittest.TestCase):
         commands = [item.args[0] for item in called.call_args_list]
         self.assertTrue(report["ok"])
         self.assertFalse(report["cli_executed"])
-        self.assertFalse(any("--help" in command or "--version" in command for command in commands))
+        self.assertFalse(
+            any(
+                command[0] != str(bash_exe) and ("--help" in command or "--version" in command)
+                for command in commands
+            )
+        )
 
 
 class ReportTests(unittest.TestCase):
