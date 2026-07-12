@@ -39,6 +39,8 @@ class BenchmarkCommandBridgeTests(unittest.TestCase):
         )
         self.assertIn("github.event_name == 'push'", self.workflow)
         self.assertIn("github.event.issue.number == 24", self.workflow)
+        self.assertIn("group: benchmark-command-control", self.workflow)
+        self.assertIn("cancel-in-progress: false", self.workflow)
 
     def test_full_owner_identity_and_exact_commands_are_rechecked(self) -> None:
         for required in (
@@ -83,6 +85,9 @@ class BenchmarkCommandBridgeTests(unittest.TestCase):
             "github.rest.issues.listComments",
             "github.paginate",
             "receiptSourceId",
+            "const ACTIONS_BOT_ID = 41898282;",
+            "comment?.user?.login === 'github-actions[bot]'",
+            "comment?.user?.type === 'Bot'",
             "const lastConsumedId = Math.max",
             "Number(comment.id) > lastConsumedId",
             "await findPendingCommand()",
