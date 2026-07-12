@@ -19,9 +19,16 @@ class BenchmarkCommandBridgeTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.workflow = BRIDGE.read_text(encoding="utf-8")
 
-    def test_trigger_is_created_issue_comment_only(self) -> None:
-        self.assertIn("issue_comment:", self.workflow)
-        self.assertIn("types: [created]", self.workflow)
+    def test_triggers_are_owner_comment_and_seed_push_only(self) -> None:
+        for required in (
+            "issue_comment:",
+            "types: [created]",
+            "push:",
+            "branches: [main]",
+            '".github/workflows/benchmark-command-bridge.yml"',
+            '"tests/test_benchmark_command_bridge.py"',
+        ):
+            self.assertIn(required, self.workflow)
         self.assertNotIn("pull_request_target:", self.workflow)
         self.assertNotIn("workflow_run:", self.workflow)
 
@@ -30,29 +37,24 @@ class BenchmarkCommandBridgeTests(unittest.TestCase):
             "github.repository == 'AlbertoRacerro/bluerev-jarvis-model-bench'",
             self.workflow,
         )
+        self.assertIn("github.event_name == 'push'", self.workflow)
         self.assertIn("github.event.issue.number == 24", self.workflow)
+        self.assertIn("group: benchmark-command-control", self.workflow)
+        self.assertIn("cancel-in-progress: false", self.workflow)
 
-    def test_script_rechecks_full_maintainer_identity(self) -> None:
+    def test_full_owner_identity_and_exact_commands_are_rechecked(self) -> None:
         for required in (
-            "context.repo.owner === 'AlbertoRacerro'",
-            "context.repo.repo === 'bluerev-jarvis-model-bench'",
-            "context.payload.issue.number === 24",
-            "!context.payload.issue.pull_request",
-            "context.payload.comment.user.login === 'AlbertoRacerro'",
-            "Number(context.payload.comment.user.id) === 293122393",
-            "context.payload.comment.user.type === 'User'",
-            "context.payload.comment.author_association === 'OWNER'",
+            "const OWNER_LOGIN = 'AlbertoRacerro';",
+            "const OWNER_ID = 293122393;",
+            "comment.user?.type === 'User'",
+            "comment.author_association === 'OWNER'",
+            "Object.hasOwn(workflows, comment.body)",
         ):
             self.assertIn(required, self.workflow)
-        self.assertIn("if (!authorized)", self.workflow)
-
-    def test_only_exact_commands_map_to_fixed_workflows(self) -> None:
         for command, target in TARGETS.items():
             self.assertIn(f"'{command}': '{target}'", self.workflow)
-        self.assertIn("const workflowId = workflows[command];", self.workflow)
-        self.assertIn("if (!workflowId)", self.workflow)
 
-    def test_dispatch_is_fixed_to_main_without_shell_interpolation(self) -> None:
+    def test_dispatch_is_fixed_to_main_without_checkout_or_shell(self) -> None:
         self.assertIn("github.rest.actions.createWorkflowDispatch", self.workflow)
         self.assertIn("workflow_id: workflowId", self.workflow)
         self.assertIn("ref: 'main'", self.workflow)
@@ -60,19 +62,48 @@ class BenchmarkCommandBridgeTests(unittest.TestCase):
         self.assertNotRegex(self.workflow, re.compile(r"(?m)^\s*run:"))
         self.assertNotIn("${{ github.event.comment.body }}", self.workflow)
 
-    def test_permissions_are_limited_to_dispatch_and_receipt(self) -> None:
+    def test_permissions_are_limited_to_control_operations(self) -> None:
         self.assertIn(
-            "permissions:\n  contents: read\n  actions: write\n  issues: write\n",
+            "permissions:\n  contents: read\n  actions: write\n  issues: write\n  statuses: write\n",
             self.workflow,
         )
         self.assertNotIn("contents: write", self.workflow)
         self.assertNotIn("pull-requests: write", self.workflow)
 
-    def test_successful_dispatch_writes_structured_receipt(self) -> None:
-        self.assertIn("github.rest.issues.createComment", self.workflow)
-        self.assertIn("bench.command-receipt.v1", self.workflow)
-        self.assertIn("source_comment_id: context.payload.comment.id", self.workflow)
-        self.assertIn("target_workflow: workflowId", self.workflow)
+    def test_initial_push_registers_discoverable_seed_without_dispatch(self) -> None:
+        self.assertIn("github.rest.repos.createCommitStatus", self.workflow)
+        self.assertIn("benchmark-command-runner/seed", self.workflow)
+        self.assertIn("context.runId", self.workflow)
+        self.assertIn("Number(process.env.RUN_ATTEMPT) === 1", self.workflow)
+        self.assertLess(
+            self.workflow.index("await registerSeed();"),
+            self.workflow.index("const comment = context.eventName"),
+        )
+
+    def test_rerun_fallback_reads_latest_unconsumed_owner_command(self) -> None:
+        for required in (
+            "github.rest.issues.listComments",
+            "github.paginate",
+            "receiptSourceId",
+            "const ACTIONS_BOT_ID = 41898282;",
+            "comment?.user?.login === 'github-actions[bot]'",
+            "comment?.user?.type === 'Bot'",
+            "const lastConsumedId = Math.max",
+            "Number(comment.id) > lastConsumedId",
+            "await findPendingCommand()",
+        ):
+            self.assertIn(required, self.workflow)
+
+    def test_successful_dispatch_writes_bound_receipt(self) -> None:
+        for required in (
+            "github.rest.issues.createComment",
+            "bench.command-receipt.v1",
+            "source_comment_id: comment.id",
+            "target_workflow: workflowId",
+            "dispatcher_run_id: context.runId",
+            "dispatcher_run_attempt: Number(process.env.RUN_ATTEMPT)",
+        ):
+            self.assertIn(required, self.workflow)
 
     def test_every_target_explicitly_supports_manual_dispatch(self) -> None:
         for target in TARGETS.values():
