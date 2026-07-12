@@ -1,5 +1,8 @@
 {
   "schema_version": "bench.h2-primary-oneshot.v1",
   "enabled": true,
-  "plan_sha256": "cce4863f87520dae70ea97fcd75a88d4ada0dff874202376cc9223ea6c29868a"
+  "plan_sha256": "cce4863f87520dae70ea97fcd75a88d4ada0dff874202376cc9223ea6c29868a",
+  "first_batch_attempt": 7,
+  "batch_size": 3,
+  "batch_count": 4
 }
