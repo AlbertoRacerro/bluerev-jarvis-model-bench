@@ -21,7 +21,7 @@ from scripts.test_subset import run_test_subset
 
 ARTIFACT_ROOT = ROOT / "artifacts"
 DEFAULT_ARTIFACTS = ARTIFACT_ROOT / "direct-semantic"
-PLAN_PATH = ROOT / "fixtures" / "bench-1" / "direct-semantic-plan-v1.json"
+PLAN_PATH = ROOT / "fixtures" / "bench-plans" / "direct-semantic-plan-v1.json"
 REGISTRY_PATH = ROOT / "candidates" / "bench1-h3-primary.json"
 H3_SUMMARY_PATH = ROOT / "reports" / "H3-PRIMARY-32K" / "summary.json"
 H3_MANIFEST_PATH = ROOT / "reports" / "H3-PRIMARY-32K" / "manifest.json"
