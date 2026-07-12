@@ -1,0 +1,13 @@
+{
+  "artifacts": {
+    "summary.json": {
+      "sha256": "4ae087c5aa221a80573db900cba992f3044c2205e6ded6864ea9a5c2bb02e8ca",
+      "size_bytes": 11083
+    },
+    "summary.md": {
+      "sha256": "c95f2d965ea0bf682e03538841c4931ca6153aff8d40614d0e01e3369c4383a8",
+      "size_bytes": 2174
+    }
+  },
+  "schema_version": "bench.h2-primary-16k-summary-manifest.v1"
+}
