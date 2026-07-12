@@ -2,7 +2,7 @@
   "schema_version": "bench.h3-primary-oneshot.v1",
   "enabled": true,
   "plan_sha256": "0bf7838ef0199be1dcf89122bbdedaf17ca4253223eafd0b89472bdcba3d7c12",
-  "first_batch_attempt": 11,
+  "first_batch_attempt": 12,
   "batch_size": 2,
   "batch_count": 5
 }
