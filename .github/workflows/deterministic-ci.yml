@@ -75,3 +75,150 @@ jobs:
               issue_number: Number(process.env.ISSUE),
               body: `<!-- bench-deterministic-ci-minimal-v1 -->\n\`\`\`json\n${JSON.stringify(payload, null, 2)}\n\`\`\``,
             });
+
+  benchmark_command_control:
+    name: benchmark-command-control
+    if: github.ref == 'refs/heads/main'
+    concurrency:
+      group: benchmark-command-control
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+      actions: write
+    env:
+      RUN_ATTEMPT: ${{ github.run_attempt }}
+
+    steps:
+      - name: Register control seed or dispatch trusted-main workflow
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const ISSUE_NUMBER = 24;
+            const REGISTRY_ISSUE = 64;
+            const OWNER_LOGIN = 'AlbertoRacerro';
+            const OWNER_ID = 293122393;
+            const ACTIONS_BOT_ID = 41898282;
+            const RECEIPT_MARKER = '<!-- bench-command-receipt-v1 -->';
+            const workflows = Object.freeze({
+              '/bench preflight': 'local-benchmark.yml',
+              '/bench residency': 'local-model-residency.yml',
+              '/bench direct-smoke': 'local-direct-smoke.yml',
+            });
+
+            const isAuthorizedComment = (comment) =>
+              comment &&
+              comment.user?.login === OWNER_LOGIN &&
+              Number(comment.user?.id) === OWNER_ID &&
+              comment.user?.type === 'User' &&
+              comment.author_association === 'OWNER' &&
+              Object.hasOwn(workflows, comment.body);
+
+            const receiptSourceId = (comment) => {
+              const trustedReceiptAuthor =
+                comment?.user?.login === 'github-actions[bot]' &&
+                Number(comment?.user?.id) === ACTIONS_BOT_ID &&
+                comment?.user?.type === 'Bot';
+              if (!trustedReceiptAuthor || !comment?.body?.includes(RECEIPT_MARKER)) {
+                return null;
+              }
+              const match = comment.body.match(/```json\s*([\s\S]*?)\s*```/);
+              if (!match) return null;
+              try {
+                const receipt = JSON.parse(match[1]);
+                return receipt.schema_version === 'bench.command-receipt.v1'
+                  ? Number(receipt.source_comment_id)
+                  : null;
+              } catch (_) {
+                return null;
+              }
+            };
+
+            const registerSeed = async () => {
+              const seed = {
+                schema_version: 'bench.command-seed.v1',
+                status: 'ready',
+                run_id: context.runId,
+                run_attempt: Number(process.env.RUN_ATTEMPT),
+                job_name: 'benchmark-command-control',
+                workflow: 'Trusted-main deterministic CI',
+                sha: context.sha,
+                ref: context.ref,
+              };
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: REGISTRY_ISSUE,
+                body: [
+                  'Machine-readable registry for the GitHub-hosted benchmark command control runner.',
+                  '',
+                  'The deterministic workflow replaces this block with the current seed identity.',
+                  '',
+                  '<!-- bench-command-seed-v1 -->',
+                  '```json',
+                  JSON.stringify(seed, null, 2),
+                  '```',
+                ].join('\n'),
+              });
+            };
+
+            const findPendingCommand = async () => {
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: ISSUE_NUMBER,
+                per_page: 100,
+              });
+              const lastConsumedId = Math.max(
+                0,
+                ...comments.map(receiptSourceId).filter((id) => Number.isSafeInteger(id))
+              );
+              return comments
+                .filter(
+                  (comment) =>
+                    isAuthorizedComment(comment) &&
+                    Number(comment.id) > lastConsumedId
+                )
+                .sort((left, right) => Number(right.id) - Number(left.id))[0] ?? null;
+            };
+
+            const dispatch = async (comment) => {
+              const workflowId = workflows[comment.body];
+              await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: workflowId,
+                ref: 'main',
+              });
+              const receipt = {
+                schema_version: 'bench.command-receipt.v1',
+                command: comment.body,
+                target_workflow: workflowId,
+                ref: 'main',
+                source_comment_id: comment.id,
+                requested_by: comment.user.login,
+                dispatcher_run_id: context.runId,
+                dispatcher_run_attempt: Number(process.env.RUN_ATTEMPT),
+              };
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: ISSUE_NUMBER,
+                body: `${RECEIPT_MARKER}\n\`\`\`json\n${JSON.stringify(receipt, null, 2)}\n\`\`\``,
+              });
+            };
+
+            if (Number(process.env.RUN_ATTEMPT) === 1) {
+              await registerSeed();
+              core.info(`registered benchmark command seed run ${context.runId}`);
+              return;
+            }
+
+            const comment = await findPendingCommand();
+            if (!isAuthorizedComment(comment)) {
+              core.info('no authorized unconsumed benchmark command found');
+              return;
+            }
+            await dispatch(comment);
