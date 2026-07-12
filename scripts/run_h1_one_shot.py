@@ -15,6 +15,8 @@ H1_ARTIFACTS = ARTIFACT_ROOT / "model-residency"
 COPIED_H1 = BRIDGE_ARTIFACTS / "model-residency"
 SUMMARY_PATH = BRIDGE_ARTIFACTS / "job-summary.json"
 EXPECTED_RUN_ID = "29106127334"
+TRUSTED_REF = "refs/heads/main"
+REPLAY_EVENT = "workflow_dispatch"
 PHASES: tuple[tuple[str, int], ...] = (
     ("prepare", 60),
     ("tests", 420),
@@ -39,7 +41,10 @@ from scripts.benchmark_runtime import safe_reset_directory, sanitize_environment
 
 def _write_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(value, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
 
 def _git_head() -> str | None:
@@ -55,10 +60,14 @@ def _git_head() -> str | None:
         check=False,
     )
     value = completed.stdout.strip()
-    return value if completed.returncode == 0 and value else None
+    return value if completed.returncode == 0 and len(value) == 40 else None
 
 
-def _run_phase(name: str, timeout_seconds: int, environment: dict[str, str]) -> dict[str, Any]:
+def _run_phase(
+    name: str,
+    timeout_seconds: int,
+    environment: dict[str, str],
+) -> dict[str, Any]:
     command = [sys.executable, "-m", "scripts.run_residency_job", name]
     try:
         completed = subprocess.run(
@@ -83,8 +92,14 @@ def _run_phase(name: str, timeout_seconds: int, environment: dict[str, str]) -> 
         stderr += f"\nphase timed out after {timeout_seconds} seconds\n"
         exit_code = 124
         timed_out = True
-    (BRIDGE_ARTIFACTS / f"h1-{name}.stdout.log").write_text(stdout, encoding="utf-8")
-    (BRIDGE_ARTIFACTS / f"h1-{name}.stderr.log").write_text(stderr, encoding="utf-8")
+    (BRIDGE_ARTIFACTS / f"h1-{name}.stdout.log").write_text(
+        stdout,
+        encoding="utf-8",
+    )
+    (BRIDGE_ARTIFACTS / f"h1-{name}.stderr.log").write_text(
+        stderr,
+        encoding="utf-8",
+    )
     return {
         "command": command,
         "exit_code": exit_code,
@@ -104,8 +119,13 @@ def capture() -> int:
     safe_reset_directory(BRIDGE_ARTIFACTS, allowed_root=ARTIFACT_ROOT)
     workflow_run_id = os.environ.get("GITHUB_RUN_ID")
     workflow_attempt = os.environ.get("GITHUB_RUN_ATTEMPT")
+    source_event_name = os.environ.get("GITHUB_EVENT_NAME")
+    source_event_sha = os.environ.get("GITHUB_SHA")
+    repository_head = _git_head()
     clean_environment, removed_names = sanitize_environment(os.environ)
-    clean_environment["PYTHONPATH"] = os.pathsep.join((str(ROOT), str(ROOT / "src")))
+    clean_environment["PYTHONPATH"] = os.pathsep.join(
+        (str(ROOT), str(ROOT / "src"))
+    )
 
     summary: dict[str, Any] = {
         "schema_version": "bench.h1-one-shot-job.v1",
@@ -113,7 +133,16 @@ def capture() -> int:
         "source_workflow_run_id": workflow_run_id,
         "source_workflow_run_attempt": workflow_attempt,
         "expected_source_workflow_run_id": EXPECTED_RUN_ID,
-        "repository_head": _git_head(),
+        "source_event_name": source_event_name,
+        "source_event_sha": source_event_sha,
+        "repository_head": repository_head,
+        "h1_workflow_binding": {
+            "run_id": workflow_run_id,
+            "run_attempt": workflow_attempt,
+            "event_name": REPLAY_EVENT,
+            "sha": repository_head,
+            "ref": TRUSTED_REF,
+        },
         "sanitization": {
             "removed_external_env_names": removed_names,
             "secret_values_recorded": False,
@@ -125,14 +154,27 @@ def capture() -> int:
         summary["first_failure"] = "workflow_identity_mismatch"
         _write_json(SUMMARY_PATH, summary)
         return 0
+    if repository_head is None:
+        summary["first_failure"] = "repository_head_unavailable"
+        _write_json(SUMMARY_PATH, summary)
+        return 0
+
+    clean_environment["GITHUB_SHA"] = repository_head
+    clean_environment["GITHUB_REF"] = TRUSTED_REF
+    clean_environment["GITHUB_EVENT_NAME"] = REPLAY_EVENT
 
     failed = False
     for phase, timeout_seconds in PHASES:
         if failed:
-            summary["phases"][phase] = {"status": "skipped", "exit_code": None}
+            summary["phases"][phase] = {
+                "status": "skipped",
+                "exit_code": None,
+            }
             continue
         result = _run_phase(phase, timeout_seconds, clean_environment)
-        result["status"] = "success" if result["exit_code"] == 0 else "failure"
+        result["status"] = (
+            "success" if result["exit_code"] == 0 else "failure"
+        )
         summary["phases"][phase] = result
         if result["exit_code"] != 0:
             summary["first_failure"] = phase
@@ -142,7 +184,8 @@ def capture() -> int:
     summary["evidence"] = {
         "copied_directory": str(COPIED_H1.relative_to(ROOT)),
         "required_files": {
-            name: (COPIED_H1 / name).is_file() for name in REQUIRED_EVIDENCE
+            name: (COPIED_H1 / name).is_file()
+            for name in REQUIRED_EVIDENCE
         },
     }
     _write_json(SUMMARY_PATH, summary)
@@ -160,22 +203,43 @@ def enforce() -> int:
             raise ValueError("unexpected one-shot schema")
         if summary.get("source_workflow_run_id") != EXPECTED_RUN_ID:
             raise ValueError("one-shot source workflow identity mismatch")
+        repository_head = summary.get("repository_head")
+        if not isinstance(repository_head, str) or len(repository_head) != 40:
+            raise ValueError("one-shot repository head is missing")
         phases = summary["phases"]
         for phase, _timeout in PHASES:
             if phases[phase].get("status") != "success":
                 raise ValueError(f"H1 phase did not succeed: {phase}")
             if int(phases[phase]["exit_code"]) != 0:
                 raise ValueError(f"H1 phase exited nonzero: {phase}")
-        missing = [name for name in REQUIRED_EVIDENCE if not (COPIED_H1 / name).is_file()]
+        missing = [
+            name
+            for name in REQUIRED_EVIDENCE
+            if not (COPIED_H1 / name).is_file()
+        ]
         if missing:
             raise ValueError(f"missing H1 evidence: {', '.join(missing)}")
-        report = json.loads((COPIED_H1 / "report.json").read_text(encoding="utf-8"))
+        report = json.loads(
+            (COPIED_H1 / "report.json").read_text(encoding="utf-8")
+        )
         if report.get("infrastructure_error") is not None:
             raise ValueError("H1 report contains an infrastructure error")
         if report.get("profile", {}).get("num_ctx") != 4096:
             raise ValueError("H1 report is not bound to the 4096 context profile")
-    except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
-        print(f"H1 one-shot gate failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+        expected_binding = summary.get("h1_workflow_binding")
+        if report.get("workflow") != expected_binding:
+            raise ValueError("H1 report workflow binding does not match checkout")
+    except (
+        OSError,
+        ValueError,
+        TypeError,
+        KeyError,
+        json.JSONDecodeError,
+    ) as exc:
+        print(
+            f"H1 one-shot gate failed: {type(exc).__name__}: {exc}",
+            file=sys.stderr,
+        )
         return 1
     print(
         "H1 one-shot gate passed; "
