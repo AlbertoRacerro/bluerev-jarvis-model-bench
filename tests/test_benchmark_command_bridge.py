@@ -83,8 +83,8 @@ class BenchmarkCommandBridgeTests(unittest.TestCase):
             "github.rest.issues.listComments",
             "github.paginate",
             "receiptSourceId",
-            "const consumed = new Set",
-            "!consumed.has(Number(comment.id))",
+            "const lastConsumedId = Math.max",
+            "Number(comment.id) > lastConsumedId",
             "await findPendingCommand()",
         ):
             self.assertIn(required, self.workflow)
