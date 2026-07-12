@@ -12,7 +12,15 @@
     "eligible_routes": [
       "local_fast",
       "local_coder"
-    ]
+    ],
+    "response_contract": {
+      "output_field": "selected_route",
+      "required_actions": [
+        "route_local",
+        "return_final",
+        "stop"
+      ]
+    }
   },
   "expected": {
     "selected_route": "local_coder",
