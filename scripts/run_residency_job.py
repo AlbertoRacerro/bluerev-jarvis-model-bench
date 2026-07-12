@@ -17,6 +17,7 @@ ARTIFACTS = ARTIFACT_ROOT / "model-residency"
 TEST_PATTERNS = (
     "test_benchmark_runtime.py",
     "test_probe_model_residency.py",
+    "test_probe_model_residency_v2.py",
     "test_build_residency_shortlist.py",
     "test_residency_shortlist_binding.py",
     "test_build_h2_context_plan.py",
@@ -41,7 +42,17 @@ def tests() -> int:
         name = f"tests-{index:02d}"
         result = run_captured(
             name,
-            [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", pattern, "-v"],
+            [
+                sys.executable,
+                "-m",
+                "unittest",
+                "discover",
+                "-s",
+                "tests",
+                "-p",
+                pattern,
+                "-v",
+            ],
             cwd=ROOT,
             environment=environment,
             artifact_dir=ARTIFACTS,
@@ -57,7 +68,9 @@ def tests() -> int:
             ]
         )
         if result["exit_code"] != 0:
-            (ARTIFACTS / "tests.log").write_text("".join(combined), encoding="utf-8")
+            (ARTIFACTS / "tests.log").write_text(
+                "".join(combined), encoding="utf-8"
+            )
             return int(result["exit_code"])
     (ARTIFACTS / "tests.log").write_text("".join(combined), encoding="utf-8")
     return 0
@@ -66,7 +79,12 @@ def tests() -> int:
 def probe() -> int:
     result = run_captured(
         "probe",
-        [sys.executable, "scripts/probe_model_residency.py", "--output-dir", str(ARTIFACTS)],
+        [
+            sys.executable,
+            "scripts/probe_model_residency_v2.py",
+            "--output-dir",
+            str(ARTIFACTS),
+        ],
         cwd=ROOT,
         environment=_environment(),
         artifact_dir=ARTIFACTS,
@@ -78,7 +96,12 @@ def probe() -> int:
 def shortlist() -> int:
     result = run_captured(
         "shortlist",
-        [sys.executable, "scripts/build_residency_shortlist.py", "--output-dir", str(ARTIFACTS)],
+        [
+            sys.executable,
+            "scripts/build_residency_shortlist.py",
+            "--output-dir",
+            str(ARTIFACTS),
+        ],
         cwd=ROOT,
         environment=_environment(),
         artifact_dir=ARTIFACTS,
@@ -93,7 +116,9 @@ def h2_plan() -> int:
         print(f"missing shortlist manifest: {manifest}", file=sys.stderr)
         return 2
     digest = hashlib.sha256(manifest.read_bytes()).hexdigest()
-    (ARTIFACTS / "shortlist-manifest.sha256").write_text(digest + "\n", encoding="ascii")
+    (ARTIFACTS / "shortlist-manifest.sha256").write_text(
+        digest + "\n", encoding="ascii"
+    )
     result = run_captured(
         "h2-plan",
         [
@@ -114,7 +139,10 @@ def h2_plan() -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("mode", choices=("prepare", "tests", "probe", "shortlist", "h2-plan"))
+    parser.add_argument(
+        "mode",
+        choices=("prepare", "tests", "probe", "shortlist", "h2-plan"),
+    )
     mode = parser.parse_args().mode
     return {
         "prepare": prepare,
