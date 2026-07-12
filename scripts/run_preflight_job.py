@@ -41,9 +41,11 @@ def capture() -> int:
         "preflight",
         [
             sys.executable,
-            "scripts/preflight.py",
+            "scripts/preflight_v2.py",
             "--output",
             str(PREFLIGHT_PATH),
+            "--required-gate",
+            "hermes",
         ],
         cwd=ROOT,
         environment=child_env,
@@ -85,11 +87,16 @@ def enforce() -> int:
         report = json.loads(PREFLIGHT_PATH.read_text(encoding="utf-8"))
         if summary.get("schema_version") != "bench.preflight-job.v2":
             raise ValueError("unsupported preflight job schema")
+        if report.get("selected_gate") != "hermes":
+            raise ValueError("preflight report is not bound to the Hermes gate")
         test_exit = int(summary["tests"]["exit_code"])
         inventory_exit = int(summary["inventory"]["exit_code"])
         scoring_ready = report["scoring_ready"] is True
     except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
-        print(f"invalid preflight evidence: {type(exc).__name__}: {exc}", file=sys.stderr)
+        print(
+            f"invalid preflight evidence: {type(exc).__name__}: {exc}",
+            file=sys.stderr,
+        )
         return 2
 
     failures: list[str] = []
@@ -105,7 +112,7 @@ def enforce() -> int:
         print("; ".join(failures), file=sys.stderr)
         return 1
 
-    print("preflight gate passed")
+    print("Hermes preflight gate passed")
     return 0
 
 

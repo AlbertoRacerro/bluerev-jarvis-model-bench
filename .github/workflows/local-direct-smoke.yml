@@ -10,9 +10,14 @@ on:
       - "fixtures/bench-1/**"
       - "scripts/benchmark_runtime.py"
       - "scripts/preflight.py"
+      - "scripts/preflight_v2.py"
+      - "scripts/probe_model_residency.py"
+      - "scripts/probe_model_residency_v2.py"
       - "scripts/run_direct_smoke*.py"
       - "src/bench/**"
       - "tests/test_preflight.py"
+      - "tests/test_preflight_v2.py"
+      - "tests/test_probe_model_residency_v2.py"
       - "tests/test_direct_execution*.py"
       - "tests/test_run_direct_smoke*.py"
 
@@ -28,7 +33,7 @@ jobs:
       cancel-in-progress: false
       queue: max
     runs-on: [self-hosted, Windows, X64, bluerev-bench]
-    timeout-minutes: 25
+    timeout-minutes: 35
     defaults:
       run:
         shell: powershell

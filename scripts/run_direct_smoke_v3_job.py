@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import re
 import sys
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
@@ -22,6 +23,7 @@ from scripts.benchmark_runtime import (
     safe_reset_directory,
     sanitize_environment,
 )
+from scripts.probe_model_residency_v2 import stop_all_running_models
 
 ARTIFACT_ROOT = ROOT / "artifacts"
 ARTIFACTS = ARTIFACT_ROOT / "direct-smoke"
@@ -33,15 +35,40 @@ _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
 def _write_summary(value: dict[str, object]) -> None:
-    SUMMARY_PATH.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    SUMMARY_PATH.write_text(
+        json.dumps(value, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     print(json.dumps(value, indent=2, sort_keys=True))
+
+
+def _cleanup_attestation() -> dict[str, Any]:
+    return {
+        "verified_absent": True,
+        "models": stop_all_running_models(),
+    }
+
+
+def _execution_error(
+    primary: Exception | None,
+    cleanup: Exception | None,
+) -> dict[str, str] | None:
+    if primary is None and cleanup is None:
+        return None
+    parts: list[str] = []
+    if primary is not None:
+        parts.append(f"primary={type(primary).__name__}: {primary}")
+    if cleanup is not None:
+        parts.append(f"cleanup={type(cleanup).__name__}: {cleanup}")
+    return {
+        "type": "DirectSmokeInfrastructureError",
+        "detail": "; ".join(parts),
+    }
 
 
 def capture() -> int:
     safe_reset_directory(ARTIFACTS, allowed_root=ARTIFACT_ROOT)
-    hermes_home = ARTIFACTS / "hermes-home"
-    hermes_home.mkdir(parents=True, exist_ok=False)
-    clean_env, removed_names = sanitize_environment(os.environ, hermes_home=hermes_home)
+    clean_env, removed_names = sanitize_environment(os.environ)
     clean_env["PYTHONPATH"] = os.pathsep.join((str(ROOT), str(SRC)))
 
     tests = run_captured(
@@ -54,7 +81,14 @@ def capture() -> int:
     )
     inventory = run_captured(
         "preflight",
-        [sys.executable, "scripts/preflight.py", "--output", str(ARTIFACTS / "preflight.json")],
+        [
+            sys.executable,
+            "scripts/preflight_v2.py",
+            "--output",
+            str(ARTIFACTS / "preflight.json"),
+            "--required-gate",
+            "direct",
+        ],
         cwd=ROOT,
         environment=clean_env,
         artifact_dir=ARTIFACTS,
@@ -66,7 +100,7 @@ def capture() -> int:
         "repository_root": str(ROOT),
         "sanitization": {
             "removed_external_env_names": removed_names,
-            "isolated_hermes_home": str(hermes_home),
+            "hermes_required": False,
             "secret_values_recorded": False,
         },
         "tests": tests,
@@ -90,16 +124,26 @@ def capture() -> int:
         _write_summary(summary)
         return 0
 
+    cleanup_before: dict[str, Any] | None = None
+    cleanup_after: dict[str, Any] | None = None
+    primary_error: Exception | None = None
+    cleanup_error: Exception | None = None
+    execution: dict[str, Any] | None = None
     try:
-        preflight_report = json.loads((ARTIFACTS / "preflight.json").read_text(encoding="utf-8"))
+        preflight_report = json.loads(
+            (ARTIFACTS / "preflight.json").read_text(encoding="utf-8")
+        )
+        if preflight_report.get("selected_gate") != "direct":
+            raise ContractError("trusted preflight is not bound to the direct gate")
         if preflight_report.get("scoring_ready") is not True:
-            raise ContractError("trusted preflight is not scoring-ready")
+            raise ContractError("trusted direct preflight is not scoring-ready")
         workflow_run_id = clean_env.get("GITHUB_RUN_ID")
         workflow_attempt = clean_env.get("GITHUB_RUN_ATTEMPT")
         if not workflow_run_id or not workflow_attempt:
             raise ContractError("workflow identity is incomplete")
         run_id = f"direct-{workflow_run_id}-{workflow_attempt}"
         with isolated_process_environment(clean_env):
+            cleanup_before = _cleanup_attestation()
             execution = execute_direct_smoke(
                 run_id=run_id,
                 candidate_id=CANDIDATE_ID,
@@ -109,11 +153,25 @@ def capture() -> int:
                 output_root=ARTIFACTS / "runs",
                 opener=open_loopback,
             )
-        summary["execution"] = {"infrastructure_exit_code": 0, "skipped_reason": None, **execution}
-    except (ContractError, OSError, ValueError, TypeError) as exc:
-        error = {"type": type(exc).__name__, "detail": str(exc)}
+    except Exception as exc:  # infrastructure evidence must survive code failures
+        primary_error = exc
+    finally:
+        try:
+            with isolated_process_environment(clean_env):
+                cleanup_after = _cleanup_attestation()
+        except Exception as exc:  # cleanup failure is independently blocking
+            cleanup_error = exc
+
+    error = _execution_error(primary_error, cleanup_error)
+    if error is not None or execution is None:
+        if error is None:
+            error = {
+                "type": "DirectSmokeInfrastructureError",
+                "detail": "execution summary is missing",
+            }
         (ARTIFACTS / "execution-error.json").write_text(
-            json.dumps(error, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+            json.dumps(error, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
         )
         summary["execution"] = {
             "infrastructure_exit_code": 2,
@@ -121,7 +179,17 @@ def capture() -> int:
             "candidate_passed": None,
             "candidate_result_status": None,
             "skipped_reason": None,
+            "cleanup_before": cleanup_before,
+            "cleanup_after": cleanup_after,
             "error": error,
+        }
+    else:
+        summary["execution"] = {
+            "infrastructure_exit_code": 0,
+            "skipped_reason": None,
+            "cleanup_before": cleanup_before,
+            "cleanup_after": cleanup_after,
+            **execution,
         }
     _write_summary(summary)
     return 0
@@ -138,7 +206,10 @@ def enforce() -> int:
         execution = summary["execution"]
         execution_exit = int(execution["infrastructure_exit_code"])
     except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
-        print(f"invalid direct-smoke job summary: {type(exc).__name__}: {exc}", file=sys.stderr)
+        print(
+            f"invalid direct-smoke job summary: {type(exc).__name__}: {exc}",
+            file=sys.stderr,
+        )
         return 2
 
     failures: list[str] = []
@@ -151,14 +222,22 @@ def enforce() -> int:
         execution_completed = execution.get("execution_completed") is True
         result_status = execution.get("candidate_result_status")
         case_sha256 = execution.get("case_definition_sha256")
+        cleanup_after = execution.get("cleanup_after")
         if execution_exit != 0:
             failures.append(f"direct execution infrastructure exited {execution_exit}")
         if not execution_completed:
             failures.append("direct execution did not complete")
         if result_status not in {"passed", "failed", "invalid"}:
-            failures.append(f"unsupported candidate_result_status={result_status!r}")
+            failures.append(
+                f"unsupported candidate_result_status={result_status!r}"
+            )
         if not isinstance(case_sha256, str) or not _SHA256.fullmatch(case_sha256):
             failures.append("case definition digest is missing or malformed")
+        if (
+            not isinstance(cleanup_after, dict)
+            or cleanup_after.get("verified_absent") is not True
+        ):
+            failures.append("post-execution Ollama cleanup was not verified")
     elif execution.get("skipped_reason") != "prerequisite_failure":
         failures.append("direct execution skip reason is missing or invalid")
     if failures:

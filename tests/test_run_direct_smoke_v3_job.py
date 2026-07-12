@@ -10,7 +10,13 @@ from scripts import run_direct_smoke_v3_job
 
 
 class DirectSmokeV3JobGateTests(unittest.TestCase):
-    def write_summary(self, root: Path, case_digest: object) -> Path:
+    def write_summary(
+        self,
+        root: Path,
+        case_digest: object,
+        *,
+        cleanup_verified: object = True,
+    ) -> Path:
         path = root / "job-summary.json"
         path.write_text(
             json.dumps(
@@ -24,6 +30,10 @@ class DirectSmokeV3JobGateTests(unittest.TestCase):
                         "candidate_passed": True,
                         "candidate_result_status": "passed",
                         "case_definition_sha256": case_digest,
+                        "cleanup_after": {
+                            "verified_absent": cleanup_verified,
+                            "models": [],
+                        },
                         "skipped_reason": None,
                     },
                 }
@@ -33,13 +43,16 @@ class DirectSmokeV3JobGateTests(unittest.TestCase):
         return path
 
     def test_candidate_and_case_are_fixed(self):
-        self.assertEqual(run_direct_smoke_v3_job.CANDIDATE_ID, "qwythos-hermes-safe")
+        self.assertEqual(
+            run_direct_smoke_v3_job.CANDIDATE_ID,
+            "qwythos-hermes-safe",
+        )
         self.assertEqual(
             run_direct_smoke_v3_job.CASE_PATH.name,
             "ho-stop-reuse-explicit-002.json",
         )
 
-    def test_valid_case_digest_keeps_gate_green(self):
+    def test_valid_case_digest_and_cleanup_keep_gate_green(self):
         with tempfile.TemporaryDirectory() as directory:
             path = self.write_summary(Path(directory), "a" * 64)
             with patch.object(run_direct_smoke_v3_job, "SUMMARY_PATH", path):
@@ -54,6 +67,16 @@ class DirectSmokeV3JobGateTests(unittest.TestCase):
     def test_non_hex_case_digest_fails_gate(self):
         with tempfile.TemporaryDirectory() as directory:
             path = self.write_summary(Path(directory), "g" * 64)
+            with patch.object(run_direct_smoke_v3_job, "SUMMARY_PATH", path):
+                self.assertEqual(run_direct_smoke_v3_job.enforce(), 1)
+
+    def test_unverified_cleanup_fails_gate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = self.write_summary(
+                Path(directory),
+                "a" * 64,
+                cleanup_verified=False,
+            )
             with patch.object(run_direct_smoke_v3_job, "SUMMARY_PATH", path):
                 self.assertEqual(run_direct_smoke_v3_job.enforce(), 1)
 
