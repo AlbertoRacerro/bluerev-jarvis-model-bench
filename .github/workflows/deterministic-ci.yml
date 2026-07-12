@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   tests:
@@ -29,12 +30,14 @@ jobs:
           clean: true
 
       - name: Capture compile and deterministic tests
+        id: capture
         run: |
           $env:PYTHONUTF8 = '1'
           $env:PYTHONIOENCODING = 'utf-8'
           python -m scripts.run_deterministic_ci capture
 
       - name: Upload deterministic evidence
+        id: upload
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -44,5 +47,65 @@ jobs:
           retention-days: 14
 
       - name: Enforce deterministic gate
+        id: enforce
         if: always()
         run: python -m scripts.run_deterministic_ci enforce
+
+      - name: Publish deterministic status
+        if: always()
+        continue-on-error: true
+        uses: actions/github-script@v7
+        env:
+          INBOX_ISSUE: "24"
+          STATUS_ISSUE: "49"
+          SUMMARY_PATH: artifacts/deterministic-ci/summary.json
+          JOB_STATUS: ${{ job.status }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          CAPTURE_OUTCOME: ${{ steps.capture.outcome }}
+          ENFORCE_OUTCOME: ${{ steps.enforce.outcome }}
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+        with:
+          script: |
+            const fs = require('fs');
+            const updateLatestStatus = require('./.github/scripts/update_latest_status.js');
+            let summary = null;
+            let summaryError = null;
+            try { summary = JSON.parse(fs.readFileSync(process.env.SUMMARY_PATH, 'utf8')); }
+            catch (error) { summaryError = `${error.name}: ${error.message}`; }
+            const payload = {
+              schema_version: 'bench.deterministic-ci-inbox.v1',
+              run_id: Number(context.runId),
+              run_attempt: Number(process.env.RUN_ATTEMPT),
+              workflow: context.workflow,
+              event_name: context.eventName,
+              sha: context.sha,
+              ref: context.ref,
+              job_status: process.env.JOB_STATUS,
+              phases: {
+                capture: process.env.CAPTURE_OUTCOME,
+                enforce: process.env.ENFORCE_OUTCOME,
+              },
+              artifact: {
+                url: process.env.ARTIFACT_URL || null,
+                digest: process.env.ARTIFACT_DIGEST || null,
+              },
+              compileall: summary?.compileall ?? null,
+              tests: summary?.tests ?? null,
+              sanitization: summary?.sanitization ?? null,
+              summary_error: summaryError,
+            };
+            await updateLatestStatus({
+              github,
+              context,
+              issueNumber: Number(process.env.STATUS_ISSUE),
+              section: 'deterministic',
+              title: 'Deterministic CI',
+              payload,
+            });
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number(process.env.INBOX_ISSUE),
+              body: `<!-- bench-deterministic-ci-v1 -->\n\`\`\`json\n${JSON.stringify(payload, null, 2)}\n\`\`\``,
+            });
