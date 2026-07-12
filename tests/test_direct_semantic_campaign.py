@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -103,6 +102,19 @@ class DirectSemanticCampaignTests(unittest.TestCase):
         ):
             with self.assertRaisesRegex(ValueError, "outside"):
                 job.batch_index_from_environment()
+
+    def test_workflow_is_trusted_main_serial_and_fail_closed(self):
+        workflow = (
+            ROOT / ".github" / "workflows" / "local-direct-semantic-campaign.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn("branches: [main]", workflow)
+        self.assertIn('config/bench1-direct-semantic-oneshot.json', workflow)
+        self.assertIn("if: github.ref == 'refs/heads/main'", workflow)
+        self.assertIn("fail-fast: true", workflow)
+        self.assertIn("max-parallel: 1", workflow)
+        self.assertIn("runs-on: [self-hosted, Windows, X64, bluerev-bench]", workflow)
+        self.assertNotIn("pull_request:", workflow)
+        self.assertNotIn("external", workflow.lower().split("external_providers_allowed", 1)[0])
 
     def test_finalize_manifest_records_real_repetition_and_status(self):
         with tempfile.TemporaryDirectory() as directory:
