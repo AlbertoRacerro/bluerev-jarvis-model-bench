@@ -33,6 +33,9 @@ def _summary_path(artifact_dir): return artifact_dir/"job-summary.json"
 def _write_summary(artifact_dir,value):
     _summary_path(artifact_dir).write_text(json.dumps(value,indent=2,sort_keys=True)+"\n",encoding="utf-8"); print(json.dumps(value,indent=2,sort_keys=True))
 def _sha256(path): return hashlib.sha256(path.read_bytes()).hexdigest()
+def _source_sha256(path):
+    text=path.read_text(encoding="utf-8").replace("\r\n","\n").replace("\r","\n")
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 def _load_json(path):
     value=json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value,dict): raise ValueError(f"{path.name} must contain an object")
@@ -49,7 +52,7 @@ def selection_for(index):
     start=index*BATCH_SIZE; return {"mode":"batch","batch_index":index,"batch_size":2,"start":start,"end":start+2,"expected_count":2,"total_candidates":10}
 
 def _source_files_are_bound():
-    return all(path.is_file() and _sha256(path)==digest for path,digest in ((PLAN_PATH,EXPECTED_PLAN_SHA256),(SUMMARY_PATH,EXPECTED_SUMMARY_SHA256),(SUMMARY_MANIFEST_PATH,EXPECTED_SUMMARY_MANIFEST_SHA256)))
+    return all(path.is_file() and _source_sha256(path)==digest for path,digest in ((PLAN_PATH,EXPECTED_PLAN_SHA256),(SUMMARY_PATH,EXPECTED_SUMMARY_SHA256),(SUMMARY_MANIFEST_PATH,EXPECTED_SUMMARY_MANIFEST_SHA256)))
 
 def capture(artifact_dir=DEFAULT_ARTIFACTS):
     safe_reset_directory(artifact_dir,allowed_root=ARTIFACT_ROOT); environment,removed=_environment()
