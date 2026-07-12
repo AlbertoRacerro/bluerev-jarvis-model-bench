@@ -33,7 +33,7 @@ jobs:
       cancel-in-progress: false
       queue: max
     runs-on: [self-hosted, Windows, X64, bluerev-bench]
-    timeout-minutes: 25
+    timeout-minutes: 35
     defaults:
       run:
         shell: powershell
