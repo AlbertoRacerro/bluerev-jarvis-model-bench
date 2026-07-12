@@ -58,7 +58,8 @@ class BenchmarkRuntimeTests(unittest.TestCase):
     def test_timeout_preserves_exit_124_and_tree_termination_evidence(self) -> None:
         child_code = "import time; time.sleep(60)"
         parent_code = (
-            "import subprocess,sys; "
+            "import subprocess,sys,time; "
+            "time.sleep(0.25); "
             "p=subprocess.Popen([sys.executable,'-c',sys.argv[1]]); "
             "print(p.pid, flush=True)"
         )
