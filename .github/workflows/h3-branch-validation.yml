@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   validate:
@@ -20,6 +21,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Compile remote H3 blobs
+        id: compile
         run: |
           python -m py_compile \
             scripts/probe_h3_context.py \
@@ -31,9 +33,36 @@ jobs:
             tests/test_run_h3_context_job.py \
             tests/test_h3_oneshot_bridge.py
       - name: Run focused remote tests
+        id: tests
         run: |
           python -m unittest -v \
             tests.test_probe_h3_context \
             tests.test_run_h3_context_job \
             tests.test_h3_oneshot_bridge \
             tests.test_run_direct_smoke_v3_job
+      - name: Publish validation result
+        if: always()
+        continue-on-error: true
+        uses: actions/github-script@v7
+        env:
+          ISSUE: "24"
+          COMPILE: ${{ steps.compile.outcome }}
+          TESTS: ${{ steps.tests.outcome }}
+          STATUS: ${{ job.status }}
+        with:
+          script: |
+            const payload = {
+              schema_version: 'bench.h3-branch-validation.v1',
+              run_id: Number(context.runId),
+              sha: context.sha,
+              ref: context.ref,
+              job_status: process.env.STATUS,
+              compile: process.env.COMPILE,
+              tests: process.env.TESTS,
+            };
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number(process.env.ISSUE),
+              body: '<!-- bench-h3-branch-validation-v1 -->\n```json\n' + JSON.stringify(payload, null, 2) + '\n```',
+            });
