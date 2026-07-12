@@ -13,20 +13,16 @@ SCHEMA_VERSION = "bench.direct-smoke.v3"
 
 
 def verify_candidate_visible_response_contract(case: Mapping[str, Any]) -> None:
-    """Bind evaluator-only expectations to data visible to the candidate.
-
-    The HO-STOP reuse assertion requires an exact output object and action order.
-    Those requirements must therefore be present in ``inputs.response_contract``;
-    otherwise the case is underspecified and cannot produce candidate evidence.
-    """
-
+    """Bind evaluator-only expectations to data visible to the candidate."""
     if "reused_supplied_result" not in case.get("success_assertions", []):
         return
 
     inputs = case.get("inputs")
     expected = case.get("expected")
     if not isinstance(inputs, Mapping) or not isinstance(expected, Mapping):
-        raise ContractError("HO-STOP response contract requires object inputs and expected")
+        raise ContractError(
+            "HO-STOP response contract requires object inputs and expected"
+        )
     if "supplied_result" not in inputs:
         raise ContractError("HO-STOP case must expose inputs.supplied_result")
 
@@ -41,13 +37,20 @@ def verify_candidate_visible_response_contract(case: Mapping[str, Any]) -> None:
     output_field = response_contract.get("output_field")
     required_actions = response_contract.get("required_actions")
     if not isinstance(output_field, str) or not output_field.strip():
-        raise ContractError("inputs.response_contract.output_field must be non-empty")
+        raise ContractError(
+            "inputs.response_contract.output_field must be non-empty"
+        )
     if output_field == "actions":
-        raise ContractError("inputs.response_contract.output_field cannot be actions")
+        raise ContractError(
+            "inputs.response_contract.output_field cannot be actions"
+        )
     if (
         not isinstance(required_actions, list)
         or not required_actions
-        or any(not isinstance(action, str) or not action for action in required_actions)
+        or any(
+            not isinstance(action, str) or not action
+            for action in required_actions
+        )
         or len(required_actions) != len(set(required_actions))
     ):
         raise ContractError(
@@ -68,16 +71,39 @@ def verify_candidate_visible_response_contract(case: Mapping[str, Any]) -> None:
     if not isinstance(allowed_actions, list) or any(
         action not in allowed_actions for action in required_actions
     ):
-        raise ContractError("response_contract requires actions outside allowed_actions")
+        raise ContractError(
+            "response_contract requires actions outside allowed_actions"
+        )
 
 
-def _finalize_case_evidence(run_dir: Path, case: Mapping[str, Any]) -> tuple[str, str]:
+def verify_direct_preflight_gate(preflight_path: Path) -> None:
+    preflight = base._load_json_file(
+        preflight_path,
+        label="preflight evidence",
+    )
+    if not isinstance(preflight, Mapping):
+        raise ContractError("preflight evidence must contain an object")
+    if preflight.get("selected_gate") != "direct":
+        raise ContractError("direct execution requires selected_gate=direct")
+    lanes = preflight.get("lanes")
+    direct = lanes.get("direct") if isinstance(lanes, Mapping) else None
+    if not isinstance(direct, Mapping) or direct.get("scoring_ready") is not True:
+        raise ContractError("direct lane preflight must be scoring-ready")
+
+
+def _finalize_case_evidence(
+    run_dir: Path,
+    case: Mapping[str, Any],
+) -> tuple[str, str]:
     case_path = run_dir / "case_definition.json"
     base._write_json(case_path, dict(case))
     case_sha256 = base._sha256_file(case_path)
 
     environment_path = run_dir / "environment_fingerprint.json"
-    environment = base._load_json_file(environment_path, label="environment fingerprint")
+    environment = base._load_json_file(
+        environment_path,
+        label="environment fingerprint",
+    )
     if not isinstance(environment, Mapping):
         raise ContractError("environment fingerprint must contain an object")
     environment = dict(environment)
@@ -122,6 +148,7 @@ def execute_direct_smoke(
     timeout_seconds: int = base.DEFAULT_TIMEOUT_SECONDS,
     opener: Callable[[Request, int], Any] = base._open_no_redirect,
 ) -> dict[str, Any]:
+    verify_direct_preflight_gate(preflight_path)
     case = base.load_case_file(case_path)
     verify_candidate_visible_response_contract(case)
 
