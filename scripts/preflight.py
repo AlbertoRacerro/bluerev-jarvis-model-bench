@@ -168,12 +168,13 @@ def _hermes_repo_candidates() -> list[tuple[Path, str]]:
     local_app_data = os.environ.get("LOCALAPPDATA")
     if local_app_data:
         candidates.append((_expanded_path(local_app_data) / "hermes" / "hermes-agent", "windows_managed_install"))
-    candidates.extend(
-        [
-            (DEFAULT_WINDOWS_HERMES_REPO, "legacy_windows_default"),
-            (Path.home() / ".hermes" / "hermes-agent", "posix_managed_install"),
-        ]
-    )
+    candidates.append((DEFAULT_WINDOWS_HERMES_REPO, "legacy_windows_default"))
+    try:
+        home = Path.home()
+    except (OSError, RuntimeError):
+        home = None
+    if home is not None:
+        candidates.append((home / ".hermes" / "hermes-agent", "posix_managed_install"))
     unique: list[tuple[Path, str]] = []
     seen: set[str] = set()
     for path, source in candidates:
