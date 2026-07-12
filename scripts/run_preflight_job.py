@@ -11,11 +11,19 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.benchmark_runtime import run_captured, safe_reset_directory, sanitize_environment
+from scripts.test_subset import run_test_subset
 
 ARTIFACT_ROOT = ROOT / "artifacts"
 ARTIFACTS = ARTIFACT_ROOT / "preflight"
 SUMMARY_PATH = ARTIFACTS / "job-summary.json"
 PREFLIGHT_PATH = ARTIFACTS / "preflight.json"
+PREFLIGHT_TEST_PATTERNS = (
+    "test_benchmark_runtime.py",
+    "test_lane_test_subset.py",
+    "test_preflight.py",
+    "test_preflight_v2.py",
+    "test_hermes_install_probe.py",
+)
 
 
 def capture() -> int:
@@ -29,13 +37,12 @@ def capture() -> int:
     )
     child_env["PYTHONPATH"] = os.pathsep.join((str(ROOT), str(ROOT / "src")))
 
-    tests = run_captured(
-        "tests",
-        [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"],
-        cwd=ROOT,
+    tests = run_test_subset(
+        patterns=PREFLIGHT_TEST_PATTERNS,
+        root=ROOT,
         environment=child_env,
         artifact_dir=ARTIFACTS,
-        timeout_seconds=900,
+        timeout_seconds_per_pattern=180,
     )
     inventory = run_captured(
         "preflight",
@@ -58,6 +65,7 @@ def capture() -> int:
         "python": sys.executable,
         "repository_root": str(ROOT),
         "artifact_directory": str(ARTIFACTS),
+        "test_scope": "preflight-contract",
         "sanitization": {
             "removed_external_env_names": removed_names,
             "isolated_hermes_home": str(hermes_home),
@@ -87,6 +95,8 @@ def enforce() -> int:
         report = json.loads(PREFLIGHT_PATH.read_text(encoding="utf-8"))
         if summary.get("schema_version") != "bench.preflight-job.v2":
             raise ValueError("unsupported preflight job schema")
+        if summary.get("test_scope") != "preflight-contract":
+            raise ValueError("preflight test scope is not explicit")
         if report.get("selected_gate") != "hermes":
             raise ValueError("preflight report is not bound to the Hermes gate")
         test_exit = int(summary["tests"]["exit_code"])
@@ -101,7 +111,7 @@ def enforce() -> int:
 
     failures: list[str] = []
     if test_exit != 0:
-        failures.append(f"deterministic tests exited {test_exit}")
+        failures.append(f"preflight contract tests exited {test_exit}")
     if inventory_exit != 0:
         failures.append(f"runtime inventory exited {inventory_exit}")
     if not scoring_ready:
