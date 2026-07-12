@@ -19,7 +19,7 @@ class H3ContextJobTests(unittest.TestCase):
         with mock.patch.dict(os.environ,{"BENCH_H3_BATCH_INDEX":"5"},clear=False):
             with self.assertRaisesRegex(ValueError,"outside"): job.batch_index_from_environment()
     def test_source_files_are_bound_to_closeout(self):
-        self.assertTrue(job._source_files_are_bound()); self.assertEqual(job._sha256(job.PLAN_PATH),job.EXPECTED_PLAN_SHA256); self.assertEqual(job._sha256(job.SUMMARY_PATH),job.EXPECTED_SUMMARY_SHA256)
+        self.assertTrue(job._source_files_are_bound()); self.assertEqual(job._source_sha256(job.PLAN_PATH),job.EXPECTED_PLAN_SHA256); self.assertEqual(job._source_sha256(job.SUMMARY_PATH),job.EXPECTED_SUMMARY_SHA256); self.assertEqual(job._source_sha256(job.SUMMARY_MANIFEST_PATH),job.EXPECTED_SUMMARY_MANIFEST_SHA256)
     def make_artifact(self,root,status="cpu_offload"):
         selection=job.selection_for(0); expected=job._expected_batch_candidates(0); write_json(root/"job-summary.json",{"schema_version":"bench.h3-context-job.v1","test_scope":"h3-primary-32k-batch","selection":selection,"tests":{"exit_code":0},"probe":{"exit_code":0}}); results=[]; probe_dir=root/"h3-primary-32k"
         for sequence,candidate in enumerate(expected):

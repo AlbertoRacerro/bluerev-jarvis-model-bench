@@ -5,6 +5,7 @@ on:
     branches:
       - bench/h3-primary-32k
       - fix/h3-canonical-source-hash
+      - fix/h3-source-test-canonical
 
 permissions:
   contents: read
