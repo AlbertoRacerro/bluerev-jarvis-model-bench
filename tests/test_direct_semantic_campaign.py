@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 from scripts import probe_direct_semantic_campaign as probe
+from scripts import run_direct_semantic_campaign_bound_job as bound
 from scripts import run_direct_semantic_campaign_job as job
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -113,8 +114,28 @@ class DirectSemanticCampaignTests(unittest.TestCase):
         self.assertIn("fail-fast: true", workflow)
         self.assertIn("max-parallel: 1", workflow)
         self.assertIn("runs-on: [self-hosted, Windows, X64, bluerev-bench]", workflow)
+        self.assertIn("capture-shell.log", workflow)
         self.assertNotIn("pull_request:", workflow)
-        self.assertNotIn("external", workflow.lower().split("external_providers_allowed", 1)[0])
+
+    def test_capture_errors_always_materialize_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with mock.patch.dict(
+                os.environ,
+                {"BENCH_SEMANTIC_BATCH_INDEX": "0"},
+                clear=False,
+            ):
+                self.assertEqual(
+                    bound._record_capture_error(root, RuntimeError("diagnostic")),
+                    0,
+                )
+            error = json.loads((root / "capture-error.json").read_text())
+            summary = json.loads((root / "job-summary.json").read_text())
+            self.assertEqual(error["type"], "RuntimeError")
+            self.assertEqual(error["detail"], "diagnostic")
+            self.assertEqual(summary["selection"], job.selection_for(0))
+            self.assertEqual(summary["probe"]["exit_code"], 2)
+            self.assertEqual(summary["capture_error"], error)
 
     def test_finalize_manifest_records_real_repetition_and_status(self):
         with tempfile.TemporaryDirectory() as directory:

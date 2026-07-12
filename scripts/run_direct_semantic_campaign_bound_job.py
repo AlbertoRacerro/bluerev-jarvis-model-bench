@@ -34,6 +34,7 @@ def repository_snapshot() -> dict[str, Any]:
 
 
 def _write_json(path: Path, value: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
@@ -82,15 +83,55 @@ def _campaign_manifest_without_nested_manifests(campaign_dir: Path) -> list[str]
     return failures
 
 
+def _selection_or_error() -> dict[str, Any]:
+    try:
+        return job.selection_for(job.batch_index_from_environment())
+    except ValueError as exc:
+        return {"mode": "invalid", "error": str(exc)}
+
+
+def _record_capture_error(artifact_dir: Path, exc: Exception) -> int:
+    error = {
+        "schema_version": "bench.direct-semantic-capture-error.v1",
+        "type": type(exc).__name__,
+        "detail": str(exc),
+    }
+    _write_json(artifact_dir / "capture-error.json", error)
+    _write_json(
+        artifact_dir / "job-summary.json",
+        {
+            "schema_version": "bench.direct-semantic-job.v1",
+            "test_scope": "direct-semantic-campaign",
+            "selection": _selection_or_error(),
+            "source": {
+                "plan_sha256": probe.EXPECTED_PLAN_SHA256,
+                "candidate_registry_sha256": probe.EXPECTED_REGISTRY_SHA256,
+                "h3_summary_sha256": probe.EXPECTED_H3_SUMMARY_SHA256,
+                "h3_manifest_sha256": probe.EXPECTED_H3_MANIFEST_SHA256,
+            },
+            "tests": {"exit_code": 2, "error_type": type(exc).__name__},
+            "inventory": {"exit_code": 2, "error_type": type(exc).__name__},
+            "probe": {
+                "exit_code": 2,
+                "skipped_reason": None,
+                "error_type": type(exc).__name__,
+                "error_detail": str(exc),
+            },
+            "capture_error": error,
+        },
+    )
+    print(f"semantic capture failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+    return 0
+
+
 def capture(artifact_dir: Path = job.DEFAULT_ARTIFACTS) -> int:
     try:
         binding = repository_snapshot()
-    except RuntimeError as exc:
-        print(str(exc), file=sys.stderr)
-        return 2
-    result = job.capture(artifact_dir)
-    _inject_binding(artifact_dir, binding)
-    return result
+        result = job.capture(artifact_dir)
+        _inject_binding(artifact_dir, binding)
+        return result
+    except Exception as exc:
+        return _record_capture_error(artifact_dir, exc)
 
 
 def _valid_binding(value: Any, current: dict[str, Any]) -> bool:

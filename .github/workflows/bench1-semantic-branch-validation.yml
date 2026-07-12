@@ -2,7 +2,9 @@ name: BENCH-1 semantic branch validation
 
 on:
   push:
-    branches: [bench/bench1-direct-semantic-campaign]
+    branches:
+      - bench/bench1-direct-semantic-campaign
+      - fix/semantic-capture-diagnostics
 
 permissions:
   contents: read
