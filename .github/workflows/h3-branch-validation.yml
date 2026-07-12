@@ -2,7 +2,9 @@ name: H3 branch validation
 
 on:
   push:
-    branches: [bench/h3-primary-32k]
+    branches:
+      - bench/h3-primary-32k
+      - fix/h3-canonical-source-hash
 
 permissions:
   contents: read
