@@ -10,6 +10,15 @@ from typing import Any
 
 from scripts import probe_model_residency as base
 
+_STALE_EVIDENCE = (
+    "report.json",
+    "manifest.json",
+    "shortlist.json",
+    "shortlist-manifest.json",
+    "h2-context-plan.json",
+    "models",
+)
+
 
 def _running_names(items: list[dict[str, Any]]) -> list[str]:
     names: list[str] = []
@@ -37,8 +46,7 @@ def stop_all_running_models() -> list[dict[str, Any]]:
             "could not verify model unload: " + ", ".join(failed)
         )
 
-    remaining = base.running_models()
-    remaining_names = _running_names(remaining)
+    remaining_names = _running_names(base.running_models())
     if remaining_names:
         raise base.InfrastructureProbeError(
             "Ollama cleanup left running models: " + ", ".join(remaining_names)
@@ -94,47 +102,49 @@ def probe_model(model: dict[str, Any], output_dir: Path) -> dict[str, Any]:
     ps_entry: dict[str, Any] | None = None
     error: dict[str, str] | None = None
     primary_failure: base.InfrastructureProbeError | None = None
-
-    try:
-        generate_response = base._request_json(
-            base.GENERATE_URL,
-            expected_path="/api/generate",
-            timeout=int(base.PROFILE["request_timeout_seconds"]),
-            payload={
-                "model": model_name,
-                "prompt": "Return exactly OK.",
-                "stream": False,
-                "keep_alive": base.PROFILE["keep_alive"],
-                "options": {
-                    "temperature": base.PROFILE["temperature"],
-                    "seed": base.PROFILE["seed"],
-                    "num_predict": base.PROFILE["num_predict"],
-                    "num_ctx": base.PROFILE["num_ctx"],
-                },
-            },
-        )
-        if generate_response.get("done") is not True:
-            raise base.ProbeError("Ollama generate response was incomplete")
-        ps_entry = base._find_single_running_model(model)
-    except base.InfrastructureProbeError as exc:
-        primary_failure = exc
-    except base.ProbeError as exc:
-        error = {"type": type(exc).__name__, "detail": str(exc)}
-
-    duration_seconds = time.monotonic() - started
-    loaded_gpu = base.gpu_snapshot()
-    if loaded_gpu.get("ok") is not True and primary_failure is None:
-        primary_failure = base.InfrastructureProbeError(
-            f"GPU snapshot failed after loading model: {model_name}"
-        )
-
     cleanup_after: dict[str, Any] | None = None
     cleanup_failure: base.ProbeError | None = None
-    try:
-        cleanup_after = _cleanup_attestation()
-    except base.ProbeError as exc:
-        cleanup_failure = exc
+    loaded_gpu: dict[str, Any] = {"ok": False, "gpus": []}
 
+    try:
+        try:
+            generate_response = base._request_json(
+                base.GENERATE_URL,
+                expected_path="/api/generate",
+                timeout=int(base.PROFILE["request_timeout_seconds"]),
+                payload={
+                    "model": model_name,
+                    "prompt": "Return exactly OK.",
+                    "stream": False,
+                    "keep_alive": base.PROFILE["keep_alive"],
+                    "options": {
+                        "temperature": base.PROFILE["temperature"],
+                        "seed": base.PROFILE["seed"],
+                        "num_predict": base.PROFILE["num_predict"],
+                        "num_ctx": base.PROFILE["num_ctx"],
+                    },
+                },
+            )
+            if generate_response.get("done") is not True:
+                raise base.ProbeError("Ollama generate response was incomplete")
+            ps_entry = base._find_single_running_model(model)
+        except base.InfrastructureProbeError as exc:
+            primary_failure = exc
+        except base.ProbeError as exc:
+            error = {"type": type(exc).__name__, "detail": str(exc)}
+
+        loaded_gpu = base.gpu_snapshot()
+        if loaded_gpu.get("ok") is not True and primary_failure is None:
+            primary_failure = base.InfrastructureProbeError(
+                f"GPU snapshot failed after loading model: {model_name}"
+            )
+    finally:
+        try:
+            cleanup_after = _cleanup_attestation()
+        except base.ProbeError as exc:
+            cleanup_failure = exc
+
+    duration_seconds = time.monotonic() - started
     combined = _combine_infrastructure_failures(primary_failure, cleanup_failure)
     if combined is not None:
         raise combined
@@ -232,6 +242,10 @@ def build_report(output_dir: Path) -> dict[str, Any]:
     }
 
 
+def _stale_evidence(output_dir: Path) -> list[str]:
+    return [name for name in _STALE_EVIDENCE if (output_dir / name).exists()]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Measure sequential Ollama residency with fail-safe cleanup."
@@ -239,6 +253,13 @@ def main() -> int:
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
+    stale = _stale_evidence(args.output_dir)
+    if stale:
+        print(
+            "refusing to mix H1 evidence with stale artifacts: " + ", ".join(stale),
+            file=os.sys.stderr,
+        )
+        return 2
     report = build_report(args.output_dir)
     base._write_json(args.output_dir / "report.json", report)
     base.write_manifest(args.output_dir)
