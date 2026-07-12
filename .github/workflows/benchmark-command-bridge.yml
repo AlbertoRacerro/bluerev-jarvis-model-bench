@@ -23,6 +23,9 @@ jobs:
         github.event_name == 'push' ||
         (github.event_name == 'issue_comment' && github.event.issue.number == 24)
       )
+    concurrency:
+      group: benchmark-command-control
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
@@ -35,6 +38,7 @@ jobs:
             const ISSUE_NUMBER = 24;
             const OWNER_LOGIN = 'AlbertoRacerro';
             const OWNER_ID = 293122393;
+            const ACTIONS_BOT_ID = 41898282;
             const RECEIPT_MARKER = '<!-- bench-command-receipt-v1 -->';
             const workflows = Object.freeze({
               '/bench preflight': 'local-benchmark.yml',
@@ -51,7 +55,13 @@ jobs:
               Object.hasOwn(workflows, comment.body);
 
             const receiptSourceId = (comment) => {
-              if (!comment?.body?.includes(RECEIPT_MARKER)) return null;
+              const trustedReceiptAuthor =
+                comment?.user?.login === 'github-actions[bot]' &&
+                Number(comment?.user?.id) === ACTIONS_BOT_ID &&
+                comment?.user?.type === 'Bot';
+              if (!trustedReceiptAuthor || !comment?.body?.includes(RECEIPT_MARKER)) {
+                return null;
+              }
               const match = comment.body.match(/```json\s*([\s\S]*?)\s*```/);
               if (!match) return null;
               try {
