@@ -1,0 +1,349 @@
+{
+  "cases": [
+    {
+      "candidate": {
+        "digest": "63fb193b3a9b4322a18e8c6b250ca2e70a5ff531e962dbf95ba089b2566f2fa5",
+        "name": "deepseek-coder-v2:16b"
+      },
+      "contexts": [
+        {
+          "allow_cpu_offload": false,
+          "num_ctx": 16384,
+          "required": true,
+          "sequence": 1,
+          "timeout_seconds": 600,
+          "verify_cleanup": true,
+          "verify_singleton_process": true
+        },
+        {
+          "allow_cpu_offload": false,
+          "num_ctx": 32768,
+          "required": false,
+          "sequence": 2,
+          "timeout_seconds": 600,
+          "verify_cleanup": true,
+          "verify_singleton_process": true
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "digest": "38044be4f923e5a55264ed7df4eaac2676651a905f735197c504045140c02bd3",
+        "name": "gemma4:12b-it-qat"
+      },
+      "contexts": [
+        {
+          "allow_cpu_offload": false,
+          "num_ctx": 16384,
+          "required": true,
+          "sequence": 1,
+          "timeout_seconds": 600,
+          "verify_cleanup": true,
+          "verify_singleton_process": true
+        },
+        {
+          "allow_cpu_offload": false,
+          "num_ctx": 32768,
+          "required": false,
+          "sequence": 2,
+          "timeout_seconds": 600,
+          "verify_cleanup": true,
+          "verify_singleton_process": true
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "digest": "6e3590af5e19106c55a25aec936d7e55a0d23b602bb276ad32321f8a49a3c1d0",
+        "name": "hf.co/empero-ai/Qwable-9B-Claude-Fable-5-GGUF:Q4_K_M"
+      },
+      "contexts": [
+        {
+          "allow_cpu_offload": false,
+          "num_ctx": 16384,
+          "required": true,
+          "sequence": 1,
+          "timeout_seconds": 600,
+          "verify_cleanup": true,
+          "verify_singleton_process": true
+        },
+        {
+          "allow_cpu_offload": false,
+          "num_ctx": 32768,
+          "required": false,
+          "sequence": 2,
+          "timeout_seconds": 600,
+          "verify_cleanup": true,
+          "verify_singleton_process": true
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "digest": "7c3d0c28e4db742c4c6cd2925627acb09b610faec86a32ac872190aee8bc67d0",
+        "name": "hf.co/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF:Q4_K_M"
+      },
+      "contexts": [
+        {
+          "allow_cpu_offload": false,
+          "num_ctx": 16384,
+          "required": true,
+          "sequence": 1,
+          "timeout_seconds": 600,
+          "verify_cleanup": true,
+          "verify_singleton_process": true
+        },
+        {
+          "allow_cpu_offload": false,
+          "num_ctx": 32768,
+          "required": false,
+          "sequence": 2,
+          "timeout_seconds": 600,
+          "verify_cleanup": true,
+          "verify_singleton_process": true
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "digest": "9273fd7794224d33f1ce2364c395df1eeb049e56705d635b29cfc51dfd6d157e",
+        "name": "hf.co/GnLOLot/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-GGUF:Q4_K_M"
+      },
+      "contexts": [
+        {
+          "allow_cpu_offload": false,
+          "num_ctx": 16384,
+          "required": true,
+          "sequence": 1,
+          "timeout_seconds": 600,
+          "verify_cleanup": true,
+          "verify_singleton_process": true
+        },
+        {
+          "allow_cpu_offload": false,
+          "num_ctx": 32768,
+          "required": false,
+          "sequence": 2,
+          "timeout_seconds": 600,
+          "verify_cleanup": true,
+          "verify_singleton_process": true
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "digest": "0714a296bfcc73c72cc5042ab6754d77ae3871e42ce864d50243f3f116ec33e7",
+        "name": "hf.co/tvall43/Qwen3.6-14B-A3B-FableVibes-GGUF:Q4_K_M"
+      },
+      "contexts": [
+        {
+          "allow_cpu_offload": false,
+          "num_ctx": 16384,
+          "required": true,
+          "sequence": 1,
+          "timeout_seconds": 600,
+          "verify_cleanup": true,
+          "verify_singleton_process": true
+        },
+        {
+          "allow_cpu_offload": false,
+          "num_ctx": 32768,
+          "required": false,
+          "sequence": 2,
+          "timeout_seconds": 600,
+          "verify_cleanup": true,
+          "verify_singleton_process": true
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "digest": "036489398bf6af6874783c754592a90f12a036b20cbbf47a867a3ac938868aff",
+        "name": "hf.co/yuxinlu1/gemma-4-12B-agentic-fable5-composer2.5-v2-3.5x-tau2-GGUF:Q4_K_M"
+      },
+      "contexts": [
+        {
+          "allow_cpu_offload": false,
+          "num_ctx": 16384,
+          "required": true,
+          "sequence": 1,
+          "timeout_seconds": 600,
+          "verify_cleanup": true,
+          "verify_singleton_process": true
+        },
+        {
+          "allow_cpu_offload": false,
+          "num_ctx": 32768,
+          "required": false,
+          "sequence": 2,
+          "timeout_seconds": 600,
+          "verify_cleanup": true,
+          "verify_singleton_process": true
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "digest": "5434f64afb3f2b49f0c8d5e6950313a119303b6dbea21ce542e1f82122427391",
+        "name": "hf.co/yuxinlu1/gemma-4-12B-coder-fable5-composer2.5-v1-GGUF:Q4_K_M"
+      },
+      "contexts": [
+        {
+          "allow_cpu_offload": false,
+          "num_ctx": 16384,
+          "required": true,
+          "sequence": 1,
+          "timeout_seconds": 600,
+          "verify_cleanup": true,
+          "verify_singleton_process": true
+        },
+        {
+          "allow_cpu_offload": false,
+          "num_ctx": 32768,
+          "required": false,
+          "sequence": 2,
+          "timeout_seconds": 600,
+          "verify_cleanup": true,
+          "verify_singleton_process": true
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "digest": "bdbd181c33f2ed1b31c972991882db3cf4d192569092138a7d29e973cd9debe8",
+        "name": "qwen3:14b"
+      },
+      "contexts": [
+        {
+          "allow_cpu_offload": false,
+          "num_ctx": 16384,
+          "required": true,
+          "sequence": 1,
+          "timeout_seconds": 600,
+          "verify_cleanup": true,
+          "verify_singleton_process": true
+        },
+        {
+          "allow_cpu_offload": false,
+          "num_ctx": 32768,
+          "required": false,
+          "sequence": 2,
+          "timeout_seconds": 600,
+          "verify_cleanup": true,
+          "verify_singleton_process": true
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+        "name": "qwen3:8b"
+      },
+      "contexts": [
+        {
+          "allow_cpu_offload": false,
+          "num_ctx": 16384,
+          "required": true,
+          "sequence": 1,
+          "timeout_seconds": 600,
+          "verify_cleanup": true,
+          "verify_singleton_process": true
+        },
+        {
+          "allow_cpu_offload": false,
+          "num_ctx": 32768,
+          "required": false,
+          "sequence": 2,
+          "timeout_seconds": 600,
+          "verify_cleanup": true,
+          "verify_singleton_process": true
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "digest": "466701318bae40cfcf42682a17dc8b5a1e2e99a19fb157cdc0cd09a2abc7a991",
+        "name": "qwythos-hermes-64k:latest"
+      },
+      "contexts": [
+        {
+          "allow_cpu_offload": false,
+          "num_ctx": 16384,
+          "required": true,
+          "sequence": 1,
+          "timeout_seconds": 600,
+          "verify_cleanup": true,
+          "verify_singleton_process": true
+        },
+        {
+          "allow_cpu_offload": false,
+          "num_ctx": 32768,
+          "required": false,
+          "sequence": 2,
+          "timeout_seconds": 600,
+          "verify_cleanup": true,
+          "verify_singleton_process": true
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "digest": "f1b4ecbbe67a7adef8f8f975cdbfb3eb08a04b8d91737b2b96e7b761187c668d",
+        "name": "qwythos-hermes-safe:latest"
+      },
+      "contexts": [
+        {
+          "allow_cpu_offload": false,
+          "num_ctx": 16384,
+          "required": true,
+          "sequence": 1,
+          "timeout_seconds": 600,
+          "verify_cleanup": true,
+          "verify_singleton_process": true
+        },
+        {
+          "allow_cpu_offload": false,
+          "num_ctx": 32768,
+          "required": false,
+          "sequence": 2,
+          "timeout_seconds": 600,
+          "verify_cleanup": true,
+          "verify_singleton_process": true
+        }
+      ]
+    }
+  ],
+  "counts": {
+    "candidates": 12,
+    "context_probes": 24
+  },
+  "execution_policy": {
+    "credentials_allowed": false,
+    "external_providers_allowed": false,
+    "hermes_install_mutation_allowed": false,
+    "jarvisos_access_allowed": false,
+    "local_only": true,
+    "max_parallel_models": 1,
+    "sequential_models": true,
+    "trusted_main_only": true
+  },
+  "profiles": [
+    16384,
+    32768
+  ],
+  "schema_version": "bench.h2-context-plan.v1",
+  "source": {
+    "report_sha256": "eca66e93868c8b0d7783709692e38c2de84514e2f9c97fd25ba588a78a3b9c31",
+    "residency_manifest_sha256": "b201455bff7d6cbdaaaf573c82df7f68b8ae99e348507af9ee59f26594575ad4",
+    "shortlist_manifest_sha256": "56dcabee3ddec5a67bad76f5997af708e7752f70afe085da74db269768d09959",
+    "shortlist_sha256": "b929076eb62716de75cda4766289b88a736fae2fe93497f5d1b7265467fe14dc",
+    "workflow": {
+      "event_name": "workflow_dispatch",
+      "ref": "refs/heads/main",
+      "run_attempt": "4",
+      "run_id": "29106127334",
+      "sha": "6632bd6099343f561ad7965ddaa70263a507a79c"
+    }
+  },
+  "status": "ready"
+}
