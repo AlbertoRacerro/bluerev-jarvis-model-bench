@@ -13,7 +13,6 @@ permissions:
   contents: read
   actions: write
   issues: write
-  statuses: write
 
 jobs:
   control:
@@ -36,6 +35,7 @@ jobs:
         with:
           script: |
             const ISSUE_NUMBER = 24;
+            const REGISTRY_ISSUE = 64;
             const OWNER_LOGIN = 'AlbertoRacerro';
             const OWNER_ID = 293122393;
             const ACTIONS_BOT_ID = 41898282;
@@ -75,14 +75,28 @@ jobs:
             };
 
             const registerSeed = async () => {
-              await github.rest.repos.createCommitStatus({
+              const seed = {
+                schema_version: 'bench.command-seed.v1',
+                status: 'ready',
+                run_id: context.runId,
+                run_attempt: Number(process.env.RUN_ATTEMPT),
+                sha: context.sha,
+                ref: context.ref,
+              };
+              await github.rest.issues.update({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                sha: context.sha,
-                state: 'success',
-                context: 'benchmark-command-runner/seed',
-                description: `control run ${context.runId}`,
-                target_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+                issue_number: REGISTRY_ISSUE,
+                body: [
+                  'Machine-readable registry for the GitHub-hosted benchmark command control runner.',
+                  '',
+                  'The workflow replaces this block only with its current seed identity.',
+                  '',
+                  '<!-- bench-command-seed-v1 -->',
+                  '```json',
+                  JSON.stringify(seed, null, 2),
+                  '```',
+                ].join('\n'),
               });
             };
 
