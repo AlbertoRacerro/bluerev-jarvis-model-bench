@@ -11,11 +11,13 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.benchmark_runtime import run_captured, safe_reset_directory, sanitize_environment
+from scripts.test_subset import run_test_subset
 
 ARTIFACT_ROOT = ROOT / "artifacts"
 ARTIFACTS = ARTIFACT_ROOT / "model-residency"
 TEST_PATTERNS = (
     "test_benchmark_runtime.py",
+    "test_lane_test_subset.py",
     "test_probe_model_residency.py",
     "test_probe_model_residency_v2.py",
     "test_build_residency_shortlist.py",
@@ -36,44 +38,14 @@ def prepare() -> int:
 
 
 def tests() -> int:
-    environment = _environment()
-    combined: list[str] = []
-    for index, pattern in enumerate(TEST_PATTERNS, start=1):
-        name = f"tests-{index:02d}"
-        result = run_captured(
-            name,
-            [
-                sys.executable,
-                "-m",
-                "unittest",
-                "discover",
-                "-s",
-                "tests",
-                "-p",
-                pattern,
-                "-v",
-            ],
-            cwd=ROOT,
-            environment=environment,
-            artifact_dir=ARTIFACTS,
-            timeout_seconds=300,
-        )
-        combined.extend(
-            [
-                f"===== {pattern} stdout =====\n",
-                (ARTIFACTS / f"{name}.stdout.log").read_text(encoding="utf-8"),
-                f"\n===== {pattern} stderr =====\n",
-                (ARTIFACTS / f"{name}.stderr.log").read_text(encoding="utf-8"),
-                "\n",
-            ]
-        )
-        if result["exit_code"] != 0:
-            (ARTIFACTS / "tests.log").write_text(
-                "".join(combined), encoding="utf-8"
-            )
-            return int(result["exit_code"])
-    (ARTIFACTS / "tests.log").write_text("".join(combined), encoding="utf-8")
-    return 0
+    result = run_test_subset(
+        patterns=TEST_PATTERNS,
+        root=ROOT,
+        environment=_environment(),
+        artifact_dir=ARTIFACTS,
+        timeout_seconds_per_pattern=300,
+    )
+    return int(result["exit_code"])
 
 
 def probe() -> int:

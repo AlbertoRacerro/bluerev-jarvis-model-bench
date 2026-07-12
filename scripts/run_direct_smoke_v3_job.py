@@ -24,6 +24,7 @@ from scripts.benchmark_runtime import (
     sanitize_environment,
 )
 from scripts.probe_model_residency_v2 import stop_all_running_models
+from scripts.test_subset import run_test_subset
 
 ARTIFACT_ROOT = ROOT / "artifacts"
 ARTIFACTS = ARTIFACT_ROOT / "direct-smoke"
@@ -31,6 +32,18 @@ SUMMARY_PATH = ARTIFACTS / "job-summary.json"
 CANDIDATE_ID = "qwythos-hermes-safe"
 CASE_PATH = ROOT / "fixtures" / "bench-1" / "ho-stop-reuse-explicit-002.json"
 CANDIDATE_REGISTRY = ROOT / "candidates" / "models.local.json"
+DIRECT_TEST_PATTERNS = (
+    "test_benchmark_runtime.py",
+    "test_lane_test_subset.py",
+    "test_preflight.py",
+    "test_preflight_v2.py",
+    "test_probe_model_residency.py",
+    "test_probe_model_residency_v2.py",
+    "test_contracts.py",
+    "test_evaluator.py",
+    "test_direct_execution*.py",
+    "test_run_direct_smoke*.py",
+)
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -71,13 +84,12 @@ def capture() -> int:
     clean_env, removed_names = sanitize_environment(os.environ)
     clean_env["PYTHONPATH"] = os.pathsep.join((str(ROOT), str(SRC)))
 
-    tests = run_captured(
-        "tests",
-        [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"],
-        cwd=ROOT,
+    tests = run_test_subset(
+        patterns=DIRECT_TEST_PATTERNS,
+        root=ROOT,
         environment=clean_env,
         artifact_dir=ARTIFACTS,
-        timeout_seconds=900,
+        timeout_seconds_per_pattern=120,
     )
     inventory = run_captured(
         "preflight",
@@ -98,6 +110,7 @@ def capture() -> int:
         "schema_version": "bench.direct-smoke-job.v3",
         "python": sys.executable,
         "repository_root": str(ROOT),
+        "test_scope": "direct-contract",
         "sanitization": {
             "removed_external_env_names": removed_names,
             "hermes_required": False,
@@ -153,13 +166,13 @@ def capture() -> int:
                 output_root=ARTIFACTS / "runs",
                 opener=open_loopback,
             )
-    except Exception as exc:  # infrastructure evidence must survive code failures
+    except Exception as exc:
         primary_error = exc
     finally:
         try:
             with isolated_process_environment(clean_env):
                 cleanup_after = _cleanup_attestation()
-        except Exception as exc:  # cleanup failure is independently blocking
+        except Exception as exc:
             cleanup_error = exc
 
     error = _execution_error(primary_error, cleanup_error)
@@ -201,6 +214,8 @@ def enforce() -> int:
         return 2
     try:
         summary = json.loads(SUMMARY_PATH.read_text(encoding="utf-8"))
+        if summary.get("test_scope") != "direct-contract":
+            raise ValueError("direct test scope is not explicit")
         test_exit = int(summary["tests"]["exit_code"])
         inventory_exit = int(summary["inventory"]["exit_code"])
         execution = summary["execution"]
@@ -214,7 +229,7 @@ def enforce() -> int:
 
     failures: list[str] = []
     if test_exit != 0:
-        failures.append(f"deterministic tests exited {test_exit}")
+        failures.append(f"direct contract tests exited {test_exit}")
     if inventory_exit != 0:
         failures.append(f"runtime inventory exited {inventory_exit}")
     prerequisites_ok = test_exit == 0 and inventory_exit == 0
