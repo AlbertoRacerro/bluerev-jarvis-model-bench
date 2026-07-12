@@ -7,6 +7,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 DETERMINISTIC = ROOT / ".github" / "workflows" / "deterministic-ci.yml"
+PREFLIGHT = ROOT / ".github" / "workflows" / "local-benchmark.yml"
 LEGACY_BRIDGE = ROOT / ".github" / "workflows" / "benchmark-command-bridge.yml"
 TARGETS = {
     "/bench preflight": "local-benchmark.yml",
@@ -18,22 +19,25 @@ TARGETS = {
 class BenchmarkCommandControlTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.workflow = DETERMINISTIC.read_text(encoding="utf-8")
+        cls.deterministic = DETERMINISTIC.read_text(encoding="utf-8")
+        cls.workflow = PREFLIGHT.read_text(encoding="utf-8")
         marker = "  benchmark_command_control:\n"
         cls.assertIn(cls, marker, cls.workflow)
         cls.control = marker + cls.workflow.split(marker, 1)[1]
 
-    def test_legacy_unregistered_workflow_is_removed(self) -> None:
+    def test_control_is_not_bound_to_connector_push_events(self) -> None:
+        self.assertNotIn("benchmark_command_control:", self.deterministic)
+        self.assertIn('cron: "17 * * * *"', self.workflow)
         self.assertFalse(LEGACY_BRIDGE.exists())
 
-    def test_existing_deterministic_gate_is_preserved(self) -> None:
+    def test_existing_preflight_lane_is_preserved(self) -> None:
         for required in (
-            "name: Trusted-main deterministic CI",
+            "name: Local benchmark preflight",
             "runs-on: [self-hosted, Windows, X64, bluerev-bench]",
-            "scripts\\run_deterministic_capture.cmd",
+            "python -m scripts.run_preflight_job capture",
             "actions/upload-artifact@v4",
-            "python -m scripts.run_deterministic_ci enforce",
-            "bench.deterministic-ci-minimal.v1",
+            "python -m scripts.run_preflight_job enforce",
+            "bench.workflow-inbox.v2",
         ):
             self.assertIn(required, self.workflow)
 
@@ -57,21 +61,15 @@ class BenchmarkCommandControlTests(unittest.TestCase):
         self.assertNotIn("actions: write", workflow_prefix)
         self.assertNotIn("contents: write", self.workflow)
 
-    def test_first_attempt_only_registers_observable_seed(self) -> None:
+    def test_old_commands_are_excluded_by_fixed_epoch(self) -> None:
         for required in (
-            "if (Number(process.env.RUN_ATTEMPT) === 1)",
-            "await registerSeed();",
-            "issue_number: REGISTRY_ISSUE",
-            "bench.command-seed.v1",
-            "run_id: context.runId",
-            "job_name: 'benchmark-command-control'",
-            "workflow: 'Trusted-main deterministic CI'",
+            "const COMMAND_EPOCH_ID = 4951513674;",
+            "Number(comment.id) > COMMAND_EPOCH_ID",
+            "const lastConsumedId = Math.max(",
+            "COMMAND_EPOCH_ID,",
+            "Number(comment.id) > lastConsumedId",
         ):
             self.assertIn(required, self.control)
-        self.assertLess(
-            self.control.index("await registerSeed();"),
-            self.control.index("const comment = await findPendingCommand();"),
-        )
 
     def test_only_exact_owner_commands_are_accepted(self) -> None:
         for required in (
@@ -90,9 +88,8 @@ class BenchmarkCommandControlTests(unittest.TestCase):
             "const ACTIONS_BOT_ID = 41898282;",
             "comment?.user?.login === 'github-actions[bot]'",
             "comment?.user?.type === 'Bot'",
-            "const lastConsumedId = Math.max",
-            "Number(comment.id) > lastConsumedId",
-            "source_comment_id: comment.id",
+            "receipt.schema_version === 'bench.command-receipt.v1'",
+            "source_comment_id: command.id",
         ):
             self.assertIn(required, self.control)
 
