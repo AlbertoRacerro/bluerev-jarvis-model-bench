@@ -64,16 +64,19 @@ class BenchmarkCommandBridgeTests(unittest.TestCase):
 
     def test_permissions_are_limited_to_control_operations(self) -> None:
         self.assertIn(
-            "permissions:\n  contents: read\n  actions: write\n  issues: write\n  statuses: write\n",
+            "permissions:\n  contents: read\n  actions: write\n  issues: write\n",
             self.workflow,
         )
         self.assertNotIn("contents: write", self.workflow)
         self.assertNotIn("pull-requests: write", self.workflow)
 
     def test_initial_push_registers_discoverable_seed_without_dispatch(self) -> None:
-        self.assertIn("github.rest.repos.createCommitStatus", self.workflow)
-        self.assertIn("benchmark-command-runner/seed", self.workflow)
-        self.assertIn("context.runId", self.workflow)
+        self.assertIn("const REGISTRY_ISSUE = 64;", self.workflow)
+        self.assertIn("github.rest.issues.update", self.workflow)
+        self.assertIn("bench.command-seed.v1", self.workflow)
+        self.assertIn("run_id: context.runId", self.workflow)
+        self.assertIn("sha: context.sha", self.workflow)
+        self.assertNotIn("createCommitStatus", self.workflow)
         self.assertIn("Number(process.env.RUN_ATTEMPT) === 1", self.workflow)
         self.assertLess(
             self.workflow.index("await registerSeed();"),
