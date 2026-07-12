@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+import json
 from pathlib import Path
 from typing import Any
 import sys
@@ -38,6 +39,31 @@ def resolve_patterns(tests_dir: Path, patterns: Sequence[str]) -> dict[str, list
     return resolved
 
 
+def _validation_failure(
+    *,
+    artifact_dir: Path,
+    patterns: Sequence[str],
+    exc: TestSubsetError,
+) -> dict[str, Any]:
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    error = {"type": type(exc).__name__, "detail": str(exc)}
+    (artifact_dir / "tests.error.json").write_text(
+        json.dumps(error, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    (artifact_dir / "tests.log").write_text(
+        f"test subset validation failed: {exc}\n",
+        encoding="utf-8",
+    )
+    return {
+        "exit_code": 2,
+        "patterns": list(patterns),
+        "resolved_files": [],
+        "results": [],
+        "error": error,
+    }
+
+
 def run_test_subset(
     *,
     patterns: Sequence[str],
@@ -46,14 +72,24 @@ def run_test_subset(
     artifact_dir: Path,
     timeout_seconds_per_pattern: int = 300,
 ) -> dict[str, Any]:
-    if (
-        not isinstance(timeout_seconds_per_pattern, int)
-        or isinstance(timeout_seconds_per_pattern, bool)
-        or timeout_seconds_per_pattern < 1
-    ):
-        raise TestSubsetError("timeout_seconds_per_pattern must be an integer >= 1")
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        if (
+            not isinstance(timeout_seconds_per_pattern, int)
+            or isinstance(timeout_seconds_per_pattern, bool)
+            or timeout_seconds_per_pattern < 1
+        ):
+            raise TestSubsetError(
+                "timeout_seconds_per_pattern must be an integer >= 1"
+            )
+        resolved = resolve_patterns(root / "tests", patterns)
+    except TestSubsetError as exc:
+        return _validation_failure(
+            artifact_dir=artifact_dir,
+            patterns=patterns,
+            exc=exc,
+        )
 
-    resolved = resolve_patterns(root / "tests", patterns)
     results: list[dict[str, Any]] = []
     combined: list[str] = []
     exit_code = 0
@@ -99,7 +135,6 @@ def run_test_subset(
             exit_code = int(result["exit_code"])
             break
 
-    artifact_dir.mkdir(parents=True, exist_ok=True)
     (artifact_dir / "tests.log").write_text("".join(combined), encoding="utf-8")
     return {
         "exit_code": exit_code,
@@ -108,4 +143,5 @@ def run_test_subset(
             name for names in resolved.values() for name in names
         ),
         "results": results,
+        "error": None,
     }
