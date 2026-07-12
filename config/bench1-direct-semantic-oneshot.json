@@ -1,0 +1,8 @@
+{
+  "batch_count": 5,
+  "batch_size": 2,
+  "enabled": true,
+  "plan_sha256": "b87a01d5fc61e3630aeb99b08634c5d6474463f168fa6b1b07a80910565d6522",
+  "repetitions": 3,
+  "schema_version": "bench.direct-semantic-oneshot.v1"
+}

@@ -1,0 +1,88 @@
+name: BENCH-1 semantic branch validation
+
+on:
+  push:
+    branches: [bench/bench1-direct-semantic-campaign]
+
+permissions:
+  contents: read
+  issues: write
+  statuses: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          clean: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile semantic campaign blobs
+        id: compile
+        run: |
+          set -o pipefail
+          python -m py_compile \
+            scripts/probe_direct_semantic_campaign.py \
+            scripts/run_direct_semantic_campaign_job.py \
+            scripts/run_direct_semantic_campaign_bound_job.py \
+            tests/test_direct_semantic_campaign.py 2>&1 | tee compile.log
+      - name: Run deterministic semantic campaign tests
+        id: tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}/src
+        run: |
+          set -o pipefail
+          python -m unittest -v \
+            tests.test_direct_semantic_campaign \
+            tests.test_direct_execution_v3 \
+            tests.test_evaluator \
+            tests.test_cases \
+            tests.test_contracts 2>&1 | tee tests.log
+      - name: Publish validation evidence
+        if: always()
+        continue-on-error: true
+        uses: actions/github-script@v7
+        env:
+          DIAGNOSTIC_ISSUE: "81"
+          COMPILE: ${{ steps.compile.outcome }}
+          TESTS: ${{ steps.tests.outcome }}
+        with:
+          script: |
+            const fs = require('fs');
+            const readTail = (path) => {
+              try {
+                const value = fs.readFileSync(path, 'utf8');
+                return value.slice(-20000);
+              } catch (_) {
+                return null;
+              }
+            };
+            const success = process.env.COMPILE === 'success' && process.env.TESTS === 'success';
+            const payload = {
+              schema_version: 'bench.semantic-branch-validation.v1',
+              run_id: Number(context.runId),
+              sha: context.sha,
+              ref: context.ref,
+              compile: process.env.COMPILE,
+              tests: process.env.TESTS,
+              compile_log_tail: readTail('compile.log'),
+              tests_log_tail: readTail('tests.log'),
+            };
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: success ? 'success' : 'failure',
+              context: 'bench1-semantic-campaign',
+              description: success ? 'Semantic campaign compile and tests passed' : 'Semantic campaign validation failed',
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number(process.env.DIAGNOSTIC_ISSUE),
+              body: '```json\n' + JSON.stringify(payload, null, 2) + '\n```',
+            });
