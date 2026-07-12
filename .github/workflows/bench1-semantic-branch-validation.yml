@@ -47,7 +47,7 @@ jobs:
         continue-on-error: true
         uses: actions/github-script@v7
         env:
-          ISSUE: "24"
+          DIAGNOSTIC_ISSUE: "81"
           COMPILE: ${{ steps.compile.outcome }}
           TESTS: ${{ steps.tests.outcome }}
         with:
@@ -56,7 +56,7 @@ jobs:
             const readTail = (path) => {
               try {
                 const value = fs.readFileSync(path, 'utf8');
-                return value.slice(-12000);
+                return value.slice(-20000);
               } catch (_) {
                 return null;
               }
@@ -80,9 +80,9 @@ jobs:
               context: 'bench1-semantic-campaign',
               description: success ? 'Semantic campaign compile and tests passed' : 'Semantic campaign validation failed',
             });
-            await github.rest.issues.createComment({
+            await github.rest.issues.update({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: Number(process.env.ISSUE),
-              body: '<!-- bench-semantic-branch-validation-v1 -->\n```json\n' + JSON.stringify(payload, null, 2) + '\n```',
+              issue_number: Number(process.env.DIAGNOSTIC_ISSUE),
+              body: '```json\n' + JSON.stringify(payload, null, 2) + '\n```',
             });
