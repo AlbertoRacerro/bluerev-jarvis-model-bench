@@ -1,0 +1,63 @@
+name: Benchmark command bridge
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  dispatch:
+    if: >-
+      github.repository == 'AlbertoRacerro/bluerev-jarvis-model-bench' &&
+      github.event.issue.number == 24 &&
+      github.event.issue.pull_request == null &&
+      github.event.comment.user.login == 'AlbertoRacerro' &&
+      github.event.comment.user.id == 293122393 &&
+      github.event.comment.user.type == 'User' &&
+      github.event.comment.author_association == 'OWNER' &&
+      (
+        github.event.comment.body == '/bench preflight' ||
+        github.event.comment.body == '/bench residency' ||
+        github.event.comment.body == '/bench direct-smoke'
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Dispatch whitelisted trusted-main workflow
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const command = context.payload.comment.body;
+            const workflows = Object.freeze({
+              '/bench preflight': 'local-benchmark.yml',
+              '/bench residency': 'local-model-residency.yml',
+              '/bench direct-smoke': 'local-direct-smoke.yml',
+            });
+            const workflowId = workflows[command];
+            if (!workflowId) {
+              core.setFailed(`unsupported benchmark command: ${JSON.stringify(command)}`);
+              return;
+            }
+            if (
+              context.repo.owner !== 'AlbertoRacerro' ||
+              context.repo.repo !== 'bluerev-jarvis-model-bench' ||
+              context.payload.issue.number !== 24 ||
+              context.payload.issue.pull_request ||
+              context.payload.comment.user.login !== 'AlbertoRacerro' ||
+              context.payload.comment.user.id !== 293122393 ||
+              context.payload.comment.user.type !== 'User' ||
+              context.payload.comment.author_association !== 'OWNER'
+            ) {
+              core.setFailed('benchmark command authorization mismatch');
+              return;
+            }
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: workflowId,
+              ref: 'main',
+            });
+            core.info(`dispatched ${workflowId} on trusted main`);
