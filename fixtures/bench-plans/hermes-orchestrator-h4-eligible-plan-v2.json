@@ -11,11 +11,7 @@
     "marker_must_be_enabled": true,
     "review_required_before_enable": true
   },
-  "batching": {
-    "batch_count": 4,
-    "batch_size": 2,
-    "max_parallel_batches": 1
-  },
+  "batching": {"batch_count":4,"batch_size":2,"max_parallel_batches":1},
   "candidates": [
     {"candidate_id":"gemma4-12b-it-qat","digest":"38044be4f923e5a55264ed7df4eaac2676651a905f735197c504045140c02bd3","model_tag":"gemma4:12b-it-qat","sequence":0},
     {"candidate_id":"qwable-9b-fable5","digest":"6e3590af5e19106c55a25aec936d7e55a0d23b602bb276ad32321f8a49a3c1d0","model_tag":"hf.co/empero-ai/Qwable-9B-Claude-Fable-5-GGUF:Q4_K_M","sequence":1},
@@ -30,13 +26,7 @@
     {"capability":"HO-TOOLS","case_definition_sha256":"f2f1889edfadf1cccf84ebac7650421478aeabfb6d9b3331e24034867e5aa1ca","case_id":"ho-tools-hermes-lookup-001","path":"fixtures/bench-2/ho-tools-hermes-lookup-001.json"},
     {"capability":"HO-STOP","case_definition_sha256":"1cef67cd0227882e28224e453ee2fae172bb96d73901adf9fde075e607de33d9","case_id":"ho-stop-hermes-reuse-001","path":"fixtures/bench-2/ho-stop-hermes-reuse-001.json"}
   ],
-  "comparison_policy": {
-    "compare_only_complete_valid_pairs": true,
-    "global_composite_score_allowed": false,
-    "invalid_infrastructure_is_not_model_failure": true,
-    "minimum_repetitions": 3,
-    "ties_remain_ties": true
-  },
+  "comparison_policy": {"compare_only_complete_valid_pairs":true,"global_composite_score_allowed":false,"invalid_infrastructure_is_not_model_failure":true,"minimum_repetitions":3,"ties_remain_ties":true},
   "counts": {"candidate_case_pairs":16,"candidates":8,"cases":2,"repetitions_per_pair":3,"total_runs":48},
   "excluded_after_h4": [
     {"candidate_id":"qwen3.6-fablevibes-14b-a3b","digest":"0714a296bfcc73c72cc5042ab6754d77ae3871e42ce864d50243f3f116ec33e7","h4_status":"cpu_offload","reason":"Reviewed H4 policy forbids CPU offload."},
@@ -71,7 +61,7 @@
   "scope": "BENCH-2 Hermes orchestrator isolation Phase A",
   "source": {
     "candidate_registry_path": "candidates/bench2-h4-eligible.json",
-    "candidate_registry_sha256": "624b486b2901072b975ee331fe7f04406c0397ab20a054f97fad0201cbe5bed0",
+    "candidate_registry_sha256": "67a311b7e4e75135dae6e1c2ce3dd25767b4d41f8439ec6bee7701d0c90881d7",
     "h4_execution_commit_sha": "a2926cc93abb1a64874352c4508e8c97b0b6007f",
     "h4_manifest_path": "reports/H4-HERMES-MINIMUM-64K/manifest.json",
     "h4_manifest_sha256": "d607ad513d98d07762bf5fbdc4e1c28ecc663d8d26c130f5b3fbeef40599efe1",
