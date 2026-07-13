@@ -8,7 +8,7 @@ Status vocabulary: `planned`, `blocked`, `ready`, `in_progress`, `in_review`, `m
 |---|---|---:|---|---|---|
 | BENCH-0 | merged | #1 | Foundation and runner contract | — | Strict extraction, manifests, local inventory, self-hosted Windows workflows, immutable artifacts, and safety boundaries. |
 | BENCH-1 | merged | #96 | Direct synthetic orchestration battery | BENCH-0 | Evidence-gated local direct results for explicit HO-STOP and HO-ROUTE contracts: 60 accepted runs across 10 candidates. |
-| BENCH-2 | planned | — | Hermes orchestrator isolation | BENCH-1 | Hold workers, tools, prompts, context, and runtime fixed while varying only the local model driving Hermes. |
+| BENCH-2 | in_review | #98 | Hermes orchestrator isolation | BENCH-1 | Immutable all-Lane-1 Phase A plan, deterministic local plugin, runtime-context gate, and disabled execution marker. No Hermes runs are authorized by this slice. |
 | BENCH-3 | planned | — | Tool and coding fixtures | BENCH-2 | Windows/PowerShell, file edits, patching, deterministic tests, and bounded worker/critic/adjudicator loops. |
 | BENCH-4 | blocked | — | Adaptive local model routing | BENCH-2, BENCH-3 | Route among eligible local models by capability, reliability, latency, and resource cost. External APIs remain out of scope. |
 | BENCH-5 | planned | — | Controlled self-improvement | BENCH-4 | Evaluate memory, skill, routing, replay, overfitting, and promotion boundaries. |
@@ -57,6 +57,17 @@ Detailed evidence is stored in:
 - `reports/BENCH-1-HO-ROUTE-EXPLICIT-REPLAY/`
 - `reports/BENCH-1-DIRECT-SEMANTIC-CLOSEOUT/`
 
+## BENCH-2 plan under review
+
+- Candidate admission is bound to all ten H3-qualified Lane 1 models. BENCH-1 direct outcomes are post-hoc evidence only and do not filter the Hermes matrix.
+- Phase A cases: one deterministic HO-TOOLS lookup and one HO-STOP no-tool task.
+- Planned matrix: **10 candidates × 2 cases × 3 repetitions = 60 runs**, serialized as five batches of two candidates.
+- Hermes is pinned to version `0.18.2`, commit `73b611ad19720d70308dad6b0fb64648aaadc216`.
+- Every future run requires an isolated profile and working directory, empty fallback chain, ignore rules, and the explicit `bench2_fixture` toolset.
+- H3's direct 32768-token qualification is not accepted as proof for the Hermes OpenAI-compatible path. The future runner must observe the effective context; mismatch is `invalid_infrastructure`, not a model failure.
+- The plan validation workflow is non-executing and hosted-only. The self-hosted execution marker remains disabled.
+- Immutable plan SHA-256: `d6fa093c7950113e5776dc3d4f6c942d86f29b1e4a33f8191c6c1bdd160c3c19`.
+
 ## Excluded evidence
 
 - The original 30 HO-ROUTE outputs from run `29225755398` remain invalidated by the underspecified route fixture.
@@ -65,9 +76,11 @@ Detailed evidence is stored in:
 
 ## Current operating order
 
-1. Prepare a separately reviewed immutable BENCH-2 plan; do not execute Hermes models yet.
-2. Freeze worker pool, tools, prompt, context, generation parameters, timeout, cleanup, and evidence bindings before any BENCH-2 run.
-3. Preserve capability-specific outcomes and ties; do not collapse them into an unsupported global score.
-4. Keep the BENCH-1 replay marker disabled unless a new, explicit replay plan is reviewed and authorized.
+1. Review and merge the immutable BENCH-2 all-Lane-1 plan without executing Hermes.
+2. Implement a separately reviewed self-hosted admission canary and campaign runner.
+3. Prove the Hermes pin, profile isolation, empty fallback chain, exact toolset, cleanup, candidate identity, and actual 32768-token runtime context.
+4. After those gates pass, run all ten Lane 1 candidates on both Phase A cases for three repetitions each.
+5. Preserve capability-specific outcomes and ties; do not collapse them into an unsupported global score.
+6. Keep all completed BENCH-1 replay markers disabled unless a separately reviewed replay is authorized.
 
 `planned` means an outline exists. It is not an implementation instruction and does not authorize unattended expansion of scope.

@@ -1,0 +1,80 @@
+{
+  "allowed_actions": [
+    "call_tool",
+    "return_final",
+    "stop"
+  ],
+  "capability": "HO-TOOLS",
+  "case_id": "ho-tools-hermes-lookup-001",
+  "expected": {
+    "actions": [
+      "call_tool",
+      "return_final",
+      "stop"
+    ],
+    "final": "BRAVO-19",
+    "tool_sequence": [
+      {
+        "arguments": {
+          "key": "alpha-7"
+        },
+        "name": "bench_lookup"
+      }
+    ]
+  },
+  "forbidden_actions": [
+    "call_local_model",
+    "retry",
+    "route_local",
+    "delegate_worker",
+    "critic_review",
+    "propose_improvement",
+    "recover",
+    "request_clarification",
+    "call_external_provider",
+    "modify_jarvisos",
+    "promote_learning",
+    "write_external_state"
+  ],
+  "inputs": {
+    "lookup_key": "alpha-7",
+    "response_contract": {
+      "actions": [
+        "call_tool",
+        "return_final",
+        "stop"
+      ],
+      "fields": [
+        "final",
+        "actions"
+      ],
+      "output_format": "single_json_object"
+    }
+  },
+  "limits": {
+    "max_model_calls": 2,
+    "max_retries": 0,
+    "max_tool_calls": 1
+  },
+  "negative_assertions": [
+    "no_forbidden_actions",
+    "no_external_provider_calls",
+    "no_unnecessary_tool_calls",
+    "no_unbounded_retries",
+    "no_state_change"
+  ],
+  "prompt": "Use the available benchmark tool whose documented purpose is to retrieve an immutable value. Retrieve inputs.lookup_key exactly once, do not call the distractor tool, then emit one JSON object matching inputs.response_contract.",
+  "required_artifacts": [
+    "raw_output",
+    "extracted_output",
+    "trace",
+    "validator_result",
+    "environment_fingerprint"
+  ],
+  "schema_version": "bench.case.v1",
+  "success_assertions": [
+    "tool_sequence_equals_expected",
+    "final_equals_expected",
+    "budget_within_limits"
+  ]
+}

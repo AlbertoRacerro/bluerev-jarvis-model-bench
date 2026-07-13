@@ -1,0 +1,51 @@
+name: BENCH-2 Hermes plan validation
+
+on:
+  push:
+    branches:
+      - bench/bench2-hermes-lane1-plan
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          clean: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile BENCH-2 plan surfaces
+        run: |
+          python -m py_compile \
+            scripts/validate_bench2_hermes_plan.py \
+            fixtures/bench-2/hermes-plugin/bench2-fixture/__init__.py \
+            tests/test_bench2_hermes_plan.py
+      - name: Validate immutable BENCH-2 plan
+        run: |
+          python scripts/validate_bench2_hermes_plan.py \
+            --output artifacts/bench2-hermes-plan-validation.json
+      - name: Run deterministic BENCH-2 plan tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}/src
+        run: |
+          python -m unittest -v \
+            tests.test_bench2_hermes_plan \
+            tests.test_cases \
+            tests.test_contracts
+      - name: Upload validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench2-hermes-plan-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/bench2-hermes-plan-validation.json
+          if-no-files-found: error
+          retention-days: 30

@@ -1,0 +1,6 @@
+name: bench2-fixture
+version: "1.0.0"
+description: Deterministic local-only tools for BENCH-2 Hermes orchestration tests
+provides_tools:
+  - bench_lookup
+  - bench_distractor
