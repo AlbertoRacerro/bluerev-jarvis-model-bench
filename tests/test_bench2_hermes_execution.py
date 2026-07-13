@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import tempfile
@@ -87,6 +88,7 @@ class Bench2HermesExecutionTests(unittest.TestCase):
                 "actions": ["call_tool", "return_final", "stop"],
                 "final": "BRAVO-19",
             },
+            "limits": {"max_model_calls": 2},
         }
         result = runner._semantic_validator(
             case=case,
@@ -99,6 +101,7 @@ class Bench2HermesExecutionTests(unittest.TestCase):
             tool_records=[],
             trace_error=None,
             usage_checks=usage_checks,
+            usage={"api_calls": 1},
             runtime_model={"context_length": 65536},
             residency_class="full_vram",
             residency_ratio=1.0,
@@ -126,6 +129,7 @@ class Bench2HermesExecutionTests(unittest.TestCase):
                 "actions": ["return_supplied_result", "stop"],
                 "final": "stable-result",
             },
+            "limits": {"max_model_calls": 1},
         }
         result = runner._semantic_validator(
             case=case,
@@ -138,6 +142,7 @@ class Bench2HermesExecutionTests(unittest.TestCase):
             tool_records=[],
             trace_error=None,
             usage_checks=usage_checks,
+            usage={"api_calls": 1},
             runtime_model={"context_length": 65536},
             residency_class="full_vram",
             residency_ratio=1.0,
@@ -177,6 +182,59 @@ class Bench2HermesExecutionTests(unittest.TestCase):
                     execution.validate_execution()
             finally:
                 execution.MARKER_PATH = original
+
+
+    def test_stop_case_rejects_two_model_calls_as_semantic_failure(self):
+        usage_checks = [
+  {"check": name, "passed": True, "detail": ""}
+  for name in (
+      "usage_provider_custom", "usage_model_exact", "usage_completed",
+      "usage_not_failed", "usage_api_calls_bounded",
+      "usage_input_tokens_nonnegative", "usage_output_tokens_nonnegative",
+      "usage_total_tokens_nonnegative",
+  )
+        ]
+        case = {
+  "case_id": "ho-stop-hermes-reuse-001",
+  "capability": "HO-STOP",
+  "expected": {
+      "actions": ["return_supplied_result", "stop"],
+      "final": "stable-result",
+  },
+  "limits": {"max_model_calls": 1},
+        }
+        result = runner._semantic_validator(
+  case=case,
+  process={"returncode": 0, "timed_out": False},
+  output={"actions": ["return_supplied_result", "stop"], "final": "stable-result"},
+  output_error=None,
+  tool_records=[],
+  trace_error=None,
+  usage_checks=usage_checks,
+  usage={"api_calls": 2},
+  runtime_model={"context_length": 65536},
+  residency_class="full_vram",
+  residency_ratio=1.0,
+  stderr_text="Plugin bench2-fixture registered tool: bench_lookup",
+        )
+        self.assertTrue(result["infrastructure_valid"])
+        self.assertFalse(result["semantic_pass"])
+
+    def test_candidate_setup_and_alias_cleanup_are_failure_isolated(self):
+        source = execution.RUNNER_PATH.read_text(encoding="utf-8")
+        self.assertIn("installed = _installed_candidate(candidate)", source)
+        self.assertIn("_remove_model_if_present(expected_alias_name)", source)
+        self.assertNotIn("for candidate in selected:\n            installed = _installed_candidate(candidate)", source)
+
+    def test_full_matrix_reviewed_sources_match_hashes(self):
+        expected = {
+  "scripts/run_bench2_hermes_batch.py": "2fd356b2c3d35304a79dccbf77e4b3a2e7d26db053e1c5c8911208f3f5e02bf3",
+  "scripts/validate_bench2_hermes_execution.py": "5eccd88920e923f21de84a8e57a892bc139513f2506f07c97ffc806c5d27f575",
+  ".github/workflows/bench2-hermes-full-matrix-oneshot.yml": "c4a4256db9b20dd318b46a533532c6169bd834dcfb7ff148daa5251323028e87",
+        }
+        for relative, digest in expected.items():
+  observed = hashlib.sha256((execution.ROOT / relative).read_bytes()).hexdigest()
+  self.assertEqual(observed, digest, relative)
 
 
 if __name__ == "__main__":

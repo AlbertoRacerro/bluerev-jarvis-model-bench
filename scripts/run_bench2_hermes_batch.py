@@ -154,6 +154,7 @@ def _semantic_validator(
     tool_records: list[dict[str, Any]],
     trace_error: str | None,
     usage_checks: list[dict[str, Any]],
+    usage: dict[str, Any] | None,
     runtime_model: dict[str, Any] | None,
     residency_class: str | None,
     residency_ratio: float | None,
@@ -185,6 +186,18 @@ def _semantic_validator(
         "output_actions_exact",
         output is not None and output.get("actions") == expected["actions"],
         f"observed={output.get('actions') if output else None!r}",
+    )
+    limits = case.get("limits") if isinstance(case.get("limits"), dict) else {}
+    max_model_calls = limits.get("max_model_calls")
+    api_calls = usage.get("api_calls") if isinstance(usage, dict) else None
+    add(
+        "model_call_budget_within_limit",
+        isinstance(max_model_calls, int)
+        and not isinstance(max_model_calls, bool)
+        and isinstance(api_calls, int)
+        and not isinstance(api_calls, bool)
+        and 1 <= api_calls <= max_model_calls,
+        f"api_calls={api_calls!r} max_model_calls={max_model_calls!r}",
     )
     add("tool_trace_valid", trace_error is None, f"error={trace_error!r}")
     if case["capability"] == "HO-TOOLS":
@@ -245,6 +258,7 @@ def _semantic_validator(
         "output_strict_json",
         "output_final_exact",
         "output_actions_exact",
+        "model_call_budget_within_limit",
         "tool_trace_exact",
     }
     observed_names = {item["check"] for item in checks}
@@ -464,6 +478,7 @@ def _run_once(
             tool_records=tool_records,
             trace_error=trace_error,
             usage_checks=usage_checks,
+            usage=usage,
             runtime_model=runtime_model,
             residency_class=residency_class,
             residency_ratio=residency_ratio,
@@ -670,7 +685,8 @@ def capture(output_dir: Path = DEFAULT_ARTIFACTS) -> int:
     ))
     try:
         for candidate in selected:
-            installed = _installed_candidate(candidate)
+            expected_alias_name = _alias_name(batch_index, int(candidate["sequence"]))
+            installed: dict[str, Any] | None = None
             alias: dict[str, Any] | None = None
             candidate_results: list[dict[str, Any]] = []
             alias_error: Exception | None = None
@@ -679,12 +695,13 @@ def capture(output_dir: Path = DEFAULT_ARTIFACTS) -> int:
                 "verified_absent": False,
             }
             try:
+                installed = _installed_candidate(candidate)
                 alias = _create_alias(
                     candidate,
                     batch_index=batch_index,
                     runtime_root=batch_runtime_root,
                 )
-                alias["installed_source_size"] = installed.get("size")
+                alias["installed_source_size"] = installed.get("size") if installed else None
                 for case in cases:
                     for repetition in range(1, 4):
                         run_dir = (
@@ -728,15 +745,14 @@ def capture(output_dir: Path = DEFAULT_ARTIFACTS) -> int:
             finally:
                 try:
                     canary.stop_all_running_models()
-                    if alias is not None:
-                        alias_cleanup = {
-                            "attempted": True,
-                            **canary._remove_model_if_present(alias["name"]),
-                        }
-                        if alias_cleanup.get("verified_absent") is not True:
-                            raise HermesBatchError(
-                                f"alias cleanup failed for {candidate['candidate_id']}"
-                            )
+                    alias_cleanup = {
+                        "attempted": True,
+                        **canary._remove_model_if_present(expected_alias_name),
+                    }
+                    if alias_cleanup.get("verified_absent") is not True:
+                        raise HermesBatchError(
+                            f"alias cleanup failed for {candidate['candidate_id']}"
+                        )
                 except Exception as exc:
                     alias_error = alias_error or exc
                     alias_cleanup = {
@@ -755,20 +771,30 @@ def capture(output_dir: Path = DEFAULT_ARTIFACTS) -> int:
                     result["candidate_result_status"] = "invalid_infrastructure"
                     result["infrastructure_valid"] = False
                     result["semantic_pass"] = False
-                    result["infrastructure_error"] = {
+                    error_record = {
                         "type": "HermesBatchError",
                         "detail": detail,
                     }
+                    result["infrastructure_error"] = error_record
+                    result["cleanup_verified"] = False
                     run_dir = output_dir / result["artifact_path"]
                     validator_path = run_dir / "validator-result.json"
                     if validator_path.is_file():
                         validator = _load_json(validator_path)
                         validator["infrastructure_valid"] = False
+                        validator["semantic_pass"] = False
                         validator["passed"] = False
                         _write_json(validator_path, validator)
-                        _write_run_manifest(run_dir)
+                    environment_path = run_dir / "environment-fingerprint.json"
+                    if environment_path.is_file():
+                        environment = _load_json(environment_path)
+                        environment["infrastructure_error"] = error_record
+                        environment["candidate_alias_cleanup"] = alias_cleanup
+                        _write_json(environment_path, environment)
+                    _write_run_manifest(run_dir)
             aliases.append({
                 "candidate_id": candidate["candidate_id"],
+                "expected_alias_name": expected_alias_name,
                 "runtime_alias": alias,
                 "cleanup": alias_cleanup,
                 "setup_error": (
@@ -858,6 +884,97 @@ def _verify_manifest(output_dir: Path) -> None:
             raise HermesBatchError(f"batch artifact size mismatch: {name}")
 
 
+
+def _verify_run_manifest(run_dir: Path) -> None:
+    manifest = _load_json(run_dir / "manifest.json")
+    if manifest.get("schema_version") != canary.MANIFEST_SCHEMA:
+        raise HermesBatchError(f"run manifest schema is invalid: {run_dir}")
+    artifacts = manifest.get("artifacts")
+    if not isinstance(artifacts, dict) or not artifacts:
+        raise HermesBatchError(f"run manifest inventory is missing: {run_dir}")
+    observed = {
+        path.relative_to(run_dir).as_posix()
+        for path in run_dir.rglob("*")
+        if path.is_file() and path != run_dir / "manifest.json"
+    }
+    if set(artifacts) != observed:
+        raise HermesBatchError(f"run manifest file set drifted: {run_dir}")
+    for name, record in artifacts.items():
+        path = run_dir / name
+        if not isinstance(record, dict):
+  raise HermesBatchError(f"run manifest record invalid: {run_dir}/{name}")
+        if record.get("sha256") != _sha256(path):
+  raise HermesBatchError(f"run artifact digest mismatch: {run_dir}/{name}")
+        if record.get("size_bytes") != path.stat().st_size:
+  raise HermesBatchError(f"run artifact size mismatch: {run_dir}/{name}")
+
+
+def _verify_result_artifacts(
+    output_dir: Path,
+    result: dict[str, Any],
+    candidate: dict[str, Any],
+    case: dict[str, Any],
+) -> None:
+    repetition = result.get("repetition")
+    expected_relative = (
+        Path("runs") / candidate["candidate_id"] / case["case_id"] / f"r{repetition}"
+    ).as_posix()
+    if result.get("artifact_path") != expected_relative:
+        raise HermesBatchError("run artifact path binding drifted")
+    run_dir = output_dir / expected_relative
+    _verify_run_manifest(run_dir)
+    validator = _load_json(run_dir / "validator-result.json")
+    environment = _load_json(run_dir / "environment-fingerprint.json")
+    usage = _load_json(run_dir / "usage.json")
+    if validator.get("schema_version") != VALIDATOR_SCHEMA:
+        raise HermesBatchError("run validator schema drifted")
+    if validator.get("case_id") != case["case_id"] or validator.get("capability") != case["capability"]:
+        raise HermesBatchError("run validator case binding drifted")
+    if environment.get("candidate", {}).get("candidate_id") != candidate["candidate_id"]:
+        raise HermesBatchError("run environment candidate binding drifted")
+    if environment.get("candidate", {}).get("digest") != candidate["digest"]:
+        raise HermesBatchError("run environment candidate digest drifted")
+    infrastructure_valid = result.get("infrastructure_valid") is True
+    semantic_pass = result.get("semantic_pass") is True
+    expected_status = (
+        "passed" if infrastructure_valid and semantic_pass
+        else "failed" if infrastructure_valid
+        else "invalid_infrastructure"
+    )
+    if result.get("candidate_result_status") != expected_status:
+        raise HermesBatchError("run result status is inconsistent")
+    if validator.get("infrastructure_valid") is not infrastructure_valid:
+        raise HermesBatchError("run infrastructure classification drifted")
+    if validator.get("semantic_pass") is not semantic_pass:
+        raise HermesBatchError("run semantic classification drifted")
+    if validator.get("passed") is not (infrastructure_valid and semantic_pass):
+        raise HermesBatchError("run pass classification drifted")
+    alias = result.get("runtime_alias")
+    if infrastructure_valid:
+        if not isinstance(alias, dict):
+  raise HermesBatchError("valid run alias evidence is missing")
+        runtime_model = environment.get("runtime_model")
+        if not isinstance(runtime_model, dict):
+  raise HermesBatchError("valid run runtime model evidence is missing")
+        if runtime_model.get("name") != alias.get("name") or runtime_model.get("digest") != alias.get("digest"):
+  raise HermesBatchError("valid run runtime alias identity drifted")
+        if runtime_model.get("context_length") != 65536:
+  raise HermesBatchError("valid run context is not 65536")
+        if environment.get("residency_class") != "full_vram":
+  raise HermesBatchError("valid run is not fully resident in VRAM")
+        if environment.get("infrastructure_error") is not None:
+  raise HermesBatchError("valid run carries an infrastructure error")
+        if usage.get("provider") != "custom" or usage.get("model") != alias.get("name"):
+  raise HermesBatchError("valid run usage binding drifted")
+        if result.get("cleanup_verified") is not True:
+  raise HermesBatchError("valid run cleanup is not verified")
+    else:
+        if not isinstance(result.get("infrastructure_error"), dict):
+  raise HermesBatchError("invalid run infrastructure error is missing")
+        if not isinstance(environment.get("infrastructure_error"), dict):
+  raise HermesBatchError("invalid run environment error is missing")
+
+
 def enforce(output_dir: Path = DEFAULT_ARTIFACTS) -> int:
     try:
         plan, marker, candidates, cases = execution.validate_execution(
@@ -868,6 +985,24 @@ def enforce(output_dir: Path = DEFAULT_ARTIFACTS) -> int:
         report = _load_json(output_dir / "report.json")
         if report.get("schema_version") != REPORT_SCHEMA:
             raise HermesBatchError("batch report schema is invalid")
+        expected_source = {
+            "plan_sha256": execution.plan_validator.EXPECTED_PLAN_SHA256,
+            "canary_closeout_sha256": execution.EXPECTED_CLOSEOUT_SHA256,
+            "candidate_registry_sha256": execution.plan_validator.EXPECTED_REGISTRY_SHA256,
+            "h4_summary_sha256": execution.plan_validator.EXPECTED_H4_SUMMARY_SHA256,
+            "hermes_commit_sha": execution.plan_validator.EXPECTED_HERMES_COMMIT,
+            "hermes_version": execution.plan_validator.EXPECTED_HERMES_VERSION,
+        }
+        if report.get("source") != expected_source:
+            raise HermesBatchError("batch source binding drifted")
+        expected_workflow = {
+            "run_id": os.environ.get("GITHUB_RUN_ID"),
+            "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
+            "sha": os.environ.get("GITHUB_SHA"),
+            "ref": os.environ.get("GITHUB_REF"),
+        }
+        if report.get("workflow") != expected_workflow:
+            raise HermesBatchError("batch workflow binding drifted")
         if report.get("repository") != repository:
             raise HermesBatchError("batch repository binding drifted")
         batch_index = batch_index_from_environment()
@@ -897,14 +1032,40 @@ def enforce(output_dir: Path = DEFAULT_ARTIFACTS) -> int:
         }
         if observed_keys != expected_keys:
             raise HermesBatchError("batch candidate/case/repetition coverage drifted")
+        candidate_by_id = {item["candidate_id"]: item for item in selected}
+        case_by_id = {item["case_id"]: item for item in cases}
+        for item in results:
+            if not isinstance(item, dict):
+                raise HermesBatchError("batch result record is not an object")
+            candidate = candidate_by_id.get(item.get("candidate_id"))
+            case = case_by_id.get(item.get("case_id"))
+            if candidate is None or case is None:
+                raise HermesBatchError("batch result inventory contains an unknown binding")
+            _verify_result_artifacts(output_dir, item, candidate, case)
         allowed_statuses = {"passed", "failed", "invalid_infrastructure"}
         if any(item.get("candidate_result_status") not in allowed_statuses for item in results):
             raise HermesBatchError("batch contains an unknown result status")
         aliases = report.get("aliases")
         if not isinstance(aliases, list) or len(aliases) != 2:
             raise HermesBatchError("batch alias evidence is incomplete")
-        if any(item.get("cleanup", {}).get("verified_absent") is not True for item in aliases):
-            raise HermesBatchError("batch alias cleanup is invalid")
+        alias_by_candidate = {item.get("candidate_id"): item for item in aliases if isinstance(item, dict)}
+        if set(alias_by_candidate) != set(candidate_by_id):
+            raise HermesBatchError("batch alias candidate inventory drifted")
+        for candidate_id, candidate in candidate_by_id.items():
+            item = alias_by_candidate[candidate_id]
+            expected_alias = _alias_name(batch_index, int(candidate["sequence"]))
+            if item.get("expected_alias_name") != expected_alias:
+                raise HermesBatchError("batch expected alias name drifted")
+            if item.get("cleanup", {}).get("verified_absent") is not True:
+                raise HermesBatchError("batch alias cleanup is invalid")
+            runtime_alias = item.get("runtime_alias")
+            if runtime_alias is not None:
+                if runtime_alias.get("name") != expected_alias:
+                    raise HermesBatchError("batch runtime alias name drifted")
+                if runtime_alias.get("source_candidate_id") != candidate_id:
+                    raise HermesBatchError("batch runtime alias source id drifted")
+                if runtime_alias.get("source_candidate_digest") != candidate["digest"]:
+                    raise HermesBatchError("batch runtime alias source digest drifted")
         if any(item.get("verified_absent") is not True for item in report.get("final_cleanup", [])):
             raise HermesBatchError("batch final model cleanup is invalid")
         counts = report.get("counts")
