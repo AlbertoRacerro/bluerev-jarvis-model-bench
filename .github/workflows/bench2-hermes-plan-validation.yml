@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - bench/bench2-hermes-lane1-plan
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
