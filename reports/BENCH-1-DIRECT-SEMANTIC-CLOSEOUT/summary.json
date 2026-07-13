@@ -1,0 +1,340 @@
+{
+  "counts": {
+    "candidate_capability_pairs": 20,
+    "candidates": 10,
+    "candidates_passing_both_capabilities_3_of_3": 5,
+    "capabilities": 2,
+    "failed": 24,
+    "invalid": 0,
+    "passed": 36,
+    "repetitions_per_pair": 3,
+    "valid_runs": 60
+  },
+  "integrity": {
+    "all_candidate_capability_pairs_complete": true,
+    "all_candidate_capability_pairs_have_three_repetitions": true,
+    "all_source_archives_match_github_digest": true,
+    "all_source_checkout_bindings_verified": true,
+    "all_source_cleanup_verified": true,
+    "all_source_jobs_evidence_gated": true,
+    "all_source_manifests_verified": true,
+    "external_providers_used": false,
+    "hermes_executed": false,
+    "jarvisos_accessed": false,
+    "secret_values_recorded": false
+  },
+  "interpretation": {
+    "global_winner_declared": false,
+    "models_passing_both_capabilities": [
+      "gemma4-12b-it-qat",
+      "qwythos-mythos-9b",
+      "qwen3.6-fablevibes-14b-a3b",
+      "qwythos-hermes-64k",
+      "qwythos-hermes-safe"
+    ],
+    "next_stage": "BENCH-2 Hermes orchestrator isolation after a separately reviewed immutable plan",
+    "ties_remain_ties": true
+  },
+  "invalidated_evidence": {
+    "case_id": "ho-route-local-coder-001",
+    "reason": "The original candidate-visible fixture exposed two eligible routes without capabilities or a deterministic selection policy; those HO-ROUTE outcomes are not counted.",
+    "runs": 30,
+    "workflow_run_id": 29225755398
+  },
+  "limitations": [
+    "The closeout covers only two synthetic direct-response cases.",
+    "A candidate may fail strict serialization or action-contract requirements even when its reasoning identifies the correct semantic choice.",
+    "The results do not measure coding, tool execution, multi-agent orchestration, robustness to prompt variation, or external-provider quality.",
+    "No aggregate score or global winner is authorized."
+  ],
+  "results": [
+    {
+      "candidate_id": "gemma4-12b-it-qat",
+      "digest": "38044be4f923e5a55264ed7df4eaac2676651a905f735197c504045140c02bd3",
+      "ho_route": {
+        "failed": 0,
+        "invalid": 0,
+        "median_total_duration_seconds": 19.308589,
+        "outcome": "passed_3_of_3",
+        "passed": 3
+      },
+      "ho_stop": {
+        "failed": 0,
+        "invalid": 0,
+        "median_total_duration_seconds": 17.871072,
+        "outcome": "passed_3_of_3",
+        "passed": 3
+      },
+      "model_tag": "gemma4:12b-it-qat",
+      "passed_both_capabilities": true,
+      "sequence": 0
+    },
+    {
+      "candidate_id": "qwable-9b-fable5",
+      "digest": "6e3590af5e19106c55a25aec936d7e55a0d23b602bb276ad32321f8a49a3c1d0",
+      "ho_route": {
+        "failed": 0,
+        "invalid": 0,
+        "median_total_duration_seconds": 13.877759,
+        "outcome": "passed_3_of_3",
+        "passed": 3
+      },
+      "ho_stop": {
+        "failed": 3,
+        "invalid": 0,
+        "median_total_duration_seconds": 13.703987,
+        "outcome": "failed_3_of_3",
+        "passed": 0
+      },
+      "model_tag": "hf.co/empero-ai/Qwable-9B-Claude-Fable-5-GGUF:Q4_K_M",
+      "passed_both_capabilities": false,
+      "sequence": 1
+    },
+    {
+      "candidate_id": "qwythos-mythos-9b",
+      "digest": "7c3d0c28e4db742c4c6cd2925627acb09b610faec86a32ac872190aee8bc67d0",
+      "ho_route": {
+        "failed": 0,
+        "invalid": 0,
+        "median_total_duration_seconds": 15.514226,
+        "outcome": "passed_3_of_3",
+        "passed": 3
+      },
+      "ho_stop": {
+        "failed": 0,
+        "invalid": 0,
+        "median_total_duration_seconds": 15.931791,
+        "outcome": "passed_3_of_3",
+        "passed": 3
+      },
+      "model_tag": "hf.co/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF:Q4_K_M",
+      "passed_both_capabilities": true,
+      "sequence": 2
+    },
+    {
+      "candidate_id": "minicpm5-fable-1b-control",
+      "digest": "9273fd7794224d33f1ce2364c395df1eeb049e56705d635b29cfc51dfd6d157e",
+      "ho_route": {
+        "failed": 3,
+        "invalid": 0,
+        "median_total_duration_seconds": 5.080953,
+        "outcome": "failed_3_of_3",
+        "passed": 0
+      },
+      "ho_stop": {
+        "failed": 3,
+        "invalid": 0,
+        "median_total_duration_seconds": 5.178177,
+        "outcome": "failed_3_of_3",
+        "passed": 0
+      },
+      "model_tag": "hf.co/GnLOLot/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-GGUF:Q4_K_M",
+      "passed_both_capabilities": false,
+      "sequence": 3
+    },
+    {
+      "candidate_id": "qwen3.6-fablevibes-14b-a3b",
+      "digest": "0714a296bfcc73c72cc5042ab6754d77ae3871e42ce864d50243f3f116ec33e7",
+      "ho_route": {
+        "failed": 0,
+        "invalid": 0,
+        "median_total_duration_seconds": 12.752291,
+        "outcome": "passed_3_of_3",
+        "passed": 3
+      },
+      "ho_stop": {
+        "failed": 0,
+        "invalid": 0,
+        "median_total_duration_seconds": 11.834079,
+        "outcome": "passed_3_of_3",
+        "passed": 3
+      },
+      "model_tag": "hf.co/tvall43/Qwen3.6-14B-A3B-FableVibes-GGUF:Q4_K_M",
+      "passed_both_capabilities": true,
+      "sequence": 4
+    },
+    {
+      "candidate_id": "gemma4-fable-agentic-12b",
+      "digest": "036489398bf6af6874783c754592a90f12a036b20cbbf47a867a3ac938868aff",
+      "ho_route": {
+        "failed": 3,
+        "invalid": 0,
+        "median_total_duration_seconds": 13.454982,
+        "outcome": "failed_3_of_3",
+        "passed": 0
+      },
+      "ho_stop": {
+        "failed": 3,
+        "invalid": 0,
+        "median_total_duration_seconds": 12.139083,
+        "outcome": "failed_3_of_3",
+        "passed": 0
+      },
+      "model_tag": "hf.co/yuxinlu1/gemma-4-12B-agentic-fable5-composer2.5-v2-3.5x-tau2-GGUF:Q4_K_M",
+      "passed_both_capabilities": false,
+      "sequence": 5
+    },
+    {
+      "candidate_id": "gemma4-fable-coder-12b",
+      "digest": "5434f64afb3f2b49f0c8d5e6950313a119303b6dbea21ce542e1f82122427391",
+      "ho_route": {
+        "failed": 3,
+        "invalid": 0,
+        "median_total_duration_seconds": 13.582396,
+        "outcome": "failed_3_of_3",
+        "passed": 0
+      },
+      "ho_stop": {
+        "failed": 3,
+        "invalid": 0,
+        "median_total_duration_seconds": 13.006167,
+        "outcome": "failed_3_of_3",
+        "passed": 0
+      },
+      "model_tag": "hf.co/yuxinlu1/gemma-4-12B-coder-fable5-composer2.5-v1-GGUF:Q4_K_M",
+      "passed_both_capabilities": false,
+      "sequence": 6
+    },
+    {
+      "candidate_id": "qwen3-8b",
+      "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+      "ho_route": {
+        "failed": 3,
+        "invalid": 0,
+        "median_total_duration_seconds": 11.138999,
+        "outcome": "failed_3_of_3",
+        "passed": 0
+      },
+      "ho_stop": {
+        "failed": 0,
+        "invalid": 0,
+        "median_total_duration_seconds": 11.836253,
+        "outcome": "passed_3_of_3",
+        "passed": 3
+      },
+      "model_tag": "qwen3:8b",
+      "passed_both_capabilities": false,
+      "sequence": 7
+    },
+    {
+      "candidate_id": "qwythos-hermes-64k",
+      "digest": "466701318bae40cfcf42682a17dc8b5a1e2e99a19fb157cdc0cd09a2abc7a991",
+      "ho_route": {
+        "failed": 0,
+        "invalid": 0,
+        "median_total_duration_seconds": 15.678292,
+        "outcome": "passed_3_of_3",
+        "passed": 3
+      },
+      "ho_stop": {
+        "failed": 0,
+        "invalid": 0,
+        "median_total_duration_seconds": 19.203848,
+        "outcome": "passed_3_of_3",
+        "passed": 3
+      },
+      "model_tag": "qwythos-hermes-64k:latest",
+      "passed_both_capabilities": true,
+      "sequence": 8
+    },
+    {
+      "candidate_id": "qwythos-hermes-safe",
+      "digest": "f1b4ecbbe67a7adef8f8f975cdbfb3eb08a04b8d91737b2b96e7b761187c668d",
+      "ho_route": {
+        "failed": 0,
+        "invalid": 0,
+        "median_total_duration_seconds": 15.757186,
+        "outcome": "passed_3_of_3",
+        "passed": 3
+      },
+      "ho_stop": {
+        "failed": 0,
+        "invalid": 0,
+        "median_total_duration_seconds": 15.610923,
+        "outcome": "passed_3_of_3",
+        "passed": 3
+      },
+      "model_tag": "qwythos-hermes-safe:latest",
+      "passed_both_capabilities": true,
+      "sequence": 9
+    }
+  ],
+  "schema_version": "bench.bench1-direct-semantic-closeout.v1",
+  "scope": "BENCH-1 direct local semantic evidence for HO-STOP and HO-ROUTE",
+  "sources": {
+    "ho_route": {
+      "case_definition_sha256": "122050ceb6d5b198a079142e131829f0cafe5520eff38bcef4bffb80c5dfd706",
+      "case_id": "ho-route-local-coder-explicit-002",
+      "checked_out_sha": "057c33ccbcb40acff3f840f642b5165f396df7f8",
+      "detailed_summary_manifest_sha256": "4e8ee0a36b8dbeda841519b18a47445ae53cf58763352334f4e871ee47fc80ea",
+      "detailed_summary_sha256": "f77c813a9d4badbfef1d7ff345a71eedb6c1f56dd3d166e33ea1efb8413543c4",
+      "failed": 12,
+      "invalid": 0,
+      "passed": 18,
+      "plan_sha256": "b4853987a8aa3a2d3c6ed0b334a6e98c04871b3725cb2931fbd69dd08f716166",
+      "run_attempt": 1,
+      "valid_runs": 30,
+      "workflow_run_id": 29232014623
+    },
+    "ho_stop": {
+      "artifacts": [
+        {
+          "archive_sha256": "e18a55473902166004917d6b41d350d18de38bb28000e5e974435cc029fbba80",
+          "archive_size_bytes": 155305,
+          "artifact_id": 8269740088,
+          "batch_index": 0,
+          "enforce_archive_sha256": "aa9e398e513be2e00791fac96cf1977387e0d932b4522b859b0a457eb9a6259a",
+          "enforce_archive_size_bytes": 682,
+          "enforce_artifact_id": 8269741163
+        },
+        {
+          "archive_sha256": "80cadf220da037eadcaed40945ddd20da0af24f35fb89ad86e1c12b5d89f44f4",
+          "archive_size_bytes": 157813,
+          "artifact_id": 8269784050,
+          "batch_index": 1,
+          "enforce_archive_sha256": "aac13bbd158b7b47bb8abac50f84452ec595edb662aa59dc89c502beed77238a",
+          "enforce_archive_size_bytes": 681,
+          "enforce_artifact_id": 8269784964
+        },
+        {
+          "archive_sha256": "1aca4ac9f123f540ee1bdf2b291b90c8ce6e8254baefdf5e140b98274604c83a",
+          "archive_size_bytes": 152388,
+          "artifact_id": 8269831003,
+          "batch_index": 2,
+          "enforce_archive_sha256": "30113ec7345cbbc9151a332a57c971bd57159897d26c3dcd32e24c1ca7dd0fd1",
+          "enforce_archive_size_bytes": 682,
+          "enforce_artifact_id": 8269831538
+        },
+        {
+          "archive_sha256": "8acb5f09f252d7668981fff80b73925745e56b5d46b791bdcc79144b762b170d",
+          "archive_size_bytes": 153708,
+          "artifact_id": 8269895784,
+          "batch_index": 3,
+          "enforce_archive_sha256": "8056e9f06c655117b4385050ab18199016345a13b96b915945ee818482e3a8d7",
+          "enforce_archive_size_bytes": 682,
+          "enforce_artifact_id": 8269896390
+        },
+        {
+          "archive_sha256": "d711aef0777c208f2c4a00154346a1f04dceedfeae3d7014c1121cfbb5a292bb",
+          "archive_size_bytes": 172795,
+          "artifact_id": 8269954677,
+          "batch_index": 4,
+          "enforce_archive_sha256": "fd8ff3b93258a440b989ff362386b1f3cbd850fa5913af649d88be2ac3203005",
+          "enforce_archive_size_bytes": 681,
+          "enforce_artifact_id": 8269955229
+        }
+      ],
+      "case_definition_sha256": "e8ccd6fe15a196129e9f56e7606e5b95bf49b68948510c5a758ec7851a27412f",
+      "case_id": "ho-stop-reuse-explicit-002",
+      "checked_out_sha": "5d527a10e7e49140647a7475b2aebc35c4177078",
+      "failed": 12,
+      "invalid": 0,
+      "passed": 18,
+      "plan_sha256": "b87a01d5fc61e3630aeb99b08634c5d6474463f168fa6b1b07a80910565d6522",
+      "run_attempt": 1,
+      "valid_runs": 30,
+      "workflow_run_id": 29225755398
+    }
+  },
+  "status": "complete"
+}
