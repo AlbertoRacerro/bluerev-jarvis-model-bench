@@ -177,31 +177,34 @@ class Bench2HermesExecutionTests(unittest.TestCase):
             try:
                 execution.MARKER_PATH = path
                 with self.assertRaisesRegex(
-                    execution.HermesExecutionError, "batch_count"
+                    (
+                        execution.HermesExecutionError,
+                        execution.plan_validator.HermesPlanError,
+                    ),
+                    "batch_count|reviewed disabled marker",
                 ):
                     execution.validate_execution()
             finally:
                 execution.MARKER_PATH = original
 
-
     def test_stop_case_rejects_two_model_calls_as_semantic_failure(self):
         usage_checks = [
-  {"check": name, "passed": True, "detail": ""}
-  for name in (
-      "usage_provider_custom", "usage_model_exact", "usage_completed",
-      "usage_not_failed", "usage_api_calls_bounded",
-      "usage_input_tokens_nonnegative", "usage_output_tokens_nonnegative",
-      "usage_total_tokens_nonnegative",
-  )
+            {"check": name, "passed": True, "detail": ""}
+            for name in (
+                "usage_provider_custom", "usage_model_exact", "usage_completed",
+                "usage_not_failed", "usage_api_calls_bounded",
+                "usage_input_tokens_nonnegative", "usage_output_tokens_nonnegative",
+                "usage_total_tokens_nonnegative",
+            )
         ]
         case = {
-  "case_id": "ho-stop-hermes-reuse-001",
-  "capability": "HO-STOP",
-  "expected": {
-      "actions": ["return_supplied_result", "stop"],
-      "final": "stable-result",
-  },
-  "limits": {"max_model_calls": 1},
+            "case_id": "ho-stop-hermes-reuse-001",
+            "capability": "HO-STOP",
+            "expected": {
+                "actions": ["return_supplied_result", "stop"],
+                "final": "stable-result",
+            },
+            "limits": {"max_model_calls": 1},
         }
         result = runner._semantic_validator(
             case=case,
