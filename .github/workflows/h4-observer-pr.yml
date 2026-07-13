@@ -16,7 +16,7 @@ jobs:
       - name: Capture H4 activation run snapshot
         uses: actions/github-script@v7
         env:
-          ACTIVATION_SHA: 81c5bc60e1c7b0c0bb38f001f656a6f10f42085d
+          ACTIVATION_SHA: a2926cc93abb1a64874352c4508e8c97b0b6007f
           WORKFLOW_NAME: H4 one-shot 64K qualification bridge
         with:
           script: |
