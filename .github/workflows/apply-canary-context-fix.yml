@@ -1,0 +1,66 @@
+name: Apply canary context fix
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/apply-canary-context-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.head_ref == 'fix/bench2-canary-ollama-num-ctx' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/bench2-canary-ollama-num-ctx
+          fetch-depth: 0
+      - name: Apply reviewed exact replacements
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          runtime = Path('scripts/run_bench2_hermes_canary.py')
+          text = runtime.read_text(encoding='utf-8')
+          old = '        "  context_length: 65536",\n        "  max_tokens: 256",'
+          new = '        "  context_length: 65536",\n        "  ollama_num_ctx: 65536",\n        "  max_tokens: 256",'
+          if text.count(old) != 1:
+              raise SystemExit('runtime replacement count mismatch')
+          runtime.write_text(text.replace(old, new), encoding='utf-8', newline='\n')
+
+          tests = Path('tests/test_bench2_hermes_canary.py')
+          text = tests.read_text(encoding='utf-8')
+          old_hash = 'cccc8a7500de332895ffd156fbdb0b8e85ab0f856a92e1bcd3db8c7115166b65'
+          new_hash = 'e026b357d37a9927fb569a0c0a9b5e17af6c348d0d9bc44739ff9b5d6097e6ba'
+          if text.count(old_hash) != 1:
+              raise SystemExit('runtime hash replacement count mismatch')
+          text = text.replace(old_hash, new_hash)
+          anchor = '''    def test_plan_is_single_candidate_single_case_with_explicit_marker_state(self):\n'''
+          added = '''    def test_runtime_config_sets_operational_ollama_context(self):\n        with tempfile.TemporaryDirectory() as directory:\n            root = Path(directory)\n            runtime._write_isolated_home(root / "home", root / "work", "model:test")\n            config = (root / "home" / "config.yaml").read_text(encoding="utf-8")\n        self.assertIn("ollama_num_ctx: 65536", config)\n        self.assertIn("context_length: 65536", config)\n\n'''
+          if text.count(anchor) != 1:
+              raise SystemExit('test insertion anchor mismatch')
+          tests.write_text(text.replace(anchor, added + anchor), encoding='utf-8', newline='\n')
+
+          marker = Path('config/bench2-hermes-canary-oneshot.json')
+          text = marker.read_text(encoding='utf-8')
+          old = '  "enabled": true,'
+          new = '  "enabled": false,'
+          if text.count(old) != 1:
+              raise SystemExit('marker reset count mismatch')
+          marker.write_text(text.replace(old, new), encoding='utf-8', newline='\n')
+          PY
+          python -m py_compile scripts/run_bench2_hermes_canary.py scripts/validate_bench2_hermes_canary.py tests/test_bench2_hermes_canary.py
+          python -m unittest tests.test_bench2_hermes_plan tests.test_bench2_hermes_canary
+          python scripts/validate_bench2_hermes_canary.py
+          git rm .github/workflows/apply-canary-context-fix.yml
+      - name: Commit exact fix
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add scripts/run_bench2_hermes_canary.py tests/test_bench2_hermes_canary.py config/bench2-hermes-canary-oneshot.json
+          git commit -m "Fix canary Ollama runtime context"
+          git push origin HEAD:fix/bench2-canary-ollama-num-ctx
