@@ -1,0 +1,13 @@
+{
+  "artifacts": {
+    "summary.json": {
+      "sha256": "010791bdea707e809dc52d2919b6d68b7ea50df086bf1187b8cd46039f590ba9",
+      "size_bytes": 4164
+    },
+    "summary.md": {
+      "sha256": "7d52a079596799eaac35b65fea3c7f2c8c02819fb4681b0d22eb1c6b9ebe1731",
+      "size_bytes": 2006
+    }
+  },
+  "schema_version": "bench.hermes-canary-closeout-manifest.v1"
+}

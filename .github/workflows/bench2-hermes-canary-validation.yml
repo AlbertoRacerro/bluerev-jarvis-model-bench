@@ -10,10 +10,13 @@ on:
       - fixtures/bench-plans/hermes-orchestrator-canary-v1.json
       - fixtures/bench-plans/hermes-orchestrator-h4-eligible-plan-v2.json
       - reports/H4-HERMES-MINIMUM-64K/**
+      - reports/BENCH-2-HERMES-CANARY/**
       - scripts/run_bench2_hermes_canary.py
       - scripts/validate_bench2_hermes_canary.py
+      - scripts/validate_bench2_hermes_canary_closeout.py
       - scripts/validate_bench2_hermes_plan.py
       - tests/test_bench2_hermes_canary.py
+      - tests/test_bench2_hermes_canary_closeout.py
       - tests/test_bench2_hermes_plan.py
       - .github/workflows/bench2-hermes-canary-validation.yml
       - .github/workflows/bench2-hermes-canary-oneshot.yml
@@ -33,11 +36,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Run BENCH-2 plan and canary contract tests
+      - name: Run BENCH-2 plan, canary, and closeout contract tests
         run: |
-          python -m unittest tests.test_bench2_hermes_plan tests.test_bench2_hermes_canary
+          python -m unittest tests.test_bench2_hermes_plan tests.test_bench2_hermes_canary tests.test_bench2_hermes_canary_closeout
           python scripts/validate_bench2_hermes_plan.py --output artifacts/bench2-plan-validation.json
           python scripts/validate_bench2_hermes_canary.py --output artifacts/bench2-canary-validation.json
+          python scripts/validate_bench2_hermes_canary_closeout.py --output artifacts/bench2-canary-closeout-validation.json
       - name: Upload validation evidence
         uses: actions/upload-artifact@v4
         with:

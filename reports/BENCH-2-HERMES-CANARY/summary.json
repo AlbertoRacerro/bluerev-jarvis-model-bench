@@ -1,0 +1,102 @@
+{
+  "bindings": {
+    "bench2_plan_sha256": "0ac1832f959ff3780ecd36f44bc5d24ba49594529974b863a2aebcadeb55d312",
+    "canary_plan_sha256": "3f0a80fb5033d987af1117dd0c61c391aae8b86b86fd22d532be9abfe430c925",
+    "candidate_id": "qwythos-hermes-safe",
+    "candidate_registry_sha256": "67a311b7e4e75135dae6e1c2ce3dd25767b4d41f8439ec6bee7701d0c90881d7",
+    "case_definition_sha256": "f2f1889edfadf1cccf84ebac7650421478aeabfb6d9b3331e24034867e5aa1ca",
+    "h4_summary_sha256": "fc81c95c51ea55e9b79e293feee5fb9762655ccb1d2831b31ac4257fa5968af5",
+    "hermes_commit_sha": "73b611ad19720d70308dad6b0fb64648aaadc216",
+    "hermes_version": "0.18.2",
+    "source_candidate_digest": "f1b4ecbbe67a7adef8f8f975cdbfb3eb08a04b8d91737b2b96e7b761187c668d"
+  },
+  "decision": {
+    "candidate_result_status": "failed",
+    "full_matrix_infrastructure_gate": "satisfied",
+    "full_matrix_may_proceed": true,
+    "full_matrix_semantic_admission_gate": "not_applicable",
+    "infrastructure_canary_status": "passed",
+    "rationale": [
+      "The canary is an infrastructure qualification of the Hermes harness, not a semantic admission test for the candidate set.",
+      "Using one candidate's semantic result to admit or reject the other H4-qualified candidates would create outcome-dependent selection bias.",
+      "The canary candidate's failed HO-TOOLS observation remains valid benchmark evidence and must not be rewritten as a pass."
+    ],
+    "semantic_observation_status": "failed"
+  },
+  "infrastructure": {
+    "alias_removed": true,
+    "api_calls": 1,
+    "model_unloaded": true,
+    "observed_context_length": 65536,
+    "residency_class": "full_vram",
+    "residency_ratio": 1.0,
+    "runtime_alias": "bench2-canary-qwythos-safe-64k:29265322367-1",
+    "runtime_alias_digest": "2d34a76473617074e91a8506948d281fb043c011f08d45c1e30e801e39d65083",
+    "runtime_modelfile_sha256": "51d99960a27f4caa6d4c2eb6e73595ae5cf37e0500cbd20dde3a123c7590aa7c",
+    "usage_completed": true,
+    "usage_failed": false
+  },
+  "integrity": {
+    "actual_context_65536_verified": true,
+    "alias_cleanup_verified": true,
+    "external_provider_used": false,
+    "full_vram_verified": true,
+    "github_archive_digest_verified": true,
+    "hermes_identity_verified": true,
+    "internal_manifest_verified": true,
+    "jarvisos_accessed": false,
+    "model_cleanup_verified": true,
+    "repository_event_sha_verified": true,
+    "source_to_alias_binding_verified": true
+  },
+  "prior_invalid_runs": [
+    {
+      "classification": "invalid_infrastructure",
+      "execution_commit_sha": "5901761c0a02097f80e7d6b34e326c13e766e7c4",
+      "reason": "Hermes stopped before inference after observing the default 4096-token Ollama context; zero API calls.",
+      "workflow_run_id": 29263590189
+    },
+    {
+      "classification": "invalid_infrastructure",
+      "execution_commit_sha": "d32de0cb05473139dab2903bf423191555627c1d",
+      "reason": "Hermes executed the local tool path, but Ollama loaded the model with an actual context of 4096.",
+      "workflow_run_id": 29264163081
+    }
+  ],
+  "run": {
+    "artifact_archive_sha256": "a73d442c801735070927ea3048f63d2e87f3b0741e44b8ce262a513c40dc37ed",
+    "artifact_archive_size_bytes": 9093,
+    "artifact_id": 8285164320,
+    "artifact_name": "bench2-hermes-canary-29265322367-1",
+    "execution_commit_sha": "941d587267bfeb602ba9bd5d5513695c56d63e52",
+    "workflow_run_attempt": 1,
+    "workflow_run_id": 29265322367
+  },
+  "schema_version": "bench.hermes-canary-closeout.v1",
+  "semantic": {
+    "capability": "HO-TOOLS",
+    "case_id": "ho-tools-hermes-lookup-001",
+    "expected_arguments": {
+      "key": "alpha-7"
+    },
+    "expected_final": "BRAVO-19",
+    "expected_tool": "bench_lookup",
+    "failure_reasons": [
+      "The required tool was not invoked.",
+      "The final field was not a string.",
+      "The required action sequence call_tool, return_final, stop was not produced."
+    ],
+    "observed_output": {
+      "actions": [
+        "call_tool"
+      ],
+      "final": {
+        "error": null,
+        "label": null,
+        "value": null
+      }
+    },
+    "semantic_pass": false,
+    "tool_trace_count": 0
+  }
+}
