@@ -98,7 +98,7 @@ class DirectExecutionV3Tests(unittest.TestCase):
 
     def test_old_ho_route_fixture_is_rejected_as_semantically_underspecified(self):
         case = json.loads(OLD_ROUTE_CASE_PATH.read_text(encoding="utf-8"))
-        with self.assertRaisesRegex(ContractError, "route_options"):
+        with self.assertRaisesRegex(ContractError, "selection_policy"):
             verify_candidate_visible_response_contract(case)
 
     def test_ho_route_hidden_action_oracle_is_rejected(self):
