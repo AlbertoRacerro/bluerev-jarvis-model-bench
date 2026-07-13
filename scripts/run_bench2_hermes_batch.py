@@ -902,11 +902,11 @@ def _verify_run_manifest(run_dir: Path) -> None:
     for name, record in artifacts.items():
         path = run_dir / name
         if not isinstance(record, dict):
-  raise HermesBatchError(f"run manifest record invalid: {run_dir}/{name}")
+            raise HermesBatchError(f"run manifest record invalid: {run_dir}/{name}")
         if record.get("sha256") != _sha256(path):
-  raise HermesBatchError(f"run artifact digest mismatch: {run_dir}/{name}")
+            raise HermesBatchError(f"run artifact digest mismatch: {run_dir}/{name}")
         if record.get("size_bytes") != path.stat().st_size:
-  raise HermesBatchError(f"run artifact size mismatch: {run_dir}/{name}")
+            raise HermesBatchError(f"run artifact size mismatch: {run_dir}/{name}")
 
 
 def _verify_result_artifacts(
