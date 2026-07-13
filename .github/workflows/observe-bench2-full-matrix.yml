@@ -15,7 +15,7 @@ jobs:
   snapshot:
     runs-on: ubuntu-latest
     steps:
-      - name: Read activation run
+      - name: Read activation run and runner availability
         uses: actions/github-script@v7
         env:
           ACTIVATION_SHA: 554ea07482fe3755ee2fb5219d7e91040a9a65c0
@@ -39,6 +39,17 @@ jobs:
             const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
               owner, repo, run_id: run.id, per_page: 100
             });
+            let runners = [];
+            let runner_error = null;
+            try {
+              const response = await github.rest.actions.listSelfHostedRunnersForRepo({owner, repo, per_page: 100});
+              runners = response.data.runners || [];
+            } catch (error) {
+              runner_error = `${error.status || ''}:${error.message}`;
+            }
+            const recent = await github.paginate(github.rest.actions.listWorkflowRunsForRepo, {
+              owner, repo, status: 'in_progress', per_page: 100
+            });
             core.info(JSON.stringify({
               run: {
                 id: run.id,
@@ -56,19 +67,13 @@ jobs:
                 status: j.status,
                 conclusion: j.conclusion,
                 runner_name: j.runner_name,
+                labels: j.labels,
                 started_at: j.started_at,
                 completed_at: j.completed_at,
-                steps: (j.steps || []).map(s => ({
-                  name: s.name,
-                  status: s.status,
-                  conclusion: s.conclusion
-                }))
+                steps: (j.steps || []).map(s => ({name: s.name, status: s.status, conclusion: s.conclusion}))
               })),
-              artifacts: artifacts.map(a => ({
-                id: a.id,
-                name: a.name,
-                size_in_bytes: a.size_in_bytes,
-                digest: a.digest,
-                expired: a.expired
-              }))
+              artifacts: artifacts.map(a => ({id: a.id, name: a.name, size_in_bytes: a.size_in_bytes, digest: a.digest, expired: a.expired})),
+              runners: runners.map(r => ({id: r.id, name: r.name, os: r.os, status: r.status, busy: r.busy, labels: (r.labels || []).map(l => l.name)})),
+              runner_error,
+              in_progress_runs: recent.map(r => ({id: r.id, name: r.name, event: r.event, head_sha: r.head_sha, status: r.status}))
             }, null, 2));
