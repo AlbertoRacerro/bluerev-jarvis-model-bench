@@ -1,0 +1,57 @@
+name: BENCH-2 derived canary observer
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/bench2-derived-canary-observer-pr.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read derived-alias activation run
+        uses: actions/github-script@v7
+        env:
+          ACTIVATION_SHA: 941d587267bfeb602ba9bd5d5513695c56d63e52
+          WORKFLOW_NAME: BENCH-2 Hermes isolated canary
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const runs = await github.paginate(github.rest.actions.listWorkflowRunsForRepo, {
+              owner, repo, event: 'push', head_sha: process.env.ACTIVATION_SHA, per_page: 100
+            });
+            const matches = runs.filter(r => r.name === process.env.WORKFLOW_NAME);
+            if (matches.length !== 1) {
+              core.setFailed(`Expected exactly one derived canary run, found ${matches.length}`);
+              return;
+            }
+            const run = matches[0];
+            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+              owner, repo, run_id: run.id, filter: 'latest', per_page: 100
+            });
+            const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
+              owner, repo, run_id: run.id, per_page: 100
+            });
+            core.info(JSON.stringify({
+              schema_version: 'bench.hermes-canary-observer.v1',
+              run: {
+                id: run.id, run_attempt: run.run_attempt, status: run.status,
+                conclusion: run.conclusion, head_sha: run.head_sha,
+                html_url: run.html_url, created_at: run.created_at, updated_at: run.updated_at
+              },
+              jobs: jobs.map(j => ({
+                id: j.id, name: j.name, status: j.status, conclusion: j.conclusion,
+                started_at: j.started_at, completed_at: j.completed_at,
+                runner_name: j.runner_name, html_url: j.html_url,
+                steps: (j.steps || []).map(s => ({name: s.name, status: s.status, conclusion: s.conclusion}))
+              })),
+              artifacts: artifacts.map(a => ({
+                id: a.id, name: a.name, size_in_bytes: a.size_in_bytes,
+                digest: a.digest, expired: a.expired
+              }))
+            }, null, 2));
