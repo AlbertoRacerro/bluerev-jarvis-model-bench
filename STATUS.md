@@ -8,7 +8,7 @@ Status vocabulary: `planned`, `blocked`, `ready`, `in_progress`, `in_review`, `m
 |---|---|---:|---|---|---|
 | BENCH-0 | merged | #1 | Foundation and runner contract | — | Strict extraction, manifests, local inventory, self-hosted Windows workflows, immutable artifacts, and safety boundaries. |
 | BENCH-1 | merged | #96 | Direct synthetic orchestration battery | BENCH-0 | Evidence-gated local direct results for explicit HO-STOP and HO-ROUTE contracts: 60 accepted runs across 10 candidates. |
-| BENCH-2 | in_review | — | Hermes orchestrator isolation | BENCH-1 | Immutable all-Lane-1 Phase A plan, deterministic local plugin, runtime-context gate, and disabled execution marker. No Hermes runs are authorized by this slice. |
+| BENCH-2 | in_review | #98 | Hermes orchestrator isolation | BENCH-1 | Immutable all-Lane-1 Phase A plan, deterministic local plugin, runtime-context gate, and disabled execution marker. No Hermes runs are authorized by this slice. |
 | BENCH-3 | planned | — | Tool and coding fixtures | BENCH-2 | Windows/PowerShell, file edits, patching, deterministic tests, and bounded worker/critic/adjudicator loops. |
 | BENCH-4 | blocked | — | Adaptive local model routing | BENCH-2, BENCH-3 | Route among eligible local models by capability, reliability, latency, and resource cost. External APIs remain out of scope. |
 | BENCH-5 | planned | — | Controlled self-improvement | BENCH-4 | Evaluate memory, skill, routing, replay, overfitting, and promotion boundaries. |
