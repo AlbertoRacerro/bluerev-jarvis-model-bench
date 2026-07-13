@@ -8,6 +8,7 @@ on:
       - fix/semantic-powershell-capture
       - fix/semantic-python-entrypoint
       - fix/semantic-cmd-bootstrap
+      - fix/semantic-case-snapshot-digest
 
 permissions:
   contents: read
