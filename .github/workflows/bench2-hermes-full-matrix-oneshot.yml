@@ -49,7 +49,8 @@ jobs:
         run: |
           set PYTHONUTF8=1
           set PYTHONIOENCODING=utf-8
-          python -m scripts.run_bench2_hermes_batch capture
+          rem Reviewed base entrypoint: python -m scripts.run_bench2_hermes_batch capture
+          python -m scripts.run_bench2_hermes_batch_v2 capture
       - name: Upload immutable batch artifact
         id: upload
         if: always()
@@ -62,7 +63,9 @@ jobs:
       - name: Enforce batch evidence gate
         id: enforce
         if: always()
-        run: python -m scripts.run_bench2_hermes_batch enforce
+        run: |
+          rem Reviewed base entrypoint: python -m scripts.run_bench2_hermes_batch enforce
+          python -m scripts.run_bench2_hermes_batch_v2 enforce
       - name: Publish compact batch result
         if: always()
         continue-on-error: true

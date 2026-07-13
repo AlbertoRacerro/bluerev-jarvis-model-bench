@@ -1,0 +1,107 @@
+{
+  "artifacts": [
+    {
+      "archive_sha256": "d54ea8f6efb3e444598db055f22914bdf3d9b0a5df720b02e325580e8f8dff28",
+      "archive_size_bytes": 51755,
+      "artifact_id": 8290930084,
+      "artifact_name": "bench2-hermes-29269445368-1-b0",
+      "batch_index": 0
+    },
+    {
+      "archive_sha256": "dfd5d6fad0acabaacd0fb6c9f5c5ff2a6853454db642acf349e2efe30409c780",
+      "archive_size_bytes": 53306,
+      "artifact_id": 8291016865,
+      "artifact_name": "bench2-hermes-29269445368-1-b1",
+      "batch_index": 1
+    },
+    {
+      "archive_sha256": "43cc2a48ee085646d276da6ab6561d0d548c8306cf8d9aa75d9534c4c05b28e5",
+      "archive_size_bytes": 53739,
+      "artifact_id": 8291090447,
+      "artifact_name": "bench2-hermes-29269445368-1-b2",
+      "batch_index": 2
+    },
+    {
+      "archive_sha256": "5c2cd045b8aab4eb5a6e17af252bd351cb10b6afccdcc48535122d2c15d52356",
+      "archive_size_bytes": 52423,
+      "artifact_id": 8291132347,
+      "artifact_name": "bench2-hermes-29269445368-1-b3",
+      "batch_index": 3
+    }
+  ],
+  "bindings": {
+    "canary_closeout_sha256": "010791bdea707e809dc52d2919b6d68b7ea50df086bf1187b8cd46039f590ba9",
+    "candidate_registry_sha256": "67a311b7e4e75135dae6e1c2ce3dd25767b4d41f8439ec6bee7701d0c90881d7",
+    "h4_summary_sha256": "fc81c95c51ea55e9b79e293feee5fb9762655ccb1d2831b31ac4257fa5968af5",
+    "hermes_commit_sha": "73b611ad19720d70308dad6b0fb64648aaadc216",
+    "hermes_version": "0.18.2",
+    "plan_sha256": "0ac1832f959ff3780ecd36f44bc5d24ba49594529974b863a2aebcadeb55d312"
+  },
+  "decision": {
+    "candidate_failures_attributable": false,
+    "marker_must_be_disabled_before_fix_merge": true,
+    "rerun_required": true,
+    "run_status": "invalid_infrastructure",
+    "use_for_model_comparison": false,
+    "use_for_semantic_scoring": false
+  },
+  "integrity": {
+    "all_archive_sha256_match_github": true,
+    "all_eight_candidates_attempted": true,
+    "all_four_artifacts_present": true,
+    "all_internal_manifests_verified": true,
+    "all_reports_bound_to_activation_sha": true,
+    "all_reports_bound_to_plan": true,
+    "all_temporary_aliases_exposed_num_ctx_65536": true,
+    "all_temporary_aliases_removed": true,
+    "external_provider_use_observed": false,
+    "jarvisos_access_observed": false,
+    "model_inference_observed": false,
+    "semantic_results_valid": false
+  },
+  "inventory": {
+    "candidate_count": 8,
+    "candidates": [
+      "gemma4-12b-it-qat",
+      "qwable-9b-fable5",
+      "qwythos-mythos-9b",
+      "minicpm5-fable-1b-control",
+      "gemma4-fable-agentic-12b",
+      "gemma4-fable-coder-12b",
+      "qwythos-hermes-64k",
+      "qwythos-hermes-safe"
+    ],
+    "captured_runs": 48,
+    "case_count": 2,
+    "cases": [
+      "ho-tools-hermes-lookup-001",
+      "ho-stop-hermes-reuse-001"
+    ],
+    "expected_runs": 48,
+    "repetitions_per_pair": 3
+  },
+  "observed_counts": {
+    "failed": 0,
+    "invalid_infrastructure": 48,
+    "passed": 0,
+    "semantically_evaluable": 0
+  },
+  "root_cause": {
+    "classification": "common_runner_bug",
+    "detail": "The per-run output directory was not created before the runner attempted to persist Hermes stdout. The exception occurred before any Hermes/model inference evidence was recorded.",
+    "error_type": "FileNotFoundError",
+    "first_failed_write": "raw-output.txt",
+    "function": "_run_once",
+    "missing_operation": "output_dir.mkdir(parents=True, exist_ok=True)",
+    "source_path": "scripts/run_bench2_hermes_batch.py"
+  },
+  "run": {
+    "activation_commit_sha": "554ea07482fe3755ee2fb5219d7e91040a9a65c0",
+    "event": "push",
+    "ref": "refs/heads/main",
+    "workflow": "BENCH-2 Hermes full matrix",
+    "workflow_run_attempt": 1,
+    "workflow_run_id": 29269445368
+  },
+  "schema_version": "bench.hermes-full-matrix-invalid-closeout.v1"
+}

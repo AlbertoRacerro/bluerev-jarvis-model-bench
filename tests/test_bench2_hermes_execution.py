@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest import mock
 
 from scripts import run_bench2_hermes_batch as runner
+from scripts import run_bench2_hermes_batch_v2 as runner_v2
 from scripts import validate_bench2_hermes_execution as execution
 
 
@@ -152,6 +153,42 @@ class Bench2HermesExecutionTests(unittest.TestCase):
         self.assertTrue(result["semantic_pass"])
         self.assertTrue(result["passed"])
 
+    def test_v2_wrapper_precreates_exact_batch_directories(self):
+        candidates = [{"candidate_id": "candidate-a"}, {"candidate_id": "candidate-b"}]
+        cases = [{"case_id": "case-tools"}, {"case_id": "case-stop"}]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with (
+                mock.patch.object(
+                    runner_v2.execution,
+                    "validate_execution",
+                    return_value=({}, {"enabled": True}, candidates, cases),
+                ),
+                mock.patch.object(
+                    runner_v2.base,
+                    "batch_index_from_environment",
+                    return_value=0,
+                ),
+                mock.patch.object(
+                    runner_v2.execution,
+                    "select_batch",
+                    return_value=(candidates, {"expected_runs": 12}),
+                ),
+            ):
+                runner_v2.prepare_output_directories(root)
+            observed = {
+                path.relative_to(root).as_posix()
+                for path in root.glob("runs/*/*/r*")
+                if path.is_dir()
+            }
+        expected = {
+            f"runs/{candidate['candidate_id']}/{case['case_id']}/r{repetition}"
+            for candidate in candidates
+            for case in cases
+            for repetition in range(1, 4)
+        }
+        self.assertEqual(observed, expected)
+
     def test_full_matrix_workflow_is_guarded_and_serial(self):
         text = execution.RUNTIME_WORKFLOW_PATH.read_text(encoding="utf-8")
         self.assertIn("batch: [0, 1, 2, 3]", text)
@@ -162,6 +199,8 @@ class Bench2HermesExecutionTests(unittest.TestCase):
             "startsWith(github.event.head_commit.message, 'Activate BENCH-2 Hermes full matrix')",
             text,
         )
+        self.assertIn("python -m scripts.run_bench2_hermes_batch_v2 capture", text)
+        self.assertIn("python -m scripts.run_bench2_hermes_batch_v2 enforce", text)
         self.assertNotIn("workflow_dispatch", text)
 
     def test_full_marker_tampering_is_rejected(self):
@@ -232,8 +271,9 @@ class Bench2HermesExecutionTests(unittest.TestCase):
     def test_full_matrix_reviewed_sources_match_hashes(self):
         expected = {
             "scripts/run_bench2_hermes_batch.py": "b3442609ab421e75c0401faf73dca96a3ab5b05f3cb0a059e0860970b04fb872",
+            "scripts/run_bench2_hermes_batch_v2.py": "07e1fb87b1e21fa3c54976785392490af5796c33aa74551f67afffadc70d5ea6",
             "scripts/validate_bench2_hermes_execution.py": "5eccd88920e923f21de84a8e57a892bc139513f2506f07c97ffc806c5d27f575",
-            ".github/workflows/bench2-hermes-full-matrix-oneshot.yml": "c4a4256db9b20dd318b46a533532c6169bd834dcfb7ff148daa5251323028e87",
+            ".github/workflows/bench2-hermes-full-matrix-oneshot.yml": "df973dd0446ee69264c6319719f2164d5ddcfdd5b6c3ebab775bba97fc215671",
         }
         for relative, digest in expected.items():
             observed = hashlib.sha256((execution.ROOT / relative).read_bytes()).hexdigest()
