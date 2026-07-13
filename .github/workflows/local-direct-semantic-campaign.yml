@@ -30,6 +30,8 @@ jobs:
         shell: powershell
     env:
       BENCH_SEMANTIC_BATCH_INDEX: ${{ matrix.batch }}
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: "utf-8"
     steps:
       - name: Check out trusted default branch
         uses: actions/checkout@v4
@@ -37,12 +39,22 @@ jobs:
           ref: main
           persist-credentials: false
           clean: true
+      - name: Prepare immutable capture diagnostics
+        shell: cmd
+        run: |
+          if not exist artifacts\direct-semantic mkdir artifacts\direct-semantic
+          echo schema_version=bench.direct-semantic-bootstrap.v1> artifacts\direct-semantic\bootstrap.log
+          where python >> artifacts\direct-semantic\bootstrap.log 2>&1
+          echo where_exit=%ERRORLEVEL%>> artifacts\direct-semantic\bootstrap.log
+          python --version >> artifacts\direct-semantic\bootstrap.log 2>&1
+          echo version_exit=%ERRORLEVEL%>> artifacts\direct-semantic\bootstrap.log
+          python -m py_compile scripts/run_direct_semantic_capture_entry.py >> artifacts\direct-semantic\bootstrap.log 2>&1
+          echo compile_exit=%ERRORLEVEL%>> artifacts\direct-semantic\bootstrap.log
+          exit /b 0
       - name: Capture BENCH-1 direct semantic batch
         id: capture
-        run: |
-          $env:PYTHONUTF8 = '1'
-          $env:PYTHONIOENCODING = 'utf-8'
-          python scripts/run_direct_semantic_capture_entry.py
+        shell: cmd
+        run: python scripts/run_direct_semantic_capture_entry.py
       - name: Upload immutable semantic artifact
         id: upload
         if: always()

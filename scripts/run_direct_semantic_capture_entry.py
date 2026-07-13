@@ -5,7 +5,7 @@ import sys
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Optional
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -54,12 +54,12 @@ def _record_entry_failure(exc: BaseException) -> int:
             "capture_error": error,
         },
     )
-    print(f"semantic capture entry failed: {type(exc).__name__}: {detail}", file=sys.stderr)
+    print("semantic capture entry failed: %s: %s" % (type(exc).__name__, detail), file=sys.stderr)
     return 0
 
 
 def run_capture(
-    capture_callable: Callable[[Path], int] | None = None,
+    capture_callable: Optional[Callable[[Path], int]] = None,
 ) -> int:
     try:
         if capture_callable is None:

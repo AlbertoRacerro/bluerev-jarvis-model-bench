@@ -7,6 +7,7 @@ on:
       - fix/semantic-capture-diagnostics
       - fix/semantic-powershell-capture
       - fix/semantic-python-entrypoint
+      - fix/semantic-cmd-bootstrap
 
 permissions:
   contents: read
