@@ -9,6 +9,7 @@ on:
       - fix/semantic-python-entrypoint
       - fix/semantic-cmd-bootstrap
       - fix/semantic-case-snapshot-digest
+      - fix/semantic-case-report-digests
 
 permissions:
   contents: read
