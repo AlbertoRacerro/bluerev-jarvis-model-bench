@@ -1,0 +1,28 @@
+name: Cancel invalid BENCH-2 v3 run
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/cancel-invalid-bench2-v3.yml
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cancel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel invalid run
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runId = 29288354274;
+            const response = await github.rest.actions.cancelWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: runId,
+            });
+            core.info(`Cancellation requested for ${runId}; status=${response.status}`);
