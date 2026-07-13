@@ -77,8 +77,10 @@ class HoRouteExplicitReplayTests(unittest.TestCase):
                     probe.EXPECTED_PLAN_SHA256,
                 )
 
-    def test_marker_and_batch_index_are_closed_allowlists(self):
-        self.assertTrue(job.marker_enabled())
+    def test_marker_is_disarmed_and_batch_index_remains_allowlisted(self):
+        marker = json.loads(job.MARKER_PATH.read_text(encoding="utf-8"))
+        self.assertFalse(marker["enabled"])
+        self.assertFalse(job.marker_enabled())
         for index in range(5):
             with mock.patch.dict(
                 os.environ,
