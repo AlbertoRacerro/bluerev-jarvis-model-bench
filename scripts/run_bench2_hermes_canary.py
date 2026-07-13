@@ -276,6 +276,7 @@ def sanitized_subprocess_environment(
     hermes_home: Path,
     tool_trace: Path,
     hermes_repo: Path,
+    runtime_model: str,
 ) -> tuple[dict[str, str], list[str]]:
     env: dict[str, str] = {}
     removed: list[str] = []
@@ -293,7 +294,7 @@ def sanitized_subprocess_environment(
         "HOME": str(isolated_os_home),
         "BENCH2_TOOL_TRACE_PATH": str(tool_trace),
         "HERMES_PLUGINS_DEBUG": "1",
-        "HERMES_INFERENCE_MODEL": contract.EXPECTED_CANDIDATE["model_tag"],
+        "HERMES_INFERENCE_MODEL": runtime_model,
         "HERMES_INFERENCE_PROVIDER": "custom",
         "OPENAI_API_KEY": "local-only-not-secret",
         "HTTP_PROXY": "http://127.0.0.1:9",
@@ -342,6 +343,76 @@ def _installed_candidate() -> dict[str, Any]:
     if model.get("digest") != expected["digest"]:
         raise CanaryRuntimeError("canary candidate digest drifted")
     return model
+
+
+def _runtime_alias_name() -> str:
+    run_id = re.sub(r"[^0-9]", "", os.environ.get("GITHUB_RUN_ID", "")) or "local"
+    attempt = re.sub(r"[^0-9]", "", os.environ.get("GITHUB_RUN_ATTEMPT", "")) or "0"
+    return f"bench2-canary-qwythos-safe-64k:{run_id}-{attempt}"
+
+
+def _runtime_modelfile(source_model: str) -> str:
+    return f"FROM {source_model}\nPARAMETER num_ctx 65536\n"
+
+
+def _remove_model_if_present(model_name: str) -> dict[str, Any]:
+    before = [
+        item for item in residency.list_installed_models()
+        if item.get("name") == model_name
+    ]
+    result: dict[str, Any] | None = None
+    if before:
+        result = _run(["ollama", "rm", model_name], timeout=120)
+    after = [
+        item for item in residency.list_installed_models()
+        if item.get("name") == model_name
+    ]
+    return {
+        "model_name": model_name,
+        "present_before": len(before) == 1,
+        "remove_returncode": result.get("returncode") if result else None,
+        "verified_absent": not after,
+    }
+
+
+def _create_runtime_alias(candidate: dict[str, Any], runtime_root: Path) -> dict[str, Any]:
+    alias = _runtime_alias_name()
+    stale_cleanup = _remove_model_if_present(alias)
+    if stale_cleanup.get("verified_absent") is not True:
+        raise CanaryRuntimeError("stale canary runtime alias could not be removed")
+    modelfile = runtime_root / "Canary.Modelfile"
+    modelfile.write_text(
+        _runtime_modelfile(candidate["name"]),
+        encoding="utf-8",
+        newline="\n",
+    )
+    create = _run(["ollama", "create", alias, "-f", str(modelfile)], timeout=600)
+    if create.get("ok") is not True:
+        detail = str(create.get("stderr") or create.get("stdout") or "")[-500:]
+        raise CanaryRuntimeError(f"temporary 64K Ollama alias creation failed: {detail}")
+    parameters = _run(["ollama", "show", alias, "--parameters"], timeout=60)
+    parameters_text = str(parameters.get("stdout") or "")
+    if parameters.get("ok") is not True or re.search(
+        r"(?mi)^\s*num_ctx\s+65536\s*$", parameters_text
+    ) is None:
+        raise CanaryRuntimeError("temporary Ollama alias does not expose num_ctx 65536")
+    matches = [
+        item for item in residency.list_installed_models()
+        if item.get("name") == alias
+    ]
+    if len(matches) != 1:
+        raise CanaryRuntimeError("temporary Ollama alias is missing or duplicated")
+    model = matches[0]
+    return {
+        "name": alias,
+        "digest": model.get("digest"),
+        "size": model.get("size"),
+        "source_candidate_name": candidate["name"],
+        "source_candidate_digest": candidate["digest"],
+        "modelfile_sha256": hashlib.sha256(modelfile.read_bytes()).hexdigest(),
+        "parameters": parameters_text.strip(),
+        "stale_cleanup": stale_cleanup,
+    }
 
 
 def _candidate_payload(case: dict[str, Any]) -> dict[str, Any]:
@@ -521,6 +592,8 @@ def capture(output_dir: Path = DEFAULT_ARTIFACTS) -> int:
     repository: dict[str, Any] | None = None
     hermes_identity: dict[str, Any] | None = None
     candidate: dict[str, Any] | None = None
+    runtime_alias: dict[str, Any] | None = None
+    alias_cleanup: dict[str, Any] = {"attempted": False, "verified_absent": False}
     process: dict[str, Any] = {
         "ok": False, "returncode": None, "timed_out": False,
         "stdout": "", "stderr": "", "duration_seconds": 0.0,
@@ -558,11 +631,13 @@ def capture(output_dir: Path = DEFAULT_ARTIFACTS) -> int:
         workdir.mkdir(parents=True)
         tool_trace_path = runtime_root / "tool-trace.jsonl"
         usage_path = runtime_root / "usage.json"
-        _write_isolated_home(hermes_home, workdir, candidate["name"])
+        runtime_alias = _create_runtime_alias(candidate, runtime_root)
+        _write_isolated_home(hermes_home, workdir, runtime_alias["name"])
         env, removed_credential_names = sanitized_subprocess_environment(
             hermes_home=hermes_home,
             tool_trace=tool_trace_path,
             hermes_repo=hermes_repo,
+            runtime_model=runtime_alias["name"],
         )
         prefix = _hermes_command_prefix(hermes_repo)
         hermes_identity = _verify_hermes_identity(prefix, hermes_repo, env)
@@ -571,7 +646,7 @@ def capture(output_dir: Path = DEFAULT_ARTIFACTS) -> int:
         prompt = _build_prompt(case)
         command = [
             *prefix,
-            "--model", candidate["name"],
+            "--model", runtime_alias["name"],
             "--provider", "custom",
             "--toolsets", "bench2_fixture",
             "--ignore-rules",
@@ -599,9 +674,12 @@ def capture(output_dir: Path = DEFAULT_ARTIFACTS) -> int:
                 handle.write(json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n")
         if usage_path.is_file():
             shutil.copyfile(usage_path, output_dir / "usage.json")
-        usage, usage_checks = _validate_usage(output_dir / "usage.json", candidate["name"])
+        usage, usage_checks = _validate_usage(output_dir / "usage.json", runtime_alias["name"])
 
-        runtime_model = residency._find_single_running_model(candidate)
+        runtime_model = residency._find_single_running_model({
+            "name": runtime_alias["name"],
+            "digest": runtime_alias["digest"],
+        })
         residency_class, residency_ratio = residency.classify_residency(
             runtime_model.get("size"), runtime_model.get("size_vram")
         )
@@ -658,6 +736,13 @@ def capture(output_dir: Path = DEFAULT_ARTIFACTS) -> int:
     finally:
         try:
             cleanup_after = stop_all_running_models()
+            if runtime_alias is not None:
+                alias_cleanup = {
+                    "attempted": True,
+                    **_remove_model_if_present(runtime_alias["name"]),
+                }
+                if alias_cleanup.get("verified_absent") is not True:
+                    raise CanaryRuntimeError("temporary Ollama alias cleanup failed")
         except Exception as exc:
             detail = f"cleanup failed: {type(exc).__name__}: {exc}"
             if infrastructure_error is None:
@@ -686,6 +771,8 @@ def capture(output_dir: Path = DEFAULT_ARTIFACTS) -> int:
         "repository": repository,
         "hermes": hermes_identity,
         "candidate": candidate,
+        "runtime_alias": runtime_alias,
+        "alias_cleanup": alias_cleanup,
         "endpoint": "http://127.0.0.1:11434/v1",
         "external_proxy_sink_enabled": True,
         "credential_environment_names_removed": removed_credential_names,
@@ -720,6 +807,8 @@ def capture(output_dir: Path = DEFAULT_ARTIFACTS) -> int:
         },
         "repository": repository,
         "candidate": candidate,
+        "runtime_alias": runtime_alias,
+        "alias_cleanup": alias_cleanup,
         "case_id": contract.EXPECTED_CASE["case_id"],
         "process": {
             key: process.get(key)
@@ -800,8 +889,21 @@ def enforce(output_dir: Path = DEFAULT_ARTIFACTS) -> int:
             raise CanaryRuntimeError("canary candidate identity drifted")
         if report["candidate"].get("digest") != contract.EXPECTED_CANDIDATE["digest"]:
             raise CanaryRuntimeError("canary candidate digest drifted")
+        runtime_alias = report.get("runtime_alias")
+        if not isinstance(runtime_alias, dict):
+            raise CanaryRuntimeError("canary runtime alias evidence is missing")
+        if runtime_alias.get("source_candidate_name") != contract.EXPECTED_CANDIDATE["model_tag"]:
+            raise CanaryRuntimeError("canary runtime alias source name drifted")
+        if runtime_alias.get("source_candidate_digest") != contract.EXPECTED_CANDIDATE["digest"]:
+            raise CanaryRuntimeError("canary runtime alias source digest drifted")
+        if report.get("alias_cleanup", {}).get("verified_absent") is not True:
+            raise CanaryRuntimeError("canary runtime alias was not removed")
         if report.get("infrastructure_error") is not None or report.get("infrastructure_valid") is not True:
             raise CanaryRuntimeError("canary infrastructure evidence is invalid")
+        if report.get("runtime_model", {}).get("name") != runtime_alias.get("name"):
+            raise CanaryRuntimeError("canary runtime model alias drifted")
+        if report.get("runtime_model", {}).get("digest") != runtime_alias.get("digest"):
+            raise CanaryRuntimeError("canary runtime alias digest drifted")
         if report.get("runtime_model", {}).get("context_length") != 65536:
             raise CanaryRuntimeError("canary runtime context is not 65536")
         if report.get("residency_class") != "full_vram":
@@ -810,8 +912,10 @@ def enforce(output_dir: Path = DEFAULT_ARTIFACTS) -> int:
             raise CanaryRuntimeError("canary final cleanup is invalid")
         if fingerprint.get("hermes", {}).get("commit_sha") != contract.bench2.EXPECTED_HERMES_COMMIT:
             raise CanaryRuntimeError("canary Hermes identity drifted")
-        if usage.get("provider") != "custom" or usage.get("model") != contract.EXPECTED_CANDIDATE["model_tag"]:
-            raise CanaryRuntimeError("canary usage provider/model binding drifted")
+        if fingerprint.get("runtime_alias") != runtime_alias:
+            raise CanaryRuntimeError("canary runtime alias fingerprint drifted")
+        if usage.get("provider") != "custom" or usage.get("model") != runtime_alias.get("name"):
+            raise CanaryRuntimeError("canary usage provider/runtime alias binding drifted")
         if validator.get("schema_version") != VALIDATOR_SCHEMA:
             raise CanaryRuntimeError("canary validator schema is invalid")
         if validator.get("semantic_pass") is not True or validator.get("passed") is not True:
