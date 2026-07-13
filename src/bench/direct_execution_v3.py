@@ -63,8 +63,88 @@ def _validated_response_contract(
     return inputs, expected, output_field, list(required_actions)
 
 
+def _derive_candidate_visible_route(
+    inputs: Mapping[str, Any], eligible_routes: list[str]
+) -> str:
+    task = inputs.get("task")
+    route_options = inputs.get("route_options")
+    selection_policy = inputs.get("selection_policy")
+    if not isinstance(task, Mapping) or set(task) != {
+        "kind",
+        "requires_code_edit",
+        "requires_external_data",
+    }:
+        raise ContractError(
+            "HO-ROUTE inputs.task must expose kind and exact capability requirements"
+        )
+    if not isinstance(task.get("kind"), str) or not task["kind"].strip():
+        raise ContractError("HO-ROUTE inputs.task.kind must be non-empty")
+    for field in ("requires_code_edit", "requires_external_data"):
+        if not isinstance(task.get(field), bool):
+            raise ContractError(f"HO-ROUTE inputs.task.{field} must be boolean")
+
+    if selection_policy != {
+        "require_all_task_capabilities": True,
+        "choose_lowest_cost_rank": True,
+    }:
+        raise ContractError(
+            "HO-ROUTE inputs.selection_policy must require all capabilities and lowest cost"
+        )
+    if not isinstance(route_options, Mapping) or set(route_options) != set(
+        eligible_routes
+    ):
+        raise ContractError(
+            "HO-ROUTE inputs.route_options must define every eligible route exactly once"
+        )
+
+    ranked_qualifying: list[tuple[int, str]] = []
+    seen_ranks: set[int] = set()
+    for route in eligible_routes:
+        option = route_options.get(route)
+        if not isinstance(option, Mapping) or set(option) != {
+            "cost_rank",
+            "supports_code_edit",
+            "supports_external_data",
+        }:
+            raise ContractError(
+                f"HO-ROUTE route option {route!r} has an invalid capability contract"
+            )
+        cost_rank = option.get("cost_rank")
+        if (
+            not isinstance(cost_rank, int)
+            or isinstance(cost_rank, bool)
+            or cost_rank < 1
+            or cost_rank in seen_ranks
+        ):
+            raise ContractError(
+                "HO-ROUTE route cost_rank values must be unique positive integers"
+            )
+        seen_ranks.add(cost_rank)
+        for field in ("supports_code_edit", "supports_external_data"):
+            if not isinstance(option.get(field), bool):
+                raise ContractError(
+                    f"HO-ROUTE route option {route!r} {field} must be boolean"
+                )
+        qualifies = (
+            (not task["requires_code_edit"] or option["supports_code_edit"])
+            and (
+                not task["requires_external_data"]
+                or option["supports_external_data"]
+            )
+        )
+        if qualifies:
+            ranked_qualifying.append((cost_rank, route))
+
+    if not ranked_qualifying:
+        raise ContractError(
+            "HO-ROUTE candidate-visible policy has no qualifying route"
+        )
+    ranked_qualifying.sort()
+    return ranked_qualifying[0][1]
+
+
 def verify_candidate_visible_response_contract(case: Mapping[str, Any]) -> None:
-    """Bind evaluator-only expectations to response requirements visible to the candidate."""
+    """Bind evaluator-only expectations to requirements visible to the candidate."""
     success_assertions = set(case.get("success_assertions", []))
     reuse_required = "reused_supplied_result" in success_assertions
     route_required = "selected_route_equals_expected" in success_assertions
@@ -116,6 +196,11 @@ def verify_candidate_visible_response_contract(case: Mapping[str, Any]) -> None:
     if selected_route not in eligible_routes:
         raise ContractError(
             "evaluator expected selected_route is outside candidate-visible eligible_routes"
+        )
+    derived_route = _derive_candidate_visible_route(inputs, eligible_routes)
+    if selected_route != derived_route:
+        raise ContractError(
+            "evaluator expected selected_route does not match candidate-visible route selection policy"
         )
 
 
