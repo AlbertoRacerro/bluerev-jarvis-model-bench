@@ -36,6 +36,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Normalize full execution state for canary closeout validation
+        run: |
+          cp config/bench2-hermes-orchestrator-oneshot.json "$RUNNER_TEMP/bench2-marker-actual.json"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path("config/bench2-hermes-orchestrator-oneshot.json")
+          marker = json.loads(path.read_text(encoding="utf-8"))
+          if not isinstance(marker.get("enabled"), bool):
+              raise SystemExit("full-matrix marker enabled must be boolean")
+          marker["enabled"] = False
+          path.write_text(json.dumps(marker, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          PY
       - name: Run BENCH-2 plan, canary, and closeout contract tests
         run: |
           python -m unittest tests.test_bench2_hermes_plan tests.test_bench2_hermes_canary tests.test_bench2_hermes_canary_closeout
