@@ -1,0 +1,75 @@
+{
+  "admission_policy": {
+    "all_h3_lane1_candidates_h4_attempted": true,
+    "bench1_direct_outcomes_are_admission_gate": false,
+    "bench1_direct_outcomes_use": "post_hoc_explanatory_only",
+    "h4_qualified_64k_required": true,
+    "infrastructure_nonqualification_is_admission_gate": true
+  },
+  "authorization": {
+    "execution_marker_path": "config/bench2-hermes-orchestrator-oneshot.json",
+    "marker_must_be_enabled": true,
+    "review_required_before_enable": true
+  },
+  "batching": {"batch_count":4,"batch_size":2,"max_parallel_batches":1},
+  "candidates": [
+    {"candidate_id":"gemma4-12b-it-qat","digest":"38044be4f923e5a55264ed7df4eaac2676651a905f735197c504045140c02bd3","model_tag":"gemma4:12b-it-qat","sequence":0},
+    {"candidate_id":"qwable-9b-fable5","digest":"6e3590af5e19106c55a25aec936d7e55a0d23b602bb276ad32321f8a49a3c1d0","model_tag":"hf.co/empero-ai/Qwable-9B-Claude-Fable-5-GGUF:Q4_K_M","sequence":1},
+    {"candidate_id":"qwythos-mythos-9b","digest":"7c3d0c28e4db742c4c6cd2925627acb09b610faec86a32ac872190aee8bc67d0","model_tag":"hf.co/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF:Q4_K_M","sequence":2},
+    {"candidate_id":"minicpm5-fable-1b-control","digest":"9273fd7794224d33f1ce2364c395df1eeb049e56705d635b29cfc51dfd6d157e","model_tag":"hf.co/GnLOLot/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-GGUF:Q4_K_M","sequence":3},
+    {"candidate_id":"gemma4-fable-agentic-12b","digest":"036489398bf6af6874783c754592a90f12a036b20cbbf47a867a3ac938868aff","model_tag":"hf.co/yuxinlu1/gemma-4-12B-agentic-fable5-composer2.5-v2-3.5x-tau2-GGUF:Q4_K_M","sequence":4},
+    {"candidate_id":"gemma4-fable-coder-12b","digest":"5434f64afb3f2b49f0c8d5e6950313a119303b6dbea21ce542e1f82122427391","model_tag":"hf.co/yuxinlu1/gemma-4-12B-coder-fable5-composer2.5-v1-GGUF:Q4_K_M","sequence":5},
+    {"candidate_id":"qwythos-hermes-64k","digest":"466701318bae40cfcf42682a17dc8b5a1e2e99a19fb157cdc0cd09a2abc7a991","model_tag":"qwythos-hermes-64k:latest","sequence":6},
+    {"candidate_id":"qwythos-hermes-safe","digest":"f1b4ecbbe67a7adef8f8f975cdbfb3eb08a04b8d91737b2b96e7b761187c668d","model_tag":"qwythos-hermes-safe:latest","sequence":7}
+  ],
+  "cases": [
+    {"capability":"HO-TOOLS","case_definition_sha256":"f2f1889edfadf1cccf84ebac7650421478aeabfb6d9b3331e24034867e5aa1ca","case_id":"ho-tools-hermes-lookup-001","path":"fixtures/bench-2/ho-tools-hermes-lookup-001.json"},
+    {"capability":"HO-STOP","case_definition_sha256":"1cef67cd0227882e28224e453ee2fae172bb96d73901adf9fde075e607de33d9","case_id":"ho-stop-hermes-reuse-001","path":"fixtures/bench-2/ho-stop-hermes-reuse-001.json"}
+  ],
+  "comparison_policy": {"compare_only_complete_valid_pairs":true,"global_composite_score_allowed":false,"invalid_infrastructure_is_not_model_failure":true,"minimum_repetitions":3,"ties_remain_ties":true},
+  "counts": {"candidate_case_pairs":16,"candidates":8,"cases":2,"repetitions_per_pair":3,"total_runs":48},
+  "excluded_after_h4": [
+    {"candidate_id":"qwen3.6-fablevibes-14b-a3b","digest":"0714a296bfcc73c72cc5042ab6754d77ae3871e42ce864d50243f3f116ec33e7","h4_status":"cpu_offload","reason":"Reviewed H4 policy forbids CPU offload."},
+    {"candidate_id":"qwen3-8b","digest":"500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41","h4_status":"context_mismatch","reason":"Observed context_length 40960 is below the stock Hermes 64000-token minimum."}
+  ],
+  "execution": {
+    "cleanup_after_each_run": true,
+    "cleanup_before_each_run": true,
+    "context": {"mismatch_classification":"invalid_infrastructure","required_num_ctx":65536,"runtime_observation_required":true},
+    "endpoint": "http://127.0.0.1:11434/v1",
+    "external_providers_allowed": false,
+    "fallback_chain": [],
+    "hermes": {"commit_sha":"73b611ad19720d70308dad6b0fb64648aaadc216","ignore_rules":true,"isolated_home_per_run":true,"isolated_workdir_per_run":true,"mode":"oneshot","plugin":"bench2-fixture","toolsets":["bench2_fixture"],"usage_file_required":true,"version":"0.18.2"},
+    "jarvisos_access_allowed": false,
+    "lane": "orchestrator_isolated",
+    "local_only": true,
+    "max_parallel_models": 1,
+    "provider": "custom",
+    "timeout_seconds": 600
+  },
+  "fixtures": {
+    "plugin_files": [
+      {"path":"fixtures/bench-2/hermes-plugin/bench2-fixture/__init__.py","sha256":"ae0124562e89eef0d37295fd0e72435819b0d23f25a86a0b0b9bc2a75744d67d"},
+      {"path":"fixtures/bench-2/hermes-plugin/bench2-fixture/plugin.yaml","sha256":"890cd78397a7291062ad40d0433e05aa13e38d991f297618995edaa81ffefa4a"}
+    ],
+    "plugin_is_read_only_except_trace": true,
+    "plugin_network_allowed": false,
+    "plugin_subprocess_allowed": false
+  },
+  "repetitions": 3,
+  "schema_version": "bench.hermes-orchestrator-plan.v2",
+  "scope": "BENCH-2 Hermes orchestrator isolation Phase A",
+  "source": {
+    "candidate_registry_path": "candidates/bench2-h4-eligible.json",
+    "candidate_registry_sha256": "67a311b7e4e75135dae6e1c2ce3dd25767b4d41f8439ec6bee7701d0c90881d7",
+    "h4_execution_commit_sha": "a2926cc93abb1a64874352c4508e8c97b0b6007f",
+    "h4_manifest_path": "reports/H4-HERMES-MINIMUM-64K/manifest.json",
+    "h4_manifest_sha256": "d607ad513d98d07762bf5fbdc4e1c28ecc663d8d26c130f5b3fbeef40599efe1",
+    "h4_plan_path": "fixtures/h4/h3-lane1-hermes-minimum-64k-plan.json",
+    "h4_plan_sha256": "b94032a9104316f2e05cb4c1b8934772fee66804dd609d84a570d4f4e940e146",
+    "h4_summary_path": "reports/H4-HERMES-MINIMUM-64K/summary.json",
+    "h4_summary_sha256": "fc81c95c51ea55e9b79e293feee5fb9762655ccb1d2831b31ac4257fa5968af5",
+    "h4_workflow_run_id": 29260032005
+  },
+  "status": "ready"
+}
