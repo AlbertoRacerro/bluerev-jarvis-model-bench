@@ -84,6 +84,11 @@ class HoRouteExplicitReplayTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "outside"):
                 job.batch_index_from_environment()
 
+    def test_prerequisite_scope_excludes_invalidated_campaign_test(self):
+        self.assertNotIn("test_direct_semantic_campaign.py", job.TEST_PATTERNS)
+        self.assertIn("test_ho_route_explicit_replay.py", job.TEST_PATTERNS)
+        self.assertIn("test_direct_execution*.py", job.TEST_PATTERNS)
+
     def test_workflow_is_trusted_main_serial_and_replay_only(self):
         workflow = (
             ROOT / ".github" / "workflows" / "local-ho-route-explicit-replay.yml"
