@@ -9,7 +9,7 @@ Status vocabulary: `planned`, `blocked`, `ready`, `in_progress`, `in_review`, `m
 | BENCH-0 | merged | #1 | Foundation and runner contract | — | Strict extraction, manifests, local inventory, self-hosted Windows workflows, immutable artifacts, and safety boundaries. |
 | BENCH-1 | merged | #96 | Direct synthetic orchestration battery | BENCH-0 | Evidence-gated local direct results for explicit HO-STOP and HO-ROUTE contracts: 60 accepted runs across 10 candidates. |
 | H4 | merged | #104 | Hermes minimum 64K admission | H3 | All ten Lane 1 candidates attempted on trusted run `29260032005`: 8 qualified, 1 CPU offload, 1 context mismatch. |
-| BENCH-2 | in_review | #111 | Hermes orchestrator isolation | H4 | H4-bound v2 plan; two canaries exposed separate context-wiring defects and the full 48-run matrix remains unauthorized. |
+| BENCH-2 | in_review | #115 | Hermes orchestrator isolation | H4 | Canary infrastructure gate closed; four-batch runtime prepared for all eight H4-qualified candidates. The 48-run execution marker remains disabled. |
 | BENCH-3 | planned | — | Tool and coding fixtures | BENCH-2 | Windows/cmd, file edits, patching, deterministic tests, and bounded worker/critic/adjudicator loops. |
 | BENCH-4 | blocked | — | Adaptive local model routing | BENCH-2, BENCH-3 | Route among eligible local models by capability, reliability, latency, and resource cost. External APIs remain out of scope. |
 | BENCH-5 | planned | — | Controlled self-improvement | BENCH-4 | Evaluate memory, skill, routing, replay, overfitting, and promotion boundaries. |
@@ -88,19 +88,28 @@ Detailed evidence is stored in `reports/BENCH-1-HO-ROUTE-EXPLICIT-REPLAY/` and `
 - Comparison remains capability-specific; global composite scores are forbidden and ties remain ties.
 - The full execution marker remains disabled.
 
-### Isolated Hermes canary
+### Isolated Hermes canary closeout
 
-- PR #105 prepared exactly **1 candidate × 1 case × 1 repetition**; PRs #106 and #109 enabled the first two trusted activations.
-- Candidate: `qwythos-hermes-safe`; selection is an infrastructure canary, not a ranking or admission preference.
-- Case: `ho-tools-hermes-lookup-001`.
 - Hermes Agent is pinned to version `0.18.2`, commit `73b611ad19720d70308dad6b0fb64648aaadc216`.
-- Run `29263590189`, execution SHA `5901761c0a02097f80e7d6b34e326c13e766e7c4`, is **invalid infrastructure**: zero model API calls because only `model.context_length` was configured and Hermes observed Ollama's default 4096-token context.
-- Run `29264163081`, execution SHA `d32de0cb05473139dab2903bf423191555627c1d`, is also **invalid infrastructure**: `ollama_num_ctx=65536` allowed Hermes to execute two local API calls and one exact `bench_lookup` call, but the OpenAI-compatible Ollama path still loaded the model at an observed context of 4096.
-- The second artifact matched GitHub's ZIP digest and its internal manifest. It recorded full VRAM residency, `api_calls=2`, the exact tool call/result, and a strict-output mismatch, but none of those observations are admitted as model-quality evidence because the actual runtime context was invalid.
-- PR #111 creates a temporary Ollama alias from the exact H4-qualified source model with `PARAMETER num_ctx 65536`, binds the derived alias back to the source name/digest, verifies the alias parameters and loaded digest, and removes the alias after execution.
-- The strict final-output validator remains unchanged. If the model again returns the extra `{"final": {...}}` wrapper under valid 64K infrastructure, that result will be retained as a genuine semantic failure rather than silently unwrapped.
-- Required evidence remains: clean pinned Hermes checkout, isolated home/workdir, custom loopback provider, deterministic plugin trace, usage file, strict final JSON, actual 65536 context, full VRAM residency, temporary-alias cleanup, immutable repository binding, and manifest verification.
-- Credential-bearing environment variables are removed and non-loopback proxy traffic is sinked to `127.0.0.1:9`.
+- Runs `29263590189` and `29264163081` are infrastructure-invalid and contribute no model-quality evidence: the model was respectively not called and loaded at only 4096 tokens.
+- Trusted run `29265322367`, execution SHA `941d587267bfeb602ba9bd5d5513695c56d63e52`, is **infrastructure-valid and semantically failed**.
+- The temporary alias was derived from the exact H4-qualified `qwythos-hermes-safe` source model, exposed and loaded at 65536 tokens, remained fully in VRAM, and was removed after execution.
+- The artifact ZIP matched GitHub SHA-256 metadata and its internal manifest; source binding, Hermes identity, local-only boundary, usage, cleanup, alias removal and repository binding passed.
+- The model made one API call, did not invoke `bench_lookup`, and returned non-conforming output. This remains a genuine HO-TOOLS semantic failure.
+- PR #114 froze the canary closeout and established that a single candidate's semantic result is not an admission gate for the other H4-qualified candidates.
+- Detailed closeout evidence is stored in `reports/BENCH-2-HERMES-CANARY/`.
+
+### Full-matrix runtime under review
+
+- PR #115 defines four serial batches of two candidates each.
+- Each candidate receives a temporary source-bound Ollama alias with `PARAMETER num_ctx 65536`.
+- Every candidate/case/repetition uses an isolated Hermes home and work directory and produces an independently manifested run directory.
+- Candidate setup failures are contained: a missing model or alias failure produces six `invalid_infrastructure` records for that candidate without preventing the second candidate in the batch from running.
+- Alias cleanup is attempted by deterministic expected name even after partial setup failure.
+- Per-run evidence binds validator, environment, usage, runtime alias, context, VRAM residency, cleanup and artifact manifest back to the batch report.
+- HO-STOP enforces its one-model-call budget; HO-TOOLS permits at most two model calls and exactly one reviewed tool call.
+- Semantic failures do not stop later runs. Infrastructure-invalid results are preserved separately and make the corresponding batch evidence gate red.
+- No global composite score is calculated.
 
 ## Excluded evidence
 
@@ -113,11 +122,10 @@ Detailed evidence is stored in `reports/BENCH-1-HO-ROUTE-EXPLICIT-REPLAY/` and `
 
 ## Current operating order
 
-1. Merge PR #111 only after H4, BENCH-2 v2, and canary hosted validators are green on the user-authored head.
-2. Enable only the dedicated canary marker in a new activation commit; keep the full BENCH-2 marker disabled.
-3. Execute and verify the temporary-alias canary artifact, including GitHub digest, internal manifest, source-to-alias binding, Hermes identity, local-only boundary, tool trace, usage, actual context, VRAM residency, alias removal, and model cleanup.
-4. Preserve any strict-output failure as semantic model evidence once infrastructure is valid; do not weaken the parser after observing the answer.
-5. Decide the full-matrix gate from the demonstrated canary evidence and the benchmark's all-candidate fairness requirement, not from BENCH-1 outcomes or a global score.
-6. Close BENCH-2 capability-by-capability; preserve invalid infrastructure separately and do not calculate a global winner.
+1. Merge PR #115 only after H4, BENCH-2 plan, canary closeout and full-matrix hosted validators are green on the same user-authored head.
+2. Enable only `config/bench2-hermes-orchestrator-oneshot.json` in a separate one-line activation PR with the protected commit-message prefix. Keep the completed canary marker disabled.
+3. Execute the four serial self-hosted batches, covering all eight H4-qualified candidates and all 48 planned runs.
+4. Verify every GitHub artifact digest, internal batch and run manifest, trusted-main binding, source-model identity, 65536 context, VRAM residency, cleanup and complete candidate/case/repetition inventory.
+5. Close BENCH-2 capability-by-capability. Preserve semantic failures and invalid infrastructure separately; do not calculate a global winner.
 
 `planned` means an outline exists. It is not an implementation instruction and does not authorize unattended expansion of scope.
