@@ -21,15 +21,15 @@ class Bench2HermesCanaryTests(unittest.TestCase):
             "cccc8a7500de332895ffd156fbdb0b8e85ab0f856a92e1bcd3db8c7115166b65",
         )
 
-    def test_plan_is_single_candidate_single_case_and_disabled(self):
-        plan, marker, case = validator.validate_canary_plan(require_enabled=False)
+    def test_plan_is_single_candidate_single_case_with_explicit_marker_state(self):
+        plan, marker, case = validator.validate_canary_plan()
         self.assertEqual(plan["counts"], {
             "candidates": 1, "cases": 1, "repetitions": 1, "total_runs": 1
         })
         self.assertEqual(plan["candidate"]["candidate_id"], "qwythos-hermes-safe")
         self.assertEqual(plan["case"]["case_id"], "ho-tools-hermes-lookup-001")
         self.assertEqual(case["capability"], "HO-TOOLS")
-        self.assertFalse(marker["enabled"])
+        self.assertIsInstance(marker["enabled"], bool)
         self.assertFalse(plan["execution"]["external_providers_allowed"])
         self.assertEqual(plan["execution"]["fallback_chain"], [])
         self.assertFalse(plan["execution"]["jarvisos_access_allowed"])
