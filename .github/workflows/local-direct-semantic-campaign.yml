@@ -48,13 +48,13 @@ jobs:
           echo where_exit=%ERRORLEVEL%>> artifacts\direct-semantic\bootstrap.log
           python --version >> artifacts\direct-semantic\bootstrap.log 2>&1
           echo version_exit=%ERRORLEVEL%>> artifacts\direct-semantic\bootstrap.log
-          python -m py_compile scripts\run_direct_semantic_capture_entry.py >> artifacts\direct-semantic\bootstrap.log 2>&1
+          python -m py_compile scripts/run_direct_semantic_capture_entry.py >> artifacts\direct-semantic\bootstrap.log 2>&1
           echo compile_exit=%ERRORLEVEL%>> artifacts\direct-semantic\bootstrap.log
           exit /b 0
       - name: Capture BENCH-1 direct semantic batch
         id: capture
         shell: cmd
-        run: python scripts\run_direct_semantic_capture_entry.py
+        run: python scripts/run_direct_semantic_capture_entry.py
       - name: Upload immutable semantic artifact
         id: upload
         if: always()
