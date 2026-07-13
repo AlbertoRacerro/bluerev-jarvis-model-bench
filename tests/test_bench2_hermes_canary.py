@@ -18,7 +18,7 @@ class Bench2HermesCanaryTests(unittest.TestCase):
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
         self.assertEqual(
             digest,
-            "e026b357d37a9927fb569a0c0a9b5e17af6c348d0d9bc44739ff9b5d6097e6ba",
+            "3ea1cf9fc3cb6a23e22d3a416ae6f5d76ea5170169b7dc3323badc295bcec87a",
         )
 
     def test_runtime_config_sets_operational_ollama_context(self):
@@ -28,6 +28,24 @@ class Bench2HermesCanaryTests(unittest.TestCase):
             config = (root / "home" / "config.yaml").read_text(encoding="utf-8")
         self.assertIn("ollama_num_ctx: 65536", config)
         self.assertIn("context_length: 65536", config)
+
+    def test_temporary_runtime_alias_is_bound_to_source_and_64k_modelfile(self):
+        self.assertEqual(
+            runtime._runtime_modelfile("source:model"),
+            "FROM source:model\nPARAMETER num_ctx 65536\n",
+        )
+        with mock.patch.dict(
+            os.environ,
+            {"GITHUB_RUN_ID": "12345", "GITHUB_RUN_ATTEMPT": "2"},
+            clear=False,
+        ):
+            self.assertEqual(
+                runtime._runtime_alias_name(),
+                "bench2-canary-qwythos-safe-64k:12345-2",
+            )
+        source = (validator.ROOT / "scripts/run_bench2_hermes_canary.py").read_text(encoding="utf-8")
+        self.assertIn('["ollama", "create", alias, "-f", str(modelfile)]', source)
+        self.assertIn('["ollama", "rm", model_name]', source)
 
     def test_plan_is_single_candidate_single_case_with_explicit_marker_state(self):
         plan, marker, case = validator.validate_canary_plan()
@@ -112,12 +130,14 @@ class Bench2HermesCanaryTests(unittest.TestCase):
                     hermes_home=base / "home",
                     tool_trace=base / "trace.jsonl",
                     hermes_repo=base / "repo",
+                    runtime_model="bench2-canary:test",
                 )
         self.assertNotIn("OPENROUTER_API_KEY", env)
         self.assertNotIn("GITHUB_TOKEN", env)
         self.assertNotIn("CUSTOM_PASSWORD", env)
         self.assertNotIn("BENIGN_VALUE", env)
         self.assertEqual(env["OPENAI_API_KEY"], "local-only-not-secret")
+        self.assertEqual(env["HERMES_INFERENCE_MODEL"], "bench2-canary:test")
         self.assertEqual(env["HTTPS_PROXY"], "http://127.0.0.1:9")
         self.assertEqual(env["NO_PROXY"], "127.0.0.1,localhost,::1")
         self.assertEqual(
