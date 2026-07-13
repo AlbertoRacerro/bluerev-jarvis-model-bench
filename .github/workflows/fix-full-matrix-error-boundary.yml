@@ -1,0 +1,75 @@
+name: Fix BENCH-2 execution error boundary
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/fix-full-matrix-error-boundary.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.head_ref == 'bench/implement-hermes-full-matrix-runtime' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: bench/implement-hermes-full-matrix-runtime
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Wrap lower-level plan errors at execution boundary
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import re
+
+          validator_path = Path('scripts/validate_bench2_hermes_execution.py')
+          test_path = Path('tests/test_bench2_hermes_execution.py')
+          text = validator_path.read_text(encoding='utf-8')
+          old_return = '        return plan_validator.validate_plan(marker_path=path)'
+          new_return = '''        try:
+            return plan_validator.validate_plan(marker_path=path)
+        except plan_validator.HermesPlanError as exc:
+            raise HermesExecutionError(str(exc)) from exc'''
+          if text.count(old_return) != 1:
+              raise SystemExit('plan return boundary target mismatch')
+          text = text.replace(old_return, new_return, 1)
+
+          old_call = '        plan_validator.validate_plan(marker_path=path)'
+          new_call = '''        try:
+            plan_validator.validate_plan(marker_path=path)
+        except plan_validator.HermesPlanError as exc:
+            raise HermesExecutionError(str(exc)) from exc'''
+          if text.count(old_call) != 1:
+              raise SystemExit('plan call boundary target mismatch')
+          text = text.replace(old_call, new_call, 1)
+          validator_path.write_text(text, encoding='utf-8', newline='\n')
+
+          digest = hashlib.sha256(validator_path.read_bytes()).hexdigest()
+          tests = test_path.read_text(encoding='utf-8')
+          tests, count = re.subn(
+              r'("scripts/validate_bench2_hermes_execution\.py": ")[0-9a-f]{64}("[,])',
+              rf'\g<1>{digest}\g<2>',
+              tests,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit('validator hash replacement failed')
+          test_path.write_text(tests, encoding='utf-8', newline='\n')
+          PY
+          python -m py_compile scripts/run_bench2_hermes_batch.py scripts/validate_bench2_hermes_execution.py
+          python -m unittest tests.test_bench2_hermes_execution
+          rm .github/workflows/fix-full-matrix-error-boundary.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add scripts/validate_bench2_hermes_execution.py tests/test_bench2_hermes_execution.py .github/workflows/fix-full-matrix-error-boundary.yml
+          git commit -m 'Wrap full-matrix plan errors at execution boundary'
+          git push origin HEAD:bench/implement-hermes-full-matrix-runtime
