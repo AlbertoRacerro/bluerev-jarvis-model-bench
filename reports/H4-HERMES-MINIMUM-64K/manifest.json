@@ -1,0 +1,13 @@
+{
+  "artifacts": {
+    "summary.json": {
+      "sha256": "fc81c95c51ea55e9b79e293feee5fb9762655ccb1d2831b31ac4257fa5968af5",
+      "size_bytes": 13253
+    },
+    "summary.md": {
+      "sha256": "878cc73ceaf6e3fc2e335f40aee57b92b83c94f31d5d502070a9602df6541732",
+      "size_bytes": 2739
+    }
+  },
+  "schema_version": "bench.h4-hermes-minimum-64k-closeout-manifest.v1"
+}
