@@ -16,18 +16,24 @@ def repository_snapshot() -> dict[str, Any]:
     unstaged = probe.base._run(["git", "diff", "--quiet"], timeout=30)
     staged = probe.base._run(["git", "diff", "--cached", "--quiet"], timeout=30)
     sha = str(head.get("stdout") or "").strip()
+    event_sha = probe.os.environ.get("GITHUB_SHA")
+    ref = probe.os.environ.get("GITHUB_REF")
     if not re.fullmatch(r"[0-9a-f]{40}", sha) or not (
         head.get("ok") is True
         and unstaged.get("returncode") == 0
         and staged.get("returncode") == 0
     ):
         raise RuntimeError("checked-out repository identity is invalid or dirty")
+    if event_sha is not None and event_sha != sha:
+        raise RuntimeError("checked-out repository does not match the workflow event SHA")
+    if ref is not None and ref != "refs/heads/main":
+        raise RuntimeError("H4 bound execution is not running on trusted main")
     return {
         "schema_version": "bench.checkout-binding.v1",
         "checked_out_sha": sha,
         "tracked_clean": True,
-        "event_sha": probe.os.environ.get("GITHUB_SHA"),
-        "ref": probe.os.environ.get("GITHUB_REF"),
+        "event_sha": event_sha,
+        "ref": ref,
     }
 
 
@@ -62,12 +68,16 @@ def capture(artifact_dir: Path = base_job.DEFAULT_ARTIFACTS) -> int:
 
 
 def _valid_binding(value: Any, current: dict[str, Any]) -> bool:
+    event_sha = value.get("event_sha") if isinstance(value, dict) else None
     return (
         isinstance(value, dict)
         and value.get("schema_version") == "bench.checkout-binding.v1"
         and value.get("checked_out_sha") == current.get("checked_out_sha")
+        and value.get("checked_out_sha") == event_sha
+        and event_sha == current.get("event_sha")
         and value.get("tracked_clean") is True
         and value.get("ref") == "refs/heads/main"
+        and current.get("ref") == "refs/heads/main"
     )
 
 
