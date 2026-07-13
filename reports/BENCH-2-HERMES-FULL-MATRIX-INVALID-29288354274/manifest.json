@@ -1,0 +1,13 @@
+{
+  "artifacts": {
+    "summary.json": {
+      "sha256": "1835c572bc49eb76ba7f1c2bb0a50c00ab55a07659f48f361363aced19b72c79",
+      "size_bytes": 3197
+    },
+    "summary.md": {
+      "sha256": "a90645568f54200d44c517adc8086ecb25ab5589b9cd3343b20b942c48fa5ed1",
+      "size_bytes": 1380
+    }
+  },
+  "schema_version": "bench.hermes-full-matrix-invalid-closeout-manifest.v2"
+}
