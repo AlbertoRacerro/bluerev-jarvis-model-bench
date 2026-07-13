@@ -35,17 +35,15 @@ class H4ContextJobTests(unittest.TestCase):
         self.assertTrue(job._source_files_are_bound())
         self.assertEqual(job.PROFILE["num_ctx"], 65536)
 
-    def test_windows_h4_workflows_do_not_depend_on_powershell_scripts(self):
-        for relative in (
-            ".github/workflows/h4-one-shot-bridge.yml",
-            ".github/workflows/local-context-64k-qualification.yml",
-        ):
-            text = (job.ROOT / relative).read_text(encoding="utf-8")
-            self.assertIn("shell: cmd", text, relative)
-            self.assertNotIn("shell: powershell", text, relative)
-            self.assertNotIn("$env:PYTHON", text, relative)
-            self.assertIn("set PYTHONUTF8=1", text, relative)
-            self.assertIn("ref: ${{ github.sha }}", text, relative)
+    def test_manual_windows_h4_workflow_is_safe_and_completed_bridge_is_removed(self):
+        relative = ".github/workflows/local-context-64k-qualification.yml"
+        text = (job.ROOT / relative).read_text(encoding="utf-8")
+        self.assertIn("shell: cmd", text)
+        self.assertNotIn("shell: powershell", text)
+        self.assertNotIn("$env:PYTHON", text)
+        self.assertIn("set PYTHONUTF8=1", text)
+        self.assertIn("ref: ${{ github.sha }}", text)
+        self.assertFalse((job.ROOT / ".github/workflows/h4-one-shot-bridge.yml").exists())
 
     def test_checkout_binding_requires_event_sha_identity(self):
         sha = "a" * 40
@@ -113,13 +111,7 @@ class H4ContextJobTests(unittest.TestCase):
                     "size_bytes": path.stat().st_size,
                 }
             (probe_dir / "manifest.json").write_text(
-                json.dumps(
-                    {
-                        "schema_version": "bench.h4-context-manifest.v1",
-                        "artifacts": artifacts,
-                    }
-                )
-                + "\n",
+                json.dumps({"schema_version": "bench.h4-context-manifest.v1", "artifacts": artifacts}) + "\n",
                 encoding="utf-8",
             )
             (root / "job-summary.json").write_text(
@@ -131,8 +123,7 @@ class H4ContextJobTests(unittest.TestCase):
                         "tests": {"exit_code": 0},
                         "probe": {"exit_code": 0},
                     }
-                )
-                + "\n",
+                ) + "\n",
                 encoding="utf-8",
             )
             self.assertEqual(job.enforce(root), 0)
