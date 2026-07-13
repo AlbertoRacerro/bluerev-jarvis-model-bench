@@ -30,11 +30,10 @@ jobs:
           lines = source.read_text(encoding='utf-8').splitlines()
           marker = '        run: |'
           start = lines.index(marker) + 1
-          block = []
-          for line in lines[start:]:
-              if line and not line.startswith('          '):
-                  break
-              block.append(line[10:] if line.startswith('          ') else '')
+          block = [
+              line[10:] if line.startswith('          ') else line
+              for line in lines[start:]
+          ]
           script = '\n'.join(block) + '\n'
           script = script.replace(
               'rm .github/workflows/apply-full-matrix-review-fixes.yml',
