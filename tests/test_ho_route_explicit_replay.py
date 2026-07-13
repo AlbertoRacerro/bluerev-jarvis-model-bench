@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -88,6 +90,29 @@ class HoRouteExplicitReplayTests(unittest.TestCase):
         self.assertNotIn("test_direct_semantic_campaign.py", job.TEST_PATTERNS)
         self.assertIn("test_ho_route_explicit_replay.py", job.TEST_PATTERNS)
         self.assertIn("test_direct_execution*.py", job.TEST_PATTERNS)
+
+    def test_entry_modules_import_without_pythonpath(self):
+        environment = dict(os.environ)
+        environment.pop("PYTHONPATH", None)
+        modules = (
+            "scripts.run_ho_route_explicit_replay_capture_entry",
+            "scripts.run_ho_route_explicit_replay_enforce_entry",
+        )
+        for module in modules:
+            completed = subprocess.run(
+                [sys.executable, "-c", f"import {module}"],
+                cwd=ROOT,
+                env=environment,
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=False,
+            )
+            self.assertEqual(
+                completed.returncode,
+                0,
+                msg=f"{module} import failed: {completed.stderr}",
+            )
 
     def test_workflow_is_trusted_main_serial_and_replay_only(self):
         workflow = (
