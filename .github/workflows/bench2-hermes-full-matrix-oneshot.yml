@@ -1,0 +1,106 @@
+name: BENCH-2 Hermes full matrix
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - config/bench2-hermes-orchestrator-oneshot.json
+      - .github/workflows/bench2-hermes-full-matrix-oneshot.yml
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  batch:
+    if: github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'Activate BENCH-2 Hermes full matrix')
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        batch: [0, 1, 2, 3]
+    concurrency:
+      group: local-benchmark-runner
+      cancel-in-progress: false
+      queue: max
+    runs-on: [self-hosted, Windows, X64, bluerev-bench]
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: cmd
+    env:
+      BENCH2_HERMES_BATCH_INDEX: ${{ matrix.batch }}
+    steps:
+      - name: Check out immutable activation commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          clean: true
+      - name: Verify reviewed full-matrix contract
+        run: |
+          set PYTHONUTF8=1
+          set PYTHONIOENCODING=utf-8
+          python -m unittest tests.test_bench2_hermes_plan tests.test_bench2_hermes_canary_closeout tests.test_bench2_hermes_execution
+          python scripts/validate_bench2_hermes_execution.py --require-enabled
+      - name: Capture BENCH-2 Hermes batch
+        id: capture
+        run: |
+          set PYTHONUTF8=1
+          set PYTHONIOENCODING=utf-8
+          python -m scripts.run_bench2_hermes_batch capture
+      - name: Upload immutable batch artifact
+        id: upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench2-hermes-${{ github.run_id }}-${{ github.run_attempt }}-b${{ matrix.batch }}
+          path: artifacts/bench2-hermes-full-matrix/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Enforce batch evidence gate
+        id: enforce
+        if: always()
+        run: python -m scripts.run_bench2_hermes_batch enforce
+      - name: Publish compact batch result
+        if: always()
+        continue-on-error: true
+        uses: actions/github-script@v7
+        env:
+          ISSUE: "24"
+          STATUS: ${{ job.status }}
+          ATTEMPT: ${{ github.run_attempt }}
+          BATCH: ${{ matrix.batch }}
+          CAPTURE: ${{ steps.capture.outcome }}
+          ENFORCE: ${{ steps.enforce.outcome }}
+          URL: ${{ steps.upload.outputs.artifact-url }}
+          DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+        with:
+          script: |
+            const fs = require('fs');
+            const load = (path) => { try { return JSON.parse(fs.readFileSync(path, 'utf8')); } catch (_) { return null; } };
+            const report = load('artifacts/bench2-hermes-full-matrix/report.json');
+            const payload = {
+              schema_version: 'bench.hermes-full-matrix-inbox.v1',
+              run_id: Number(context.runId),
+              run_attempt: Number(process.env.ATTEMPT),
+              batch_index: Number(process.env.BATCH),
+              sha: context.sha,
+              ref: context.ref,
+              job_status: process.env.STATUS,
+              phases: {capture: process.env.CAPTURE, enforce: process.env.ENFORCE},
+              artifact: {url: process.env.URL || null, digest: process.env.DIGEST || null},
+              candidate_ids: report?.candidate_ids ?? null,
+              case_ids: report?.case_ids ?? null,
+              counts: report?.counts ?? null,
+              expected_runs: report?.expected_runs ?? null,
+              full_matrix_semantic_admission_gate: 'not_applicable',
+              global_composite_score_allowed: false,
+            };
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number(process.env.ISSUE),
+              body: '<!-- bench-hermes-full-matrix-v1 -->\n```json\n' + JSON.stringify(payload, null, 2) + '\n```'
+            });
