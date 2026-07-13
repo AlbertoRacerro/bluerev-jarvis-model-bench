@@ -1,0 +1,294 @@
+{
+  "authorization_blockers": [
+    "fresh_same_sha_hermes_preflight",
+    "deterministic_adapter_contract",
+    "fixture_workers_and_digests",
+    "calibration_cases_and_validators",
+    "fixed_local_worker_pool",
+    "held_out_core_cases",
+    "new_reviewed_authorizing_plan"
+  ],
+  "baseline": {
+    "binding": {
+      "benchmark_sha": null,
+      "hermes_commit": null,
+      "hermes_version": null,
+      "platform_mode": null,
+      "preflight_artifact_id": null,
+      "preflight_artifact_sha256": null,
+      "preflight_run_id": null
+    },
+    "required_gate": "hermes",
+    "requirements": [
+      "fresh_preflight",
+      "same_benchmark_sha_as_execution",
+      "scoring_ready_true",
+      "local_only_true",
+      "clean_hermes_worktree",
+      "hermes_commit_and_version_bound",
+      "git_bash_ready_on_windows",
+      "preflight_artifact_sha256_bound"
+    ],
+    "status": "unresolved"
+  },
+  "calibration_cases": [
+    {
+      "capabilities": [
+        "HO-STOP",
+        "HO-BUDGET"
+      ],
+      "case_id": "b2-ho-stop-noop-001",
+      "success": [
+        "zero_worker_calls",
+        "zero_tool_calls",
+        "reuse_verified_result",
+        "terminal_stop"
+      ],
+      "worker_fixture": "none"
+    },
+    {
+      "capabilities": [
+        "HO-PLAN",
+        "HO-DELEGATE",
+        "HO-STOP"
+      ],
+      "case_id": "b2-ho-delegate-single-worker-001",
+      "success": [
+        "one_worker_call",
+        "bounded_goal_and_context",
+        "worker_evidence_used",
+        "terminal_stop"
+      ],
+      "worker_fixture": "deterministic_success_worker"
+    },
+    {
+      "capabilities": [
+        "HO-CRITIC",
+        "HO-RECOVER",
+        "HO-STOP"
+      ],
+      "case_id": "b2-ho-critic-disagreement-001",
+      "success": [
+        "reject_wrong_worker_claim",
+        "evaluate_critic_evidence",
+        "grounded_correction",
+        "retry_cap_respected",
+        "terminal_stop"
+      ],
+      "worker_fixture": "deterministic_wrong_worker_plus_critic"
+    }
+  ],
+  "candidates": [
+    {
+      "candidate_id": "gemma4-12b-it-qat",
+      "digest": "38044be4f923e5a55264ed7df4eaac2676651a905f735197c504045140c02bd3",
+      "model_tag": "gemma4:12b-it-qat",
+      "role": "primary",
+      "sequence": 0
+    },
+    {
+      "candidate_id": "qwythos-mythos-9b",
+      "digest": "7c3d0c28e4db742c4c6cd2925627acb09b610faec86a32ac872190aee8bc67d0",
+      "model_tag": "hf.co/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF:Q4_K_M",
+      "role": "primary",
+      "sequence": 1
+    },
+    {
+      "candidate_id": "qwen3.6-fablevibes-14b-a3b",
+      "digest": "0714a296bfcc73c72cc5042ab6754d77ae3871e42ce864d50243f3f116ec33e7",
+      "model_tag": "hf.co/tvall43/Qwen3.6-14B-A3B-FableVibes-GGUF:Q4_K_M",
+      "role": "primary",
+      "sequence": 2
+    },
+    {
+      "candidate_id": "qwythos-hermes-64k",
+      "digest": "466701318bae40cfcf42682a17dc8b5a1e2e99a19fb157cdc0cd09a2abc7a991",
+      "model_tag": "qwythos-hermes-64k:latest",
+      "role": "primary",
+      "sequence": 3
+    },
+    {
+      "candidate_id": "qwythos-hermes-safe",
+      "digest": "f1b4ecbbe67a7adef8f8f975cdbfb3eb08a04b8d91737b2b96e7b761187c668d",
+      "model_tag": "qwythos-hermes-safe:latest",
+      "role": "primary",
+      "sequence": 4
+    },
+    {
+      "candidate_id": "minicpm5-fable-1b-control",
+      "digest": "9273fd7794224d33f1ce2364c395df1eeb049e56705d635b29cfc51dfd6d157e",
+      "model_tag": "hf.co/GnLOLot/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-GGUF:Q4_K_M",
+      "role": "negative_control",
+      "sequence": 5
+    }
+  ],
+  "classification": {
+    "failed": [
+      "wrong_or_missing_final",
+      "unnecessary_call",
+      "blind_worker_acceptance",
+      "budget_or_retry_exceeded",
+      "forbidden_action_attempt",
+      "fabricated_success",
+      "failed_to_stop"
+    ],
+    "invalid": [
+      "truncated",
+      "timeout_before_terminal_state",
+      "incomplete_artifact_or_manifest",
+      "baseline_or_digest_mismatch",
+      "snapshot_drift",
+      "cleanup_unverified",
+      "validator_defect"
+    ]
+  },
+  "decision_boundary": {
+    "capability_specific_reporting": true,
+    "global_winner_allowed": false,
+    "question": "Which local model most reliably drives a fixed Hermes environment?",
+    "ties_remain_ties": true
+  },
+  "execution_authorized": false,
+  "isolation": {
+    "fixed": [
+      "hermes_commit",
+      "hermes_config",
+      "system_prompt",
+      "skills",
+      "worker_pool",
+      "tools",
+      "workspace_snapshot",
+      "cases",
+      "validators",
+      "generation_profile",
+      "cleanup_policy"
+    ],
+    "only_orchestrator_model_varies": true
+  },
+  "profile": {
+    "cleanup_after_each_run": true,
+    "cleanup_before_each_run": true,
+    "context_tokens": 32768,
+    "max_critic_calls": 1,
+    "max_output_tokens": 2048,
+    "max_parallel_workers": 1,
+    "max_retries": 1,
+    "max_tool_calls": 2,
+    "max_worker_calls": 2,
+    "seed": 4242,
+    "temperature": 0,
+    "timeout_seconds": 600
+  },
+  "promotion": {
+    "automatic_hermes_change": false,
+    "automatic_jarvisos_change": false,
+    "automatic_model_assignment": false,
+    "held_out_replay_before_professional_grade": true,
+    "role_recommendations_allowed": true
+  },
+  "required_artifacts": [
+    "plan_snapshot.json",
+    "baseline_preflight.json",
+    "hermes_config_snapshot.json",
+    "workspace_manifest.json",
+    "candidate_binding.json",
+    "prompt.txt",
+    "raw_hermes_stdout.log",
+    "raw_hermes_stderr.log",
+    "hermes_trace.json",
+    "worker_trace.json",
+    "tool_trace.json",
+    "final_extraction.json",
+    "validator_result.json",
+    "environment_fingerprint.json",
+    "cleanup.json",
+    "manifest.json"
+  ],
+  "safety": {
+    "credentials": false,
+    "disposable_workspaces_only": true,
+    "external_network": false,
+    "external_providers": false,
+    "jarvisos_access": false,
+    "local_models_only": true,
+    "max_parallel_models": 1,
+    "pull_request_code_on_self_hosted_runner": false,
+    "secrets": false,
+    "trusted_main_only": true,
+    "unrelated_user_state": false
+  },
+  "schema_version": "bench.hermes-orchestrator-isolation-plan.v1",
+  "scope": "BENCH-2 Hermes orchestrator isolation",
+  "sources": {
+    "bench1_closeout": {
+      "path": "reports/BENCH-1-DIRECT-SEMANTIC-CLOSEOUT/summary.json",
+      "sha256": "73bf484b067b9d2ae884b348a4174aac2141ac41f30ebb2fa2c77ddce2f7f815"
+    },
+    "candidate_registry": {
+      "digest_mode": "canonical_json",
+      "path": "candidates/bench1-h3-primary.json",
+      "sha256": "f370a0e87e7693d03a7ba9e074217a5e88641a5ea08d698a86211216bf84e750"
+    },
+    "h3_summary": {
+      "path": "reports/H3-PRIMARY-32K/summary.json",
+      "sha256": "4e92a93269f3c574c86224f24535122aa14e1976508adeac69a49ea6fdf3bfcf"
+    }
+  },
+  "stages": [
+    {
+      "exit": [
+        "fresh_same_sha_hermes_preflight",
+        "scoring_ready",
+        "clean_commit_and_version",
+        "artifact_digest"
+      ],
+      "id": "B2-PRE-0",
+      "model_calls": false,
+      "name": "Fresh Hermes baseline binding"
+    },
+    {
+      "exit": [
+        "command_and_environment_materialized_without_execution",
+        "isolated_home",
+        "workspace_containment",
+        "candidate_binding",
+        "external_env_removed",
+        "no_shell_interpolation",
+        "captured_exit_timeout_stdout_stderr"
+      ],
+      "id": "B2-PRE-1",
+      "model_calls": false,
+      "name": "Hermes adapter contract"
+    },
+    {
+      "candidates": 6,
+      "cases": 3,
+      "comparative": false,
+      "id": "B2-CAL",
+      "model_calls": true,
+      "name": "Deterministic-worker calibration",
+      "repetitions": 1,
+      "total_runs": 18,
+      "worker_pool": "deterministic_fixture_workers"
+    },
+    {
+      "blocked_until": [
+        "B2_CAL_green",
+        "fixed_worker_pool_separately_qualified",
+        "held_out_cases_locked",
+        "new_reviewed_plan_with_execution_authorized_true"
+      ],
+      "cases_minimum": 4,
+      "comparative": true,
+      "id": "B2-CORE",
+      "model_calls": true,
+      "name": "Fixed-local-worker comparison",
+      "negative_controls": 1,
+      "primary_candidates": 5,
+      "repetitions": 3,
+      "total_runs_minimum": 72,
+      "worker_pool": "fixed_local_models"
+    }
+  ],
+  "status": "review_ready"
+}
