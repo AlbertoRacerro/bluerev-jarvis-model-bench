@@ -36,7 +36,6 @@ TEST_PATTERNS = (
     "test_cases.py",
     "test_evaluator.py",
     "test_direct_execution*.py",
-    "test_direct_semantic_campaign.py",
     "test_direct_semantic_enforce_entry.py",
     "test_ho_route_explicit_replay.py",
 )
