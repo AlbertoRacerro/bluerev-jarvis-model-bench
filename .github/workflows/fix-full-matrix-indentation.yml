@@ -1,0 +1,113 @@
+name: Fix BENCH-2 full-matrix indentation
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/fix-full-matrix-indentation.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.head_ref == 'bench/implement-hermes-full-matrix-runtime' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: bench/implement-hermes-full-matrix-runtime
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Apply exact indentation fixes and verify
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import re
+
+          runner_path = Path('scripts/run_bench2_hermes_batch.py')
+          test_path = Path('tests/test_bench2_hermes_execution.py')
+
+          runner = runner_path.read_text(encoding='utf-8')
+          replacements = {
+              '        if not isinstance(record, dict):\n  raise HermesBatchError(f"run manifest record invalid: {run_dir}/{name}")':
+              '        if not isinstance(record, dict):\n            raise HermesBatchError(f"run manifest record invalid: {run_dir}/{name}")',
+              '        if record.get("sha256") != _sha256(path):\n  raise HermesBatchError(f"run artifact digest mismatch: {run_dir}/{name}")':
+              '        if record.get("sha256") != _sha256(path):\n            raise HermesBatchError(f"run artifact digest mismatch: {run_dir}/{name}")',
+              '        if record.get("size_bytes") != path.stat().st_size:\n  raise HermesBatchError(f"run artifact size mismatch: {run_dir}/{name}")':
+              '        if record.get("size_bytes") != path.stat().st_size:\n            raise HermesBatchError(f"run artifact size mismatch: {run_dir}/{name}")',
+          }
+          for old, new in replacements.items():
+              if runner.count(old) != 1:
+                  raise SystemExit(f'runner indentation target mismatch: {old!r}')
+              runner = runner.replace(old, new, 1)
+          runner_path.write_text(runner, encoding='utf-8', newline='\n')
+
+          tests = test_path.read_text(encoding='utf-8')
+          bad_call = '''        result = runner._semantic_validator(
+  case=case,
+  process={"returncode": 0, "timed_out": False},
+  output={"actions": ["return_supplied_result", "stop"], "final": "stable-result"},
+  output_error=None,
+  tool_records=[],
+  trace_error=None,
+  usage_checks=usage_checks,
+  usage={"api_calls": 2},
+  runtime_model={"context_length": 65536},
+  residency_class="full_vram",
+  residency_ratio=1.0,
+  stderr_text="Plugin bench2-fixture registered tool: bench_lookup",
+        )'''
+          good_call = '''        result = runner._semantic_validator(
+            case=case,
+            process={"returncode": 0, "timed_out": False},
+            output={"actions": ["return_supplied_result", "stop"], "final": "stable-result"},
+            output_error=None,
+            tool_records=[],
+            trace_error=None,
+            usage_checks=usage_checks,
+            usage={"api_calls": 2},
+            runtime_model={"context_length": 65536},
+            residency_class="full_vram",
+            residency_ratio=1.0,
+            stderr_text="Plugin bench2-fixture registered tool: bench_lookup",
+        )'''
+          if tests.count(bad_call) != 1:
+              raise SystemExit('test call indentation target mismatch')
+          tests = tests.replace(bad_call, good_call, 1)
+          bad_hash = '''        expected = {
+  "scripts/run_bench2_hermes_batch.py": "2fd356b2c3d35304a79dccbf77e4b3a2e7d26db053e1c5c8911208f3f5e02bf3",
+  "scripts/validate_bench2_hermes_execution.py": "5eccd88920e923f21de84a8e57a892bc139513f2506f07c97ffc806c5d27f575",
+  ".github/workflows/bench2-hermes-full-matrix-oneshot.yml": "c4a4256db9b20dd318b46a533532c6169bd834dcfb7ff148daa5251323028e87",
+        }
+        for relative, digest in expected.items():
+  observed = hashlib.sha256((execution.ROOT / relative).read_bytes()).hexdigest()
+  self.assertEqual(observed, digest, relative)'''
+          runner_hash = hashlib.sha256(runner_path.read_bytes()).hexdigest()
+          good_hash = f'''        expected = {{
+            "scripts/run_bench2_hermes_batch.py": "{runner_hash}",
+            "scripts/validate_bench2_hermes_execution.py": "5eccd88920e923f21de84a8e57a892bc139513f2506f07c97ffc806c5d27f575",
+            ".github/workflows/bench2-hermes-full-matrix-oneshot.yml": "c4a4256db9b20dd318b46a533532c6169bd834dcfb7ff148daa5251323028e87",
+        }}
+        for relative, digest in expected.items():
+            observed = hashlib.sha256((execution.ROOT / relative).read_bytes()).hexdigest()
+            self.assertEqual(observed, digest, relative)'''
+          if tests.count(bad_hash) != 1:
+              raise SystemExit('test hash indentation target mismatch')
+          tests = tests.replace(bad_hash, good_hash, 1)
+          test_path.write_text(tests, encoding='utf-8', newline='\n')
+          PY
+          python -m py_compile scripts/run_bench2_hermes_batch.py scripts/validate_bench2_hermes_execution.py
+          python -m unittest tests.test_bench2_hermes_plan tests.test_bench2_hermes_canary_closeout tests.test_bench2_hermes_execution
+          rm .github/workflows/diagnose-full-matrix-validation.yml .github/workflows/fix-full-matrix-indentation.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add scripts/run_bench2_hermes_batch.py tests/test_bench2_hermes_execution.py .github/workflows/diagnose-full-matrix-validation.yml .github/workflows/fix-full-matrix-indentation.yml
+          git commit -m 'Fix full-matrix evidence indentation'
+          git push origin HEAD:bench/implement-hermes-full-matrix-runtime
