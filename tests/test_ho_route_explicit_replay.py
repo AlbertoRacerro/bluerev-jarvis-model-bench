@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import subprocess
@@ -18,6 +19,10 @@ from scripts import run_ho_route_explicit_replay_enforce_entry as enforce_entry
 from scripts import run_ho_route_explicit_replay_job as job
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 class HoRouteExplicitReplayTests(unittest.TestCase):
@@ -135,12 +140,13 @@ class HoRouteExplicitReplayTests(unittest.TestCase):
         finally:
             base_job._validate_campaign_manifest = original
 
-    def test_workflow_is_trusted_main_serial_and_replay_only(self):
+    def test_workflow_is_manual_only_after_closeout(self):
         workflow = (
             ROOT / ".github" / "workflows" / "local-ho-route-explicit-replay.yml"
         ).read_text(encoding="utf-8")
-        self.assertIn("branches: [main]", workflow)
-        self.assertIn("config/ho-route-explicit-replay-oneshot.json", workflow)
+        self.assertIn("workflow_dispatch:", workflow)
+        self.assertNotIn("\n  push:", workflow)
+        self.assertNotIn("config/ho-route-explicit-replay-oneshot.json", workflow)
         self.assertIn("fail-fast: true", workflow)
         self.assertIn("max-parallel: 1", workflow)
         self.assertIn("runs-on: [self-hosted, Windows, X64, bluerev-bench]", workflow)
@@ -148,6 +154,60 @@ class HoRouteExplicitReplayTests(unittest.TestCase):
         self.assertIn("run_ho_route_explicit_replay_enforce_entry.py", workflow)
         self.assertNotIn("pull_request:", workflow)
         self.assertNotIn("direct-semantic-plan-v1.json", workflow)
+
+    def test_ho_route_closeout_manifest_and_counts(self):
+        report_dir = ROOT / "reports" / "BENCH-1-HO-ROUTE-EXPLICIT-REPLAY"
+        manifest = json.loads((report_dir / "manifest.json").read_text(encoding="utf-8"))
+        summary = json.loads((report_dir / "summary.json").read_text(encoding="utf-8"))
+        for name, record in manifest["artifacts"].items():
+            path = report_dir / name
+            self.assertEqual(record["sha256"], _sha256(path))
+            self.assertEqual(record["size_bytes"], path.stat().st_size)
+        self.assertEqual(summary["status"], "complete")
+        self.assertEqual(
+            summary["counts"],
+            {
+                "artifacts": 5,
+                "candidate_case_pairs": 10,
+                "candidates": 10,
+                "candidates_failed_3_of_3": 4,
+                "candidates_passed_3_of_3": 6,
+                "enforce_artifacts": 5,
+                "failed": 12,
+                "invalid": 0,
+                "passed": 18,
+                "runs": 30,
+            },
+        )
+        self.assertTrue(all(summary["integrity"].values()))
+        self.assertEqual(len(summary["results"]), 10)
+
+    def test_bench1_closeout_manifest_and_capability_matrix(self):
+        report_dir = ROOT / "reports" / "BENCH-1-DIRECT-SEMANTIC-CLOSEOUT"
+        manifest = json.loads((report_dir / "manifest.json").read_text(encoding="utf-8"))
+        summary = json.loads((report_dir / "summary.json").read_text(encoding="utf-8"))
+        for name, record in manifest["artifacts"].items():
+            path = report_dir / name
+            self.assertEqual(record["sha256"], _sha256(path))
+            self.assertEqual(record["size_bytes"], path.stat().st_size)
+        self.assertEqual(summary["status"], "complete")
+        self.assertEqual(summary["counts"]["valid_runs"], 60)
+        self.assertEqual(summary["counts"]["passed"], 36)
+        self.assertEqual(summary["counts"]["failed"], 24)
+        self.assertEqual(summary["counts"]["invalid"], 0)
+        self.assertEqual(
+            summary["interpretation"]["models_passing_both_capabilities"],
+            [
+                "gemma4-12b-it-qat",
+                "qwythos-mythos-9b",
+                "qwen3.6-fablevibes-14b-a3b",
+                "qwythos-hermes-64k",
+                "qwythos-hermes-safe",
+            ],
+        )
+        self.assertFalse(summary["interpretation"]["global_winner_declared"])
+        self.assertTrue(all(summary["integrity"].values()))
+        self.assertEqual(len(summary["results"]), 10)
 
     def test_capture_entry_materializes_pre_import_failure(self):
         def fail(_artifact_dir: Path) -> int:
