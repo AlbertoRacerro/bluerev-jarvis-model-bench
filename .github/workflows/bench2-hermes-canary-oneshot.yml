@@ -1,0 +1,101 @@
+name: BENCH-2 Hermes isolated canary
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - config/bench2-hermes-canary-oneshot.json
+      - .github/workflows/bench2-hermes-canary-oneshot.yml
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  canary:
+    if: github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'Activate BENCH-2 Hermes canary')
+    concurrency:
+      group: local-benchmark-runner
+      cancel-in-progress: false
+    runs-on: [self-hosted, Windows, X64, bluerev-bench]
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: cmd
+    steps:
+      - name: Check out immutable activation commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          clean: true
+      - name: Verify reviewed canary contract
+        run: |
+          set PYTHONUTF8=1
+          set PYTHONIOENCODING=utf-8
+          python -m unittest tests.test_bench2_hermes_plan tests.test_bench2_hermes_canary
+          python scripts/validate_bench2_hermes_canary.py --require-enabled
+      - name: Capture isolated Hermes canary
+        id: capture
+        run: |
+          set PYTHONUTF8=1
+          set PYTHONIOENCODING=utf-8
+          python -m scripts.run_bench2_hermes_canary capture
+      - name: Upload immutable canary artifact
+        id: upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench2-hermes-canary-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/bench2-hermes-canary/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Enforce canary evidence gate
+        id: enforce
+        if: always()
+        run: python -m scripts.run_bench2_hermes_canary enforce
+      - name: Publish compact canary result
+        if: always()
+        continue-on-error: true
+        uses: actions/github-script@v7
+        env:
+          ISSUE: "24"
+          STATUS: ${{ job.status }}
+          ATTEMPT: ${{ github.run_attempt }}
+          CAPTURE: ${{ steps.capture.outcome }}
+          ENFORCE: ${{ steps.enforce.outcome }}
+          URL: ${{ steps.upload.outputs.artifact-url }}
+          DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+        with:
+          script: |
+            const fs = require('fs');
+            const load = (path) => { try { return JSON.parse(fs.readFileSync(path, 'utf8')); } catch (_) { return null; } };
+            const report = load('artifacts/bench2-hermes-canary/report.json');
+            const payload = {
+              schema_version: 'bench.hermes-canary-inbox.v1',
+              run_id: Number(context.runId),
+              run_attempt: Number(process.env.ATTEMPT),
+              sha: context.sha,
+              ref: context.ref,
+              job_status: process.env.STATUS,
+              phases: {capture: process.env.CAPTURE, enforce: process.env.ENFORCE},
+              artifact: {url: process.env.URL || null, digest: process.env.DIGEST || null},
+              candidate_id: report?.candidate?.name ?? null,
+              case_id: report?.case_id ?? null,
+              candidate_result_status: report?.candidate_result_status ?? null,
+              infrastructure_valid: report?.infrastructure_valid ?? null,
+              semantic_pass: report?.semantic_pass ?? null,
+              context_length: report?.runtime_model?.context_length ?? null,
+              residency_class: report?.residency_class ?? null,
+              tool_trace_count: report?.tool_trace_count ?? null,
+              api_calls: report?.usage?.api_calls ?? null,
+              infrastructure_error: report?.infrastructure_error ?? null,
+              full_matrix_authorized: false,
+            };
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number(process.env.ISSUE),
+              body: '<!-- bench-hermes-canary-v1 -->\n```json\n' + JSON.stringify(payload, null, 2) + '\n```'
+            });
