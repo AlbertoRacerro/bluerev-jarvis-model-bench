@@ -1,0 +1,13 @@
+{
+  "artifacts": {
+    "summary.json": {
+      "sha256": "73bf484b067b9d2ae884b348a4174aac2141ac41f30ebb2fa2c77ddce2f7f815",
+      "size_bytes": 11683
+    },
+    "summary.md": {
+      "sha256": "85ed7c115c3b3e20132477af16b3fc7b2dc4db16b4ff45d144f41499c12d6989",
+      "size_bytes": 2303
+    }
+  },
+  "schema_version": "bench.bench1-direct-semantic-closeout-manifest.v1"
+}
