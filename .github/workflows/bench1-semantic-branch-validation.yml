@@ -6,6 +6,7 @@ on:
       - bench/bench1-direct-semantic-campaign
       - fix/semantic-capture-diagnostics
       - fix/semantic-powershell-capture
+      - fix/semantic-python-entrypoint
 
 permissions:
   contents: read
@@ -32,6 +33,7 @@ jobs:
             scripts/probe_direct_semantic_campaign.py \
             scripts/run_direct_semantic_campaign_job.py \
             scripts/run_direct_semantic_campaign_bound_job.py \
+            scripts/run_direct_semantic_capture_entry.py \
             tests/test_direct_semantic_campaign.py 2>&1 | tee compile.log
       - name: Run deterministic semantic campaign tests
         id: tests

@@ -10,6 +10,7 @@ from unittest import mock
 from scripts import probe_direct_semantic_campaign as probe
 from scripts import run_direct_semantic_campaign_bound_job as bound
 from scripts import run_direct_semantic_campaign_job as job
+from scripts import run_direct_semantic_capture_entry as entry
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -114,11 +115,9 @@ class DirectSemanticCampaignTests(unittest.TestCase):
         self.assertIn("fail-fast: true", workflow)
         self.assertIn("max-parallel: 1", workflow)
         self.assertIn("runs-on: [self-hosted, Windows, X64, bluerev-bench]", workflow)
-        self.assertIn("Start-Process", workflow)
-        self.assertIn("-RedirectStandardOutput", workflow)
-        self.assertIn("-RedirectStandardError", workflow)
-        self.assertIn("capture-shell-summary.json", workflow)
-        self.assertNotIn("*>&1 | Tee-Object", workflow)
+        self.assertIn("python scripts/run_direct_semantic_capture_entry.py", workflow)
+        self.assertNotIn("Start-Process", workflow)
+        self.assertNotIn("Tee-Object", workflow)
         self.assertNotIn("pull_request:", workflow)
 
     def test_capture_errors_always_materialize_evidence(self):
@@ -140,6 +139,22 @@ class DirectSemanticCampaignTests(unittest.TestCase):
             self.assertEqual(summary["selection"], job.selection_for(0))
             self.assertEqual(summary["probe"]["exit_code"], 2)
             self.assertEqual(summary["capture_error"], error)
+
+    def test_entrypoint_materializes_pre_import_failure(self):
+        def fail_before_capture(_artifact_dir: Path) -> int:
+            raise RuntimeError("entry-diagnostic")
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with mock.patch.object(entry, "ARTIFACT_DIR", root):
+                self.assertEqual(entry.run_capture(fail_before_capture), 0)
+            error = json.loads((root / "capture-entry-error.json").read_text())
+            summary = json.loads((root / "job-summary.json").read_text())
+            trace = (root / "capture-entry-traceback.txt").read_text()
+            self.assertEqual(error["type"], "RuntimeError")
+            self.assertEqual(error["detail"], "entry-diagnostic")
+            self.assertEqual(summary["capture_error"], error)
+            self.assertIn("entry-diagnostic", trace)
 
     def test_finalize_manifest_records_real_repetition_and_status(self):
         with tempfile.TemporaryDirectory() as directory:
