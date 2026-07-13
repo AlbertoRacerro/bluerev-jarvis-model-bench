@@ -101,7 +101,7 @@ Detailed evidence is stored in `reports/BENCH-1-HO-ROUTE-EXPLICIT-REPLAY/` and `
 
 ### Full-matrix runtime under review
 
-- PR #115 defines four serial batches of two candidates each.
+- PR #115 implements four serial batches of two candidates each; reviewed source hashes are enforced for the runner, validator and activation workflow.
 - Each candidate receives a temporary source-bound Ollama alias with `PARAMETER num_ctx 65536`.
 - Every candidate/case/repetition uses an isolated Hermes home and work directory and produces an independently manifested run directory.
 - Candidate setup failures are contained: a missing model or alias failure produces six `invalid_infrastructure` records for that candidate without preventing the second candidate in the batch from running.
