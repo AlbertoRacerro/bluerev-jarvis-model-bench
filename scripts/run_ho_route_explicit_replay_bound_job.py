@@ -21,6 +21,9 @@ def capture(artifact_dir: Path = job.DEFAULT_ARTIFACTS) -> int:
 def enforce(artifact_dir: Path = job.DEFAULT_ARTIFACTS) -> int:
     base_bound.probe = probe
     base_bound.job = job
+    job.base_job._validate_campaign_manifest = (
+        base_bound._campaign_manifest_without_nested_manifests
+    )
     return base_bound.enforce(artifact_dir)
 
 
