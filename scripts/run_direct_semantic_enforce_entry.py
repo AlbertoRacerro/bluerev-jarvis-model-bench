@@ -6,21 +6,31 @@ import sys
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Callable, Optional
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 ARTIFACT_DIR = ROOT / "artifacts" / "direct-semantic"
-STDOUT_PATH = ARTIFACT_DIR / "enforce-stdout.log"
-STDERR_PATH = ARTIFACT_DIR / "enforce-stderr.log"
-SUMMARY_PATH = ARTIFACT_DIR / "enforce-summary.json"
-TRACEBACK_PATH = ARTIFACT_DIR / "enforce-traceback.txt"
 
 
-def _write_summary(exit_code: int, error: dict[str, str] | None) -> None:
-    ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
-    SUMMARY_PATH.write_text(
+def _paths(artifact_dir: Path) -> tuple[Path, Path, Path, Path]:
+    return (
+        artifact_dir / "enforce-stdout.log",
+        artifact_dir / "enforce-stderr.log",
+        artifact_dir / "enforce-summary.json",
+        artifact_dir / "enforce-traceback.txt",
+    )
+
+
+def _write_summary(
+    summary_path: Path,
+    exit_code: int,
+    error: Optional[dict[str, str]],
+) -> None:
+    summary_path.parent.mkdir(parents=True, exist_ok=True)
+    summary_path.write_text(
         json.dumps(
             {
                 "schema_version": "bench.direct-semantic-enforce-entry.v1",
@@ -38,20 +48,26 @@ def _write_summary(exit_code: int, error: dict[str, str] | None) -> None:
     )
 
 
-def run_enforce() -> int:
-    ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
+def run_enforce(
+    enforce_callable: Optional[Callable[[Path], int]] = None,
+    artifact_dir: Path = ARTIFACT_DIR,
+) -> int:
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    stdout_path, stderr_path, summary_path, traceback_path = _paths(artifact_dir)
     exit_code = 2
-    error: dict[str, str] | None = None
-    with STDOUT_PATH.open("w", encoding="utf-8") as stdout_file, STDERR_PATH.open(
+    error: Optional[dict[str, str]] = None
+    with stdout_path.open("w", encoding="utf-8") as stdout_file, stderr_path.open(
         "w", encoding="utf-8"
     ) as stderr_file:
         try:
             with contextlib.redirect_stdout(stdout_file), contextlib.redirect_stderr(
                 stderr_file
             ):
-                from scripts.run_direct_semantic_campaign_bound_job import enforce
+                if enforce_callable is None:
+                    from scripts.run_direct_semantic_campaign_bound_job import enforce
 
-                result = enforce(ARTIFACT_DIR)
+                    enforce_callable = enforce
+                result = enforce_callable(artifact_dir)
                 if not isinstance(result, int) or isinstance(result, bool):
                     raise TypeError("semantic enforce callable must return an integer")
                 exit_code = result
@@ -60,7 +76,7 @@ def run_enforce() -> int:
                 "type": type(exc).__name__,
                 "detail": str(exc) or repr(exc),
             }
-            TRACEBACK_PATH.write_text(
+            traceback_path.write_text(
                 "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
                 encoding="utf-8",
             )
@@ -70,7 +86,7 @@ def run_enforce() -> int:
                 file=stderr_file,
             )
             exit_code = 2
-    _write_summary(exit_code, error)
+    _write_summary(summary_path, exit_code, error)
     return exit_code
 
 
