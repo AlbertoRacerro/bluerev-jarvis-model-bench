@@ -156,51 +156,50 @@ class DirectSemanticCampaignTests(unittest.TestCase):
             self.assertEqual(summary["capture_error"], error)
             self.assertIn("entry-diagnostic", trace)
 
-    def test_runtime_case_digest_is_raw_and_canonical_digest_is_preserved(self):
-        _, _, canonical_cases = bound._ORIGINAL_VALIDATE_PLAN(
-            job.PLAN_PATH,
-            job.REGISTRY_PATH,
-            job.H3_SUMMARY_PATH,
-            job.H3_MANIFEST_PATH,
-            probe.EXPECTED_PLAN_SHA256,
-        )
-        _, _, runtime_cases = bound._validate_plan_with_snapshot_digests(
-            job.PLAN_PATH,
-            job.REGISTRY_PATH,
-            job.H3_SUMMARY_PATH,
-            job.H3_MANIFEST_PATH,
-            probe.EXPECTED_PLAN_SHA256,
-        )
-        self.assertEqual(len(canonical_cases), len(runtime_cases))
-        for canonical, runtime in zip(canonical_cases, runtime_cases, strict=True):
-            self.assertEqual(
-                runtime["canonical_case_definition_sha256"],
-                canonical["case_definition_sha256"],
-            )
-            self.assertEqual(
-                runtime["case_definition_sha256"],
-                probe._raw_sha256(runtime["path_object"]),
-            )
-            self.assertNotEqual(
-                runtime["case_definition_sha256"],
-                runtime["canonical_case_definition_sha256"],
-            )
-
-    def test_canonical_result_binding_rejects_missing_or_wrong_digest(self):
-        cases = bound._validated_cases()
-        valid = {
+    def test_report_binding_separates_canonical_and_snapshot_digests(self):
+        case = bound._validated_cases()[0]
+        raw_snapshot = "1" * 64
+        report = {
             "results": [
                 {
                     "case_id": case["case_id"],
-                    "canonical_case_definition_sha256": case["case_definition_sha256"],
+                    "case_definition_sha256": raw_snapshot,
                 }
-                for case in cases
             ]
         }
-        self.assertTrue(bound._canonical_result_bindings_are_valid(valid))
-        invalid = json.loads(json.dumps(valid))
-        invalid["results"][0]["canonical_case_definition_sha256"] = "0" * 64
-        self.assertFalse(bound._canonical_result_bindings_are_valid(invalid))
+        bound._bind_report_case_digests(report)
+        result = report["results"][0]
+        self.assertEqual(
+            result["case_definition_sha256"],
+            case["case_definition_sha256"],
+        )
+        self.assertEqual(result["case_snapshot_sha256"], raw_snapshot)
+
+    def test_result_case_binding_checks_exact_snapshot_artifact(self):
+        case = bound._validated_cases()[0]
+        with tempfile.TemporaryDirectory() as directory:
+            campaign_dir = Path(directory)
+            run_dir = campaign_dir / "runs" / "run-1"
+            run_dir.mkdir(parents=True)
+            snapshot = run_dir / "case_definition.json"
+            snapshot.write_bytes(b"snapshot\r\n")
+            report = {
+                "results": [
+                    {
+                        "case_id": case["case_id"],
+                        "run_directory": "runs/run-1",
+                        "case_definition_sha256": case["case_definition_sha256"],
+                        "case_snapshot_sha256": probe._raw_sha256(snapshot),
+                    }
+                ]
+            }
+            self.assertTrue(
+                bound._result_case_bindings_are_valid(report, campaign_dir)
+            )
+            report["results"][0]["case_snapshot_sha256"] = "0" * 64
+            self.assertFalse(
+                bound._result_case_bindings_are_valid(report, campaign_dir)
+            )
 
     def test_finalize_manifest_records_real_repetition_and_status(self):
         with tempfile.TemporaryDirectory() as directory:
