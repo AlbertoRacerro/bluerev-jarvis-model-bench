@@ -1,8 +1,8 @@
 {
-  "batch_count": 5,
+  "batch_count": 4,
   "batch_size": 2,
   "enabled": false,
-  "plan_sha256": "d6fa093c7950113e5776dc3d4f6c942d86f29b1e4a33f8191c6c1bdd160c3c19",
+  "plan_sha256": "0ac1832f959ff3780ecd36f44bc5d24ba49594529974b863a2aebcadeb55d312",
   "repetitions": 3,
   "schema_version": "bench.hermes-orchestrator-oneshot.v1"
 }
