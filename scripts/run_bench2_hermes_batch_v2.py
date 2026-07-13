@@ -2,38 +2,36 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+from typing import Any
 
 from scripts import run_bench2_hermes_batch as base
-from scripts import validate_bench2_hermes_execution as execution
 
 
-def prepare_output_directories(output_dir: Path) -> None:
-    _, _, candidates, cases = execution.validate_execution(require_enabled=True)
-    batch_index = base.batch_index_from_environment()
-    selected, _ = execution.select_batch(candidates, batch_index)
-    for candidate in selected:
-        for case in cases:
-            for repetition in range(1, execution.EXPECTED_REPETITIONS + 1):
-                (
-                    output_dir
-                    / "runs"
-                    / candidate["candidate_id"]
-                    / case["case_id"]
-                    / f"r{repetition}"
-                ).mkdir(parents=True, exist_ok=True)
+def _run_once_with_output_dir(*, output_dir: Path, **kwargs: Any) -> dict[str, Any]:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    return _ORIGINAL_RUN_ONCE(output_dir=output_dir, **kwargs)
+
+
+_ORIGINAL_RUN_ONCE = base._run_once
+
+
+def capture(output_dir: Path = base.DEFAULT_ARTIFACTS) -> int:
+    original = base._run_once
+    base._run_once = _run_once_with_output_dir
+    try:
+        return base.capture(output_dir)
+    finally:
+        base._run_once = original
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Prepare per-run directories, then delegate a BENCH-2 Hermes batch."
+        description="Create each per-run output directory at execution time."
     )
     parser.add_argument("mode", choices=("capture", "enforce"))
     parser.add_argument("--artifact-dir", type=Path, default=base.DEFAULT_ARTIFACTS)
     args = parser.parse_args()
-    if args.mode == "capture":
-        prepare_output_directories(args.artifact_dir)
-        return base.capture(args.artifact_dir)
-    return base.enforce(args.artifact_dir)
+    return capture(args.artifact_dir) if args.mode == "capture" else base.enforce(args.artifact_dir)
 
 
 if __name__ == "__main__":
