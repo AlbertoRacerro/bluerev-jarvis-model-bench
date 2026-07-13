@@ -10,6 +10,9 @@ from pathlib import Path
 from unittest import mock
 
 from scripts import probe_ho_route_explicit_replay as probe
+from scripts import run_direct_semantic_campaign_bound_job as base_bound
+from scripts import run_direct_semantic_campaign_job as base_job
+from scripts import run_ho_route_explicit_replay_bound_job as bound_job
 from scripts import run_ho_route_explicit_replay_capture_entry as capture_entry
 from scripts import run_ho_route_explicit_replay_enforce_entry as enforce_entry
 from scripts import run_ho_route_explicit_replay_job as job
@@ -113,6 +116,24 @@ class HoRouteExplicitReplayTests(unittest.TestCase):
                 0,
                 msg=f"{module} import failed: {completed.stderr}",
             )
+
+    def test_bound_enforce_patches_validator_in_actual_base_module(self):
+        original = base_job._validate_campaign_manifest
+        artifact_dir = Path("unused-artifact-dir")
+
+        def verify_wiring(received: Path) -> int:
+            self.assertEqual(received, artifact_dir)
+            self.assertIs(
+                base_job._validate_campaign_manifest,
+                base_bound._campaign_manifest_without_nested_manifests,
+            )
+            return 0
+
+        try:
+            with mock.patch.object(base_bound, "enforce", side_effect=verify_wiring):
+                self.assertEqual(bound_job.enforce(artifact_dir), 0)
+        finally:
+            base_job._validate_campaign_manifest = original
 
     def test_workflow_is_trusted_main_serial_and_replay_only(self):
         workflow = (
