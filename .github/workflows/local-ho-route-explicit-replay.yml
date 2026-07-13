@@ -1,10 +1,6 @@
 name: BENCH-1 HO-ROUTE explicit replay
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "config/ho-route-explicit-replay-oneshot.json"
   workflow_dispatch:
 
 permissions:
