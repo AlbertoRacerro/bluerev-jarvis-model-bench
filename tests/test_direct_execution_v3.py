@@ -17,7 +17,10 @@ CANDIDATE_ID = "qwythos-hermes-safe"
 MODEL_TAG = "qwythos-hermes-safe:latest"
 MODEL_DIGEST = "f1b4ecbbe67a7adef8f8f975cdbfb3eb08a04b8d91737b2b96e7b761187c668d"
 CASE_PATH = ROOT / "fixtures/bench-1/ho-stop-reuse-explicit-002.json"
-ROUTE_CASE_PATH = ROOT / "fixtures/bench-1/ho-route-local-coder-001.json"
+OLD_ROUTE_CASE_PATH = ROOT / "fixtures/bench-1/ho-route-local-coder-001.json"
+ROUTE_CASE_PATH = (
+    ROOT / "fixtures/bench-1-replays/ho-route-local-coder-explicit-002.json"
+)
 GENERATE_URL = "http://127.0.0.1:11434/api/generate"
 
 
@@ -79,13 +82,24 @@ class DirectExecutionV3Tests(unittest.TestCase):
         verify_candidate_visible_response_contract(case)
         self.assertEqual(case["inputs"]["response_contract"]["output_field"], "final")
 
-    def test_ho_route_fixture_exposes_output_and_action_contract(self):
+    def test_explicit_ho_route_fixture_derives_expected_route(self):
         case = json.loads(ROUTE_CASE_PATH.read_text(encoding="utf-8"))
         verify_candidate_visible_response_contract(case)
         contract = case["inputs"]["response_contract"]
         self.assertEqual(contract["output_field"], "selected_route")
         self.assertEqual(contract["required_actions"], case["expected"]["actions"])
-        self.assertNotIn(case["expected"]["selected_route"], contract.values())
+        self.assertFalse(
+            case["inputs"]["route_options"]["local_fast"]["supports_code_edit"]
+        )
+        self.assertTrue(
+            case["inputs"]["route_options"]["local_coder"]["supports_code_edit"]
+        )
+        self.assertEqual(case["expected"]["selected_route"], "local_coder")
+
+    def test_old_ho_route_fixture_is_rejected_as_semantically_underspecified(self):
+        case = json.loads(OLD_ROUTE_CASE_PATH.read_text(encoding="utf-8"))
+        with self.assertRaisesRegex(ContractError, "selection_policy"):
+            verify_candidate_visible_response_contract(case)
 
     def test_ho_route_hidden_action_oracle_is_rejected(self):
         case = json.loads(ROUTE_CASE_PATH.read_text(encoding="utf-8"))
@@ -93,11 +107,39 @@ class DirectExecutionV3Tests(unittest.TestCase):
         with self.assertRaisesRegex(ContractError, "candidate-visible"):
             verify_candidate_visible_response_contract(case)
 
-    def test_ho_route_expected_route_must_be_eligible(self):
+    def test_ho_route_expected_route_must_match_visible_selection_policy(self):
         case = json.loads(ROUTE_CASE_PATH.read_text(encoding="utf-8"))
-        case["expected"]["selected_route"] = "external_frontier"
-        with self.assertRaisesRegex(ContractError, "eligible_routes"):
+        case["expected"]["selected_route"] = "local_fast"
+        with self.assertRaisesRegex(ContractError, "selection policy"):
             verify_candidate_visible_response_contract(case)
+
+    def test_ho_route_capability_drift_is_rejected_before_model_call(self):
+        case = json.loads(ROUTE_CASE_PATH.read_text(encoding="utf-8"))
+        case["inputs"]["route_options"]["local_fast"]["supports_code_edit"] = True
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            case_path = root / "case.json"
+            case_path.write_text(json.dumps(case), encoding="utf-8")
+            preflight_path = root / "preflight.json"
+            preflight_path.write_text(json.dumps(preflight()), encoding="utf-8")
+            called = False
+
+            def opener(_request: Request, _timeout: int):
+                nonlocal called
+                called = True
+                return FakeResponse({"done": True, "response": "unused"})
+
+            with self.assertRaisesRegex(ContractError, "selection policy"):
+                execute_direct_smoke(
+                    run_id="route-drift",
+                    candidate_id=CANDIDATE_ID,
+                    candidate_registry_path=ROOT / "candidates/models.local.json",
+                    case_path=case_path,
+                    preflight_path=preflight_path,
+                    output_root=root / "out",
+                    opener=opener,
+                )
+            self.assertFalse(called)
 
     def test_hermes_gate_is_rejected_before_model_call(self):
         with tempfile.TemporaryDirectory() as directory:
