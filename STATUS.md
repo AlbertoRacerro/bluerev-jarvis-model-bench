@@ -9,7 +9,7 @@ Status vocabulary: `planned`, `blocked`, `ready`, `in_progress`, `in_review`, `m
 | BENCH-0 | merged | #1 | Foundation and runner contract | — | Strict extraction, manifests, local inventory, self-hosted Windows workflows, immutable artifacts, and safety boundaries. |
 | BENCH-1 | merged | #96 | Direct synthetic orchestration battery | BENCH-0 | Evidence-gated local direct results for explicit HO-STOP and HO-ROUTE contracts: 60 accepted runs across 10 candidates. |
 | BENCH-2 | blocked | #98 | Hermes orchestrator isolation | H4 | The all-Lane-1 Phase A plan is merged, but its 32768-token runtime assumption conflicts with Hermes Agent 0.18.2's hard 64000-token minimum. No Hermes run is valid until H4 closes. |
-| H4 | in_review | — | Hermes minimum 64K admission | H3 | Test all ten H3-qualified Lane 1 models at an actual 65536-token context, with exact identity, GPU residency, cleanup, and immutable evidence. Direct semantic results are non-gating. |
+| H4 | in_review | #99 | Hermes minimum 64K admission | H3 | Test all ten H3-qualified Lane 1 models at an actual 65536-token context, with exact identity, GPU residency, cleanup, and immutable evidence. Direct semantic results are non-gating. |
 | BENCH-3 | planned | — | Tool and coding fixtures | BENCH-2 | Windows/PowerShell, file edits, patching, deterministic tests, and bounded worker/critic/adjudicator loops. |
 | BENCH-4 | blocked | — | Adaptive local model routing | BENCH-2, BENCH-3 | Route among eligible local models by capability, reliability, latency, and resource cost. External APIs remain out of scope. |
 | BENCH-5 | planned | — | Controlled self-improvement | BENCH-4 | Evaluate memory, skill, routing, replay, overfitting, and promotion boundaries. |
