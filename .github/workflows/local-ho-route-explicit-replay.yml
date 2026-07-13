@@ -1,0 +1,154 @@
+name: BENCH-1 HO-ROUTE explicit replay
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "config/ho-route-explicit-replay-oneshot.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  ho-route-replay:
+    if: github.ref == 'refs/heads/main'
+    strategy:
+      fail-fast: true
+      max-parallel: 1
+      matrix:
+        batch: [0, 1, 2, 3, 4]
+    concurrency:
+      group: local-benchmark-runner
+      cancel-in-progress: false
+      queue: max
+    runs-on: [self-hosted, Windows, X64, bluerev-bench]
+    timeout-minutes: 50
+    defaults:
+      run:
+        shell: powershell
+    env:
+      BENCH_SEMANTIC_BATCH_INDEX: ${{ matrix.batch }}
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: "utf-8"
+    steps:
+      - name: Check out trusted default branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+          clean: true
+      - name: Prepare immutable replay diagnostics
+        shell: cmd
+        run: |
+          if not exist artifacts\direct-semantic mkdir artifacts\direct-semantic
+          echo schema_version=bench.ho-route-replay-bootstrap.v1> artifacts\direct-semantic\bootstrap.log
+          where python >> artifacts\direct-semantic\bootstrap.log 2>&1
+          echo where_exit=%ERRORLEVEL%>> artifacts\direct-semantic\bootstrap.log
+          python --version >> artifacts\direct-semantic\bootstrap.log 2>&1
+          echo version_exit=%ERRORLEVEL%>> artifacts\direct-semantic\bootstrap.log
+          python -m py_compile scripts/run_ho_route_explicit_replay_capture_entry.py >> artifacts\direct-semantic\bootstrap.log 2>&1
+          echo compile_exit=%ERRORLEVEL%>> artifacts\direct-semantic\bootstrap.log
+          exit /b 0
+      - name: Capture explicit HO-ROUTE replay batch
+        id: capture
+        shell: cmd
+        run: python scripts/run_ho_route_explicit_replay_capture_entry.py
+      - name: Upload immutable replay artifact
+        id: upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ho-route-replay-${{ github.run_id }}-${{ github.run_attempt }}-b${{ matrix.batch }}
+          path: artifacts/direct-semantic/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Enforce replay infrastructure and evidence gate
+        id: enforce
+        if: always()
+        shell: cmd
+        run: python scripts/run_ho_route_explicit_replay_enforce_entry.py
+      - name: Upload immutable enforce diagnostics
+        id: enforce_upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ho-route-replay-enforce-${{ github.run_id }}-${{ github.run_attempt }}-b${{ matrix.batch }}
+          path: |
+            artifacts/direct-semantic/enforce-stdout.log
+            artifacts/direct-semantic/enforce-stderr.log
+            artifacts/direct-semantic/enforce-summary.json
+            artifacts/direct-semantic/enforce-traceback.txt
+          if-no-files-found: error
+          retention-days: 30
+      - name: Publish compact replay result
+        if: always()
+        continue-on-error: true
+        uses: actions/github-script@v7
+        env:
+          ISSUE: "24"
+          MONITOR_ISSUE: "83"
+          STATUS: ${{ job.status }}
+          ATTEMPT: ${{ github.run_attempt }}
+          BATCH: ${{ matrix.batch }}
+          CAPTURE: ${{ steps.capture.outcome }}
+          ENFORCE: ${{ steps.enforce.outcome }}
+          URL: ${{ steps.upload.outputs.artifact-url }}
+          DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+          ENFORCE_URL: ${{ steps.enforce_upload.outputs.artifact-url }}
+          ENFORCE_DIGEST: ${{ steps.enforce_upload.outputs.artifact-digest }}
+        with:
+          script: |
+            const fs = require('fs');
+            const load = (path) => { try { return JSON.parse(fs.readFileSync(path, 'utf8')); } catch (_) { return null; } };
+            const summary = load('artifacts/direct-semantic/job-summary.json');
+            const report = load('artifacts/direct-semantic/campaign/report.json');
+            const enforceSummary = load('artifacts/direct-semantic/enforce-summary.json');
+            const payload = {
+              schema_version: 'bench.ho-route-explicit-replay-inbox.v1',
+              campaign_scope: 'HO-ROUTE-explicit-replay',
+              run_id: Number(context.runId),
+              run_attempt: Number(process.env.ATTEMPT),
+              batch_index: Number(process.env.BATCH),
+              sha: context.sha,
+              ref: context.ref,
+              job_status: process.env.STATUS,
+              phases: {capture: process.env.CAPTURE, enforce: process.env.ENFORCE},
+              artifact: {url: process.env.URL || null, digest: process.env.DIGEST || null},
+              enforce_artifact: {url: process.env.ENFORCE_URL || null, digest: process.env.ENFORCE_DIGEST || null},
+              enforce_summary: enforceSummary,
+              repository: report?.repository ?? summary?.repository ?? null,
+              selection: report?.selection ?? summary?.selection ?? null,
+              result_counts: report?.result_counts ?? null,
+              infrastructure_error: report?.infrastructure_error ?? summary?.capture_error ?? enforceSummary?.error ?? null,
+              source: report?.source ?? summary?.source ?? null,
+            };
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number(process.env.ISSUE),
+              body: '<!-- bench-ho-route-explicit-replay-v1 -->\n```json\n' + JSON.stringify(payload, null, 2) + '\n```',
+            });
+            const monitorNumber = Number(process.env.MONITOR_ISSUE);
+            const monitorIssue = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: monitorNumber,
+            });
+            let monitor = {schema_version: 'bench.ho-route-explicit-replay-monitor.v1', batches: {}};
+            const match = String(monitorIssue.data.body || '').match(/```json\n([\s\S]*?)\n```/);
+            if (match) {
+              try { monitor = JSON.parse(match[1]); } catch (_) {}
+            }
+            if (monitor.schema_version !== 'bench.ho-route-explicit-replay-monitor.v1') {
+              monitor = {schema_version: 'bench.ho-route-explicit-replay-monitor.v1', batches: {}};
+            }
+            if (!monitor.batches || typeof monitor.batches !== 'object') monitor.batches = {};
+            monitor.batches[String(payload.batch_index)] = payload;
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: monitorNumber,
+              body: '```json\n' + JSON.stringify(monitor, null, 2) + '\n```',
+            });
