@@ -82,10 +82,45 @@ jobs:
             };
             fs.writeFileSync('h4-observer.json', JSON.stringify(compact, null, 2) + '\n');
             core.info(JSON.stringify(compact));
-      - name: Upload observer snapshot
+      - name: Download and summarize H4 job logs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p h4-job-logs
+          jq -r '.jobs[].id' h4-observer.json | while read -r job_id; do
+            curl -fsSL \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/jobs/${job_id}/logs" \
+              -o "h4-job-logs/${job_id}.log"
+          done
+          python - <<'PY'
+          import json, pathlib, re
+          root = pathlib.Path('h4-job-logs')
+          out = {'schema_version': 'bench.h4-log-diagnostics.v1', 'jobs': []}
+          pattern = re.compile(r'(error|traceback|exception|failed|failure|no files were found|missing h4)', re.I)
+          for path in sorted(root.glob('*.log')):
+              text = path.read_text(encoding='utf-8-sig', errors='replace')
+              lines = text.splitlines()
+              matched = [line for line in lines if pattern.search(line)]
+              out['jobs'].append({
+                  'job_id': int(path.stem),
+                  'line_count': len(lines),
+                  'matched_lines': matched[-60:],
+                  'tail': lines[-100:],
+              })
+          pathlib.Path('h4-log-diagnostics.json').write_text(json.dumps(out, indent=2) + '\n', encoding='utf-8')
+          PY
+      - name: Upload observer snapshot and diagnostics
         uses: actions/upload-artifact@v4
         with:
           name: h4-observer-snapshot
-          path: h4-observer.json
+          path: |
+            h4-observer.json
+            h4-log-diagnostics.json
+            h4-job-logs/
           if-no-files-found: error
           retention-days: 7
