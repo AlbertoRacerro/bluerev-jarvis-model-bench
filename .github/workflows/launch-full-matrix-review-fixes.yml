@@ -1,0 +1,49 @@
+name: Launch full-matrix review fixes
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/launch-full-matrix-review-fixes.yml
+
+permissions:
+  contents: write
+
+jobs:
+  launch:
+    if: github.head_ref == 'bench/implement-hermes-full-matrix-runtime' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: bench/implement-hermes-full-matrix-runtime
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Execute reviewed patch block and remove launchers
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          source = Path('.github/workflows/apply-full-matrix-review-fixes.yml')
+          lines = source.read_text(encoding='utf-8').splitlines()
+          marker = '        run: |'
+          start = lines.index(marker) + 1
+          block = []
+          for line in lines[start:]:
+              if line and not line.startswith('          '):
+                  break
+              block.append(line[10:] if line.startswith('          ') else '')
+          script = '\n'.join(block) + '\n'
+          script = script.replace(
+              'rm .github/workflows/apply-full-matrix-review-fixes.yml',
+              'rm .github/workflows/apply-full-matrix-review-fixes.yml .github/workflows/launch-full-matrix-review-fixes.yml',
+          )
+          script = script.replace(
+              'git add scripts/run_bench2_hermes_batch.py tests/test_bench2_hermes_execution.py .github/workflows/apply-full-matrix-review-fixes.yml',
+              'git add scripts/run_bench2_hermes_batch.py tests/test_bench2_hermes_execution.py .github/workflows/apply-full-matrix-review-fixes.yml .github/workflows/launch-full-matrix-review-fixes.yml',
+          )
+          Path('/tmp/full-matrix-review-fix.sh').write_text(script, encoding='utf-8')
+          PY
+          bash /tmp/full-matrix-review-fix.sh
