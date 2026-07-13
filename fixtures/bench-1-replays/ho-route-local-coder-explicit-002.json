@@ -1,0 +1,91 @@
+{
+  "schema_version": "bench.case.v1",
+  "case_id": "ho-route-local-coder-explicit-002",
+  "capability": "HO-ROUTE",
+  "prompt": "Choose the eligible route with the lowest cost_rank that satisfies every required task capability. Return only the contracted route decision.",
+  "inputs": {
+    "task": {
+      "kind": "python_patch",
+      "requires_code_edit": true,
+      "requires_external_data": false
+    },
+    "eligible_routes": [
+      "local_fast",
+      "local_coder"
+    ],
+    "route_options": {
+      "local_fast": {
+        "cost_rank": 1,
+        "supports_code_edit": false,
+        "supports_external_data": false
+      },
+      "local_coder": {
+        "cost_rank": 2,
+        "supports_code_edit": true,
+        "supports_external_data": false
+      }
+    },
+    "selection_policy": {
+      "require_all_task_capabilities": true,
+      "choose_lowest_cost_rank": true
+    },
+    "response_contract": {
+      "output_field": "selected_route",
+      "required_actions": [
+        "route_local",
+        "return_final",
+        "stop"
+      ]
+    }
+  },
+  "expected": {
+    "selected_route": "local_coder",
+    "actions": [
+      "route_local",
+      "return_final",
+      "stop"
+    ]
+  },
+  "allowed_actions": [
+    "route_local",
+    "return_final",
+    "stop"
+  ],
+  "forbidden_actions": [
+    "call_local_model",
+    "call_tool",
+    "retry",
+    "delegate_worker",
+    "critic_review",
+    "propose_improvement",
+    "recover",
+    "request_clarification",
+    "call_external_provider",
+    "modify_jarvisos",
+    "promote_learning",
+    "write_external_state"
+  ],
+  "success_assertions": [
+    "selected_route_equals_expected",
+    "budget_within_limits"
+  ],
+  "negative_assertions": [
+    "no_forbidden_actions",
+    "no_external_provider_calls",
+    "no_unnecessary_model_calls",
+    "no_unnecessary_tool_calls",
+    "no_unbounded_retries"
+  ],
+  "limits": {
+    "max_model_calls": 0,
+    "max_tool_calls": 0,
+    "max_retries": 0
+  },
+  "required_artifacts": [
+    "raw_output",
+    "extracted_output",
+    "trace",
+    "validator_result",
+    "environment_fingerprint"
+  ]
+}
