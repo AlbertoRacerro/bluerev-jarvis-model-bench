@@ -4,7 +4,9 @@
       "candidate_id": "gemma4-12b-it-qat",
       "digest": "38044be4f923e5a55264ed7df4eaac2676651a905f735197c504045140c02bd3",
       "enabled": true,
-      "expected_roles": ["hermes_orchestrator_candidate"],
+      "expected_roles": [
+        "hermes_orchestrator_candidate"
+      ],
       "family": "gemma4",
       "initial_matrix": true,
       "model_tag": "gemma4:12b-it-qat"
@@ -13,7 +15,9 @@
       "candidate_id": "qwable-9b-fable5",
       "digest": "6e3590af5e19106c55a25aec936d7e55a0d23b602bb276ad32321f8a49a3c1d0",
       "enabled": true,
-      "expected_roles": ["hermes_orchestrator_candidate"],
+      "expected_roles": [
+        "hermes_orchestrator_candidate"
+      ],
       "family": "qwable",
       "initial_matrix": true,
       "model_tag": "hf.co/empero-ai/Qwable-9B-Claude-Fable-5-GGUF:Q4_K_M"
@@ -22,7 +26,9 @@
       "candidate_id": "qwythos-mythos-9b",
       "digest": "7c3d0c28e4db742c4c6cd2925627acb09b610faec86a32ac872190aee8bc67d0",
       "enabled": true,
-      "expected_roles": ["hermes_orchestrator_candidate"],
+      "expected_roles": [
+        "hermes_orchestrator_candidate"
+      ],
       "family": "qwythos",
       "initial_matrix": true,
       "model_tag": "hf.co/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF:Q4_K_M"
@@ -31,7 +37,9 @@
       "candidate_id": "minicpm5-fable-1b-control",
       "digest": "9273fd7794224d33f1ce2364c395df1eeb049e56705d635b29cfc51dfd6d157e",
       "enabled": true,
-      "expected_roles": ["hermes_orchestrator_candidate"],
+      "expected_roles": [
+        "hermes_orchestrator_candidate"
+      ],
       "family": "minicpm5-fable",
       "initial_matrix": true,
       "model_tag": "hf.co/GnLOLot/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-GGUF:Q4_K_M"
@@ -40,7 +48,9 @@
       "candidate_id": "gemma4-fable-agentic-12b",
       "digest": "036489398bf6af6874783c754592a90f12a036b20cbbf47a867a3ac938868aff",
       "enabled": true,
-      "expected_roles": ["hermes_orchestrator_candidate"],
+      "expected_roles": [
+        "hermes_orchestrator_candidate"
+      ],
       "family": "gemma4-fable",
       "initial_matrix": true,
       "model_tag": "hf.co/yuxinlu1/gemma-4-12B-agentic-fable5-composer2.5-v2-3.5x-tau2-GGUF:Q4_K_M"
@@ -49,7 +59,9 @@
       "candidate_id": "gemma4-fable-coder-12b",
       "digest": "5434f64afb3f2b49f0c8d5e6950313a119303b6dbea21ce542e1f82122427391",
       "enabled": true,
-      "expected_roles": ["hermes_orchestrator_candidate"],
+      "expected_roles": [
+        "hermes_orchestrator_candidate"
+      ],
       "family": "gemma4-fable",
       "initial_matrix": true,
       "model_tag": "hf.co/yuxinlu1/gemma-4-12B-coder-fable5-composer2.5-v1-GGUF:Q4_K_M"
@@ -58,7 +70,9 @@
       "candidate_id": "qwythos-hermes-64k",
       "digest": "466701318bae40cfcf42682a17dc8b5a1e2e99a19fb157cdc0cd09a2abc7a991",
       "enabled": true,
-      "expected_roles": ["hermes_orchestrator_candidate"],
+      "expected_roles": [
+        "hermes_orchestrator_candidate"
+      ],
       "family": "qwythos",
       "initial_matrix": true,
       "model_tag": "qwythos-hermes-64k:latest"
@@ -67,7 +81,9 @@
       "candidate_id": "qwythos-hermes-safe",
       "digest": "f1b4ecbbe67a7adef8f8f975cdbfb3eb08a04b8d91737b2b96e7b761187c668d",
       "enabled": true,
-      "expected_roles": ["hermes_orchestrator_candidate"],
+      "expected_roles": [
+        "hermes_orchestrator_candidate"
+      ],
       "family": "qwythos",
       "initial_matrix": true,
       "model_tag": "qwythos-hermes-safe:latest"
@@ -76,13 +92,5 @@
   "evidence_note": "All ten H3-qualified Lane 1 candidates were attempted in H4. This registry contains the eight candidates admitted to stock Hermes Agent 0.18.2 solely because they produced qualified_64k evidence. BENCH-1 direct semantic outcomes remain non-gating.",
   "mapping_status": "validated",
   "observed_at_utc": "2026-07-13T15:00:16Z",
-  "schema_version": "bench.candidates.v1",
-  "source": {
-    "execution_commit_sha": "a2926cc93abb1a64874352c4508e8c97b0b6007f",
-    "h4_manifest_path": "reports/H4-HERMES-MINIMUM-64K/manifest.json",
-    "h4_manifest_sha256": "d607ad513d98d07762bf5fbdc4e1c28ecc663d8d26c130f5b3fbeef40599efe1",
-    "h4_summary_path": "reports/H4-HERMES-MINIMUM-64K/summary.json",
-    "h4_summary_sha256": "fc81c95c51ea55e9b79e293feee5fb9762655ccb1d2831b31ac4257fa5968af5",
-    "workflow_run_id": 29260032005
-  }
+  "schema_version": "bench.candidates.v1"
 }
