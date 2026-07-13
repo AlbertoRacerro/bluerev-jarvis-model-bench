@@ -1,0 +1,117 @@
+{
+  "batching": {
+    "batch_count": 5,
+    "batch_size": 2
+  },
+  "candidates": [
+    {
+      "digest": "38044be4f923e5a55264ed7df4eaac2676651a905f735197c504045140c02bd3",
+      "name": "gemma4:12b-it-qat",
+      "sequence": 0,
+      "source_32k_residency_ratio": 1.0,
+      "source_32k_status": "qualified_32k"
+    },
+    {
+      "digest": "6e3590af5e19106c55a25aec936d7e55a0d23b602bb276ad32321f8a49a3c1d0",
+      "name": "hf.co/empero-ai/Qwable-9B-Claude-Fable-5-GGUF:Q4_K_M",
+      "sequence": 1,
+      "source_32k_residency_ratio": 1.0,
+      "source_32k_status": "qualified_32k"
+    },
+    {
+      "digest": "7c3d0c28e4db742c4c6cd2925627acb09b610faec86a32ac872190aee8bc67d0",
+      "name": "hf.co/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF:Q4_K_M",
+      "sequence": 2,
+      "source_32k_residency_ratio": 1.0,
+      "source_32k_status": "qualified_32k"
+    },
+    {
+      "digest": "9273fd7794224d33f1ce2364c395df1eeb049e56705d635b29cfc51dfd6d157e",
+      "name": "hf.co/GnLOLot/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-GGUF:Q4_K_M",
+      "sequence": 3,
+      "source_32k_residency_ratio": 1.0,
+      "source_32k_status": "qualified_32k"
+    },
+    {
+      "digest": "0714a296bfcc73c72cc5042ab6754d77ae3871e42ce864d50243f3f116ec33e7",
+      "name": "hf.co/tvall43/Qwen3.6-14B-A3B-FableVibes-GGUF:Q4_K_M",
+      "sequence": 4,
+      "source_32k_residency_ratio": 1.0,
+      "source_32k_status": "qualified_32k"
+    },
+    {
+      "digest": "036489398bf6af6874783c754592a90f12a036b20cbbf47a867a3ac938868aff",
+      "name": "hf.co/yuxinlu1/gemma-4-12B-agentic-fable5-composer2.5-v2-3.5x-tau2-GGUF:Q4_K_M",
+      "sequence": 5,
+      "source_32k_residency_ratio": 1.0,
+      "source_32k_status": "qualified_32k"
+    },
+    {
+      "digest": "5434f64afb3f2b49f0c8d5e6950313a119303b6dbea21ce542e1f82122427391",
+      "name": "hf.co/yuxinlu1/gemma-4-12B-coder-fable5-composer2.5-v1-GGUF:Q4_K_M",
+      "sequence": 6,
+      "source_32k_residency_ratio": 1.0,
+      "source_32k_status": "qualified_32k"
+    },
+    {
+      "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+      "name": "qwen3:8b",
+      "sequence": 7,
+      "source_32k_residency_ratio": 1.0,
+      "source_32k_status": "qualified_32k"
+    },
+    {
+      "digest": "466701318bae40cfcf42682a17dc8b5a1e2e99a19fb157cdc0cd09a2abc7a991",
+      "name": "qwythos-hermes-64k:latest",
+      "sequence": 8,
+      "source_32k_residency_ratio": 1.0,
+      "source_32k_status": "qualified_32k"
+    },
+    {
+      "digest": "f1b4ecbbe67a7adef8f8f975cdbfb3eb08a04b8d91737b2b96e7b761187c668d",
+      "name": "qwythos-hermes-safe:latest",
+      "sequence": 9,
+      "source_32k_residency_ratio": 1.0,
+      "source_32k_status": "qualified_32k"
+    }
+  ],
+  "counts": {
+    "batches": 5,
+    "candidates": 10,
+    "context_probes": 10
+  },
+  "execution_policy": {
+    "allow_cpu_offload": false,
+    "credentials_allowed": false,
+    "external_providers_allowed": false,
+    "hermes_execution_allowed": false,
+    "jarvisos_access_allowed": false,
+    "local_only": true,
+    "max_parallel_models": 1,
+    "sequential_models": true,
+    "verify_cleanup": true,
+    "verify_singleton_process": true
+  },
+  "motivation": "Hermes Agent 0.18.2 rejects model contexts below 64000 tokens. Probe every H3-qualified Lane 1 model at 65536 before any Hermes semantic run.",
+  "profile": {
+    "keep_alive": "5m",
+    "name": "h4-hermes-minimum-64k-context",
+    "num_ctx": 65536,
+    "num_predict": 32,
+    "request_timeout_seconds": 900,
+    "seed": 4242,
+    "temperature": 0
+  },
+  "schema_version": "bench.h4-hermes-minimum-64k-plan.v1",
+  "source": {
+    "h3_closeout_commit_sha": "7c82dc8335208c87c14a1dd0e1ae1de066bcba74",
+    "h3_manifest_path": "reports/H3-PRIMARY-32K/manifest.json",
+    "h3_manifest_sha256": "10521b1cbc3762878a5b932d673d34d8744cade9acafd1f8da4dc386bbf0db3c",
+    "h3_summary_path": "reports/H3-PRIMARY-32K/summary.json",
+    "h3_summary_sha256": "4e92a93269f3c574c86224f24535122aa14e1976508adeac69a49ea6fdf3bfcf",
+    "hermes_commit_sha": "73b611ad19720d70308dad6b0fb64648aaadc216",
+    "hermes_minimum_context_tokens": 64000,
+    "hermes_version": "0.18.2"
+  },
+  "status": "ready"
+}

@@ -1,0 +1,44 @@
+name: H4 Hermes minimum 64K validation
+
+on:
+  push:
+    branches:
+      - bench/bench2-hermes-runtime-canary
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          clean: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile H4 surfaces
+        run: |
+          python -m py_compile \
+            scripts/probe_h4_context.py \
+            scripts/run_h4_context_job.py \
+            scripts/run_h4_context_bound_job.py \
+            tests/test_probe_h4_context.py \
+            tests/test_run_h4_context_job.py
+      - name: Validate H4 all-Lane-1 contract
+        env:
+          PYTHONPATH: ${{ github.workspace }}/src
+        run: |
+          python -m unittest -v \
+            tests.test_probe_h4_context \
+            tests.test_run_h4_context_job \
+            tests.test_probe_model_residency \
+            tests.test_probe_model_residency_v2 \
+            tests.test_benchmark_runtime \
+            tests.test_lane_test_subset
