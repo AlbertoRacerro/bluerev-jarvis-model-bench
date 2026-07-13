@@ -1,0 +1,74 @@
+name: Observe BENCH-2 full matrix v3
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/observe-bench2-full-matrix-v3.yml
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read activation run
+        uses: actions/github-script@v7
+        env:
+          ACTIVATION_SHA: 51071ed211d23bf28b5804adfb2bca8d6d50df59
+          WORKFLOW_NAME: BENCH-2 Hermes full matrix
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const runs = await github.paginate(github.rest.actions.listWorkflowRunsForRepo, {
+              owner, repo, event: 'push', head_sha: process.env.ACTIVATION_SHA, per_page: 100
+            });
+            const matches = runs.filter(r => r.name === process.env.WORKFLOW_NAME);
+            if (matches.length !== 1) {
+              core.setFailed(`Expected exactly one full-matrix v3 run, found ${matches.length}`);
+              return;
+            }
+            const run = matches[0];
+            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+              owner, repo, run_id: run.id, filter: 'latest', per_page: 100
+            });
+            const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
+              owner, repo, run_id: run.id, per_page: 100
+            });
+            core.info(JSON.stringify({
+              run: {
+                id: run.id,
+                attempt: run.run_attempt,
+                status: run.status,
+                conclusion: run.conclusion,
+                head_sha: run.head_sha,
+                html_url: run.html_url,
+                created_at: run.created_at,
+                updated_at: run.updated_at
+              },
+              jobs: jobs.map(j => ({
+                id: j.id,
+                name: j.name,
+                status: j.status,
+                conclusion: j.conclusion,
+                runner_name: j.runner_name,
+                started_at: j.started_at,
+                completed_at: j.completed_at,
+                steps: (j.steps || []).map(s => ({
+                  name: s.name,
+                  status: s.status,
+                  conclusion: s.conclusion
+                }))
+              })),
+              artifacts: artifacts.map(a => ({
+                id: a.id,
+                name: a.name,
+                size_in_bytes: a.size_in_bytes,
+                digest: a.digest,
+                expired: a.expired
+              }))
+            }, null, 2));
