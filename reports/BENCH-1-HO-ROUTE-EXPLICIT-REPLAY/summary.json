@@ -1,0 +1,444 @@
+{
+  "artifacts": [
+    {
+      "archive_sha256": "b3560d11ca9be8c0020b8ff0958c5192b7115e26399c02959daed4bc54db5720",
+      "archive_size_bytes": 93001,
+      "artifact_id": 8271932009,
+      "artifact_name": "ho-route-replay-29232014623-1-b0",
+      "batch_index": 0,
+      "campaign_manifest_sha256": "b2a066544c991c3dc918c1563bb70efb916919fe24aa487dea80f26a01b8d23d",
+      "enforce_archive_sha256": "52c67e1e29dac8e5d33f9050067f612e2d488b08a2cb8d8b26f3ec6999e0423b",
+      "enforce_archive_size_bytes": 681,
+      "enforce_artifact_id": 8271932601,
+      "enforce_artifact_name": "ho-route-replay-enforce-29232014623-1-b0",
+      "job_summary_sha256": "764953dc62f97b43384291d900b85a7e1e0c50972360e67bd38d4072506f8742",
+      "report_sha256": "2caf770b234272eecd2c671cb85300e1dc7cbe826fb1060e459fec88b83f8bfc",
+      "result_counts": {
+        "failed": 0,
+        "invalid": 0,
+        "passed": 6
+      },
+      "selection": {
+        "batch_index": 0,
+        "batch_size": 2,
+        "end": 2,
+        "expected_candidates": 2,
+        "expected_runs": 6,
+        "mode": "batch",
+        "start": 0,
+        "total_candidates": 10
+      }
+    },
+    {
+      "archive_sha256": "f6b98ae132bcbda139a3a777674f19725f6ee1153ce762037db98907c2c78daa",
+      "archive_size_bytes": 96202,
+      "artifact_id": 8271965034,
+      "artifact_name": "ho-route-replay-29232014623-1-b1",
+      "batch_index": 1,
+      "campaign_manifest_sha256": "d2afc5996bdc1510c57f818a1a5159b86aea9e8d13030ea68713a19c7dc4d76c",
+      "enforce_archive_sha256": "0679b940d21f173e122916ca35d29d03873a5f0cf96ebea7bd4a1ea65795deab",
+      "enforce_archive_size_bytes": 681,
+      "enforce_artifact_id": 8271965706,
+      "enforce_artifact_name": "ho-route-replay-enforce-29232014623-1-b1",
+      "job_summary_sha256": "4a6f9d949062d4a4a75fdef603e97ef3467975fbf357834413afc4feb1fc8bfb",
+      "report_sha256": "ae43cdd631ef0b95a3f4e3f9bd444018606b79714d0748633983645906cd13fa",
+      "result_counts": {
+        "failed": 3,
+        "invalid": 0,
+        "passed": 3
+      },
+      "selection": {
+        "batch_index": 1,
+        "batch_size": 2,
+        "end": 4,
+        "expected_candidates": 2,
+        "expected_runs": 6,
+        "mode": "batch",
+        "start": 2,
+        "total_candidates": 10
+      }
+    },
+    {
+      "archive_sha256": "c6634f854fa2a69900fd6a2458e760e52351cd2848b1acdb4ffe9b63daa2dee0",
+      "archive_size_bytes": 93283,
+      "artifact_id": 8272002764,
+      "artifact_name": "ho-route-replay-29232014623-1-b2",
+      "batch_index": 2,
+      "campaign_manifest_sha256": "aa0099817fe96aed077c5c07aedb399a0b1cc6ddea0d30bb941e6d80b0bc2be7",
+      "enforce_archive_sha256": "60b5d7985395222d0ca98688e4d760626787ea9d30f39d3bb2271cbef4dbabcc",
+      "enforce_archive_size_bytes": 682,
+      "enforce_artifact_id": 8272003368,
+      "enforce_artifact_name": "ho-route-replay-enforce-29232014623-1-b2",
+      "job_summary_sha256": "1bae35ce8ff8d8310b26cea6384c175e53078e451386e67b91f31d5bb48644d0",
+      "report_sha256": "656fbed73ba95566c189440b91ff76dd7878908c42ed6eaab08a71ba0b5c74ab",
+      "result_counts": {
+        "failed": 3,
+        "invalid": 0,
+        "passed": 3
+      },
+      "selection": {
+        "batch_index": 2,
+        "batch_size": 2,
+        "end": 6,
+        "expected_candidates": 2,
+        "expected_runs": 6,
+        "mode": "batch",
+        "start": 4,
+        "total_candidates": 10
+      }
+    },
+    {
+      "archive_sha256": "4106ce7addf9af111cf897169e822c0d92abd49f85f63b574f3f54e7e2bbe516",
+      "archive_size_bytes": 91849,
+      "artifact_id": 8272039054,
+      "artifact_name": "ho-route-replay-29232014623-1-b3",
+      "batch_index": 3,
+      "campaign_manifest_sha256": "b4bab29d46eb2d6918e93f930dd9dd604e585bb0c2e688ddb3b23b7b657558ba",
+      "enforce_archive_sha256": "0aacbab4ef282341102cf3067ebcf60b47a60715a7a5852967e191cd7f6becd1",
+      "enforce_archive_size_bytes": 682,
+      "enforce_artifact_id": 8272039687,
+      "enforce_artifact_name": "ho-route-replay-enforce-29232014623-1-b3",
+      "job_summary_sha256": "d45f34ee3a599c7843c9375fbc04636667c2ec71045978f43237821802d6b00f",
+      "report_sha256": "c358418519a4ed7efd69fab528e78bcf15ef400c60c5193146606ff63dbb1bc0",
+      "result_counts": {
+        "failed": 6,
+        "invalid": 0,
+        "passed": 0
+      },
+      "selection": {
+        "batch_index": 3,
+        "batch_size": 2,
+        "end": 8,
+        "expected_candidates": 2,
+        "expected_runs": 6,
+        "mode": "batch",
+        "start": 6,
+        "total_candidates": 10
+      }
+    },
+    {
+      "archive_sha256": "470f4f720a849df783722c1459ca639c5e3b76bad9ac03aaffc9552746159ddb",
+      "archive_size_bytes": 101801,
+      "artifact_id": 8272080859,
+      "artifact_name": "ho-route-replay-29232014623-1-b4",
+      "batch_index": 4,
+      "campaign_manifest_sha256": "3f7cae422d87f076d0a83f98f880dc3ba8c58063d22699313a1227ac861aa053",
+      "enforce_archive_sha256": "c837a1c48cf06711599d7744db7d323a795891aa11c74395ab1ae33382b3db13",
+      "enforce_archive_size_bytes": 682,
+      "enforce_artifact_id": 8272081473,
+      "enforce_artifact_name": "ho-route-replay-enforce-29232014623-1-b4",
+      "job_summary_sha256": "d35e61b8e2d808699187d61ec65bed142ae1f33f27303c2a91e29507468b8c74",
+      "report_sha256": "8af0b99bd2973e76b49b0027234f4f309bdaf063d11b067f022b356f9ffca6dd",
+      "result_counts": {
+        "failed": 0,
+        "invalid": 0,
+        "passed": 6
+      },
+      "selection": {
+        "batch_index": 4,
+        "batch_size": 2,
+        "end": 10,
+        "expected_candidates": 2,
+        "expected_runs": 6,
+        "mode": "batch",
+        "start": 8,
+        "total_candidates": 10
+      }
+    }
+  ],
+  "comparison_policy": {
+    "compare_only_complete_valid_pairs": true,
+    "global_composite_score_allowed": false,
+    "invalid_results_are_not_failures": true,
+    "minimum_repetitions": 3,
+    "ties_remain_ties": true
+  },
+  "counts": {
+    "artifacts": 5,
+    "candidate_case_pairs": 10,
+    "candidates": 10,
+    "candidates_failed_3_of_3": 4,
+    "candidates_passed_3_of_3": 6,
+    "enforce_artifacts": 5,
+    "failed": 12,
+    "invalid": 0,
+    "passed": 18,
+    "runs": 30
+  },
+  "excluded_evidence": [
+    {
+      "model_results_counted": false,
+      "reason": "invalidated because the original fixture exposed two eligible routes without a mechanically derivable capability/cost selection policy",
+      "run_id": 29225755398,
+      "scope": "30 original HO-ROUTE runs"
+    },
+    {
+      "model_results_counted": false,
+      "reason": "failed before model execution with ModuleNotFoundError: bench",
+      "run_id": 29231060170,
+      "scope": "replay bootstrap attempt"
+    },
+    {
+      "model_results_counted": false,
+      "reason": "six outputs were produced, but the evidence gate failed because the wrong module-level manifest validator was patched",
+      "run_id": 29231447924,
+      "scope": "replay enforce-wiring attempt"
+    }
+  ],
+  "integrity": {
+    "all_archives_match_github_digest": true,
+    "all_artifact_hashes_verified": true,
+    "all_campaign_manifests_verified": true,
+    "all_candidates_have_exactly_three_repetitions": true,
+    "all_capture_phases_success": true,
+    "all_checkout_bindings_verified": true,
+    "all_cleanup_verified": true,
+    "all_enforce_archives_match_github_digest": true,
+    "all_enforce_phases_success": true,
+    "all_jobs_success": true,
+    "all_run_ids_unique": true,
+    "all_run_manifests_verified": true,
+    "external_providers_used": false,
+    "hermes_executed": false,
+    "jarvisos_accessed": false,
+    "secret_values_recorded": false
+  },
+  "limitations": [
+    "This is one synthetic HO-ROUTE case, not a general model ranking.",
+    "Passing requires both the correct route and the exact candidate-visible output/action contract.",
+    "Median duration includes model loading after cleanup and is diagnostic only; it is not a stable throughput ranking.",
+    "Temperature zero and identical outputs across repetitions demonstrate repeatability under this fingerprint, not robustness to prompt variation.",
+    "No Hermes orchestration, tools, coding execution, JarvisOS integration, or external providers were exercised."
+  ],
+  "profile": {
+    "cleanup_after_each_run": true,
+    "cleanup_before_each_run": true,
+    "endpoint": "http://127.0.0.1:11434/api/generate",
+    "external_providers_allowed": false,
+    "hermes_execution_allowed": false,
+    "jarvisos_access_allowed": false,
+    "lane": "direct",
+    "local_only": true,
+    "max_parallel_models": 1,
+    "num_ctx": 4096,
+    "num_predict": 1024,
+    "repetitions_per_candidate": 3,
+    "seed": 4242,
+    "temperature": 0,
+    "timeout_seconds": 180
+  },
+  "results": [
+    {
+      "candidate_id": "gemma4-12b-it-qat",
+      "complete_valid_pair": true,
+      "digest": "38044be4f923e5a55264ed7df4eaac2676651a905f735197c504045140c02bd3",
+      "eval_count": 537,
+      "failed": 0,
+      "failure_mode": null,
+      "invalid": 0,
+      "median_eval_duration_seconds": 9.433767,
+      "median_total_duration_seconds": 19.308589,
+      "model_tag": "gemma4:12b-it-qat",
+      "passed": 3,
+      "semantic_outcome": "passed_3_of_3",
+      "sequence": 0,
+      "termination_reasons": [
+        "stop"
+      ]
+    },
+    {
+      "candidate_id": "qwable-9b-fable5",
+      "complete_valid_pair": true,
+      "digest": "6e3590af5e19106c55a25aec936d7e55a0d23b602bb276ad32321f8a49a3c1d0",
+      "eval_count": 378,
+      "failed": 0,
+      "failure_mode": null,
+      "invalid": 0,
+      "median_eval_duration_seconds": 5.346881,
+      "median_total_duration_seconds": 13.877759,
+      "model_tag": "hf.co/empero-ai/Qwable-9B-Claude-Fable-5-GGUF:Q4_K_M",
+      "passed": 3,
+      "semantic_outcome": "passed_3_of_3",
+      "sequence": 1,
+      "termination_reasons": [
+        "stop"
+      ]
+    },
+    {
+      "candidate_id": "qwythos-mythos-9b",
+      "complete_valid_pair": true,
+      "digest": "7c3d0c28e4db742c4c6cd2925627acb09b610faec86a32ac872190aee8bc67d0",
+      "eval_count": 516,
+      "failed": 0,
+      "failure_mode": null,
+      "invalid": 0,
+      "median_eval_duration_seconds": 7.340827,
+      "median_total_duration_seconds": 15.514226,
+      "model_tag": "hf.co/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF:Q4_K_M",
+      "passed": 3,
+      "semantic_outcome": "passed_3_of_3",
+      "sequence": 2,
+      "termination_reasons": [
+        "stop"
+      ]
+    },
+    {
+      "candidate_id": "minicpm5-fable-1b-control",
+      "complete_valid_pair": true,
+      "digest": "9273fd7794224d33f1ce2364c395df1eeb049e56705d635b29cfc51dfd6d157e",
+      "eval_count": 28,
+      "failed": 3,
+      "failure_mode": {
+        "category": "missing_final_marker",
+        "detail": "Returned a generic self-description and no FINAL marker in all repetitions."
+      },
+      "invalid": 0,
+      "median_eval_duration_seconds": 0.108569,
+      "median_total_duration_seconds": 5.080953,
+      "model_tag": "hf.co/GnLOLot/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-GGUF:Q4_K_M",
+      "passed": 0,
+      "semantic_outcome": "failed_3_of_3",
+      "sequence": 3,
+      "termination_reasons": [
+        "stop"
+      ]
+    },
+    {
+      "candidate_id": "qwen3.6-fablevibes-14b-a3b",
+      "complete_valid_pair": true,
+      "digest": "0714a296bfcc73c72cc5042ab6754d77ae3871e42ce864d50243f3f116ec33e7",
+      "eval_count": 313,
+      "failed": 0,
+      "failure_mode": null,
+      "invalid": 0,
+      "median_eval_duration_seconds": 2.727907,
+      "median_total_duration_seconds": 12.752291,
+      "model_tag": "hf.co/tvall43/Qwen3.6-14B-A3B-FableVibes-GGUF:Q4_K_M",
+      "passed": 3,
+      "semantic_outcome": "passed_3_of_3",
+      "sequence": 4,
+      "termination_reasons": [
+        "stop"
+      ]
+    },
+    {
+      "candidate_id": "gemma4-fable-agentic-12b",
+      "complete_valid_pair": true,
+      "digest": "036489398bf6af6874783c754592a90f12a036b20cbbf47a867a3ac938868aff",
+      "eval_count": 162,
+      "failed": 3,
+      "failure_mode": {
+        "category": "tool_call_without_final",
+        "detail": "Derived local_coder correctly but emitted a model-specific route tool call without a parseable FINAL submission."
+      },
+      "invalid": 0,
+      "median_eval_duration_seconds": 3.326283,
+      "median_total_duration_seconds": 13.454982,
+      "model_tag": "hf.co/yuxinlu1/gemma-4-12B-agentic-fable5-composer2.5-v2-3.5x-tau2-GGUF:Q4_K_M",
+      "passed": 0,
+      "semantic_outcome": "failed_3_of_3",
+      "sequence": 5,
+      "termination_reasons": [
+        "stop"
+      ]
+    },
+    {
+      "candidate_id": "gemma4-fable-coder-12b",
+      "complete_valid_pair": true,
+      "digest": "5434f64afb3f2b49f0c8d5e6950313a119303b6dbea21ce542e1f82122427391",
+      "eval_count": 196,
+      "failed": 3,
+      "failure_mode": {
+        "category": "nonparseable_final_marker",
+        "detail": "Derived local_coder correctly but prefixed FINAL with a channel token, so the strict extractor found no standalone FINAL marker."
+      },
+      "invalid": 0,
+      "median_eval_duration_seconds": 3.992831,
+      "median_total_duration_seconds": 13.582396,
+      "model_tag": "hf.co/yuxinlu1/gemma-4-12B-coder-fable5-composer2.5-v1-GGUF:Q4_K_M",
+      "passed": 0,
+      "semantic_outcome": "failed_3_of_3",
+      "sequence": 6,
+      "termination_reasons": [
+        "stop"
+      ]
+    },
+    {
+      "candidate_id": "qwen3-8b",
+      "complete_valid_pair": true,
+      "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+      "eval_count": 301,
+      "failed": 3,
+      "failure_mode": {
+        "category": "incomplete_action_sequence",
+        "detail": "Returned selected_route=local_coder but omitted the required terminal stop action."
+      },
+      "invalid": 0,
+      "median_eval_duration_seconds": 3.683865,
+      "median_total_duration_seconds": 11.138999,
+      "model_tag": "qwen3:8b",
+      "passed": 0,
+      "semantic_outcome": "failed_3_of_3",
+      "sequence": 7,
+      "termination_reasons": [
+        "stop"
+      ]
+    },
+    {
+      "candidate_id": "qwythos-hermes-64k",
+      "complete_valid_pair": true,
+      "digest": "466701318bae40cfcf42682a17dc8b5a1e2e99a19fb157cdc0cd09a2abc7a991",
+      "eval_count": 520,
+      "failed": 0,
+      "failure_mode": null,
+      "invalid": 0,
+      "median_eval_duration_seconds": 7.329214,
+      "median_total_duration_seconds": 15.678292,
+      "model_tag": "qwythos-hermes-64k:latest",
+      "passed": 3,
+      "semantic_outcome": "passed_3_of_3",
+      "sequence": 8,
+      "termination_reasons": [
+        "stop"
+      ]
+    },
+    {
+      "candidate_id": "qwythos-hermes-safe",
+      "complete_valid_pair": true,
+      "digest": "f1b4ecbbe67a7adef8f8f975cdbfb3eb08a04b8d91737b2b96e7b761187c668d",
+      "eval_count": 508,
+      "failed": 0,
+      "failure_mode": null,
+      "invalid": 0,
+      "median_eval_duration_seconds": 7.261168,
+      "median_total_duration_seconds": 15.757186,
+      "model_tag": "qwythos-hermes-safe:latest",
+      "passed": 3,
+      "semantic_outcome": "passed_3_of_3",
+      "sequence": 9,
+      "termination_reasons": [
+        "stop"
+      ]
+    }
+  ],
+  "schema_version": "bench.ho-route-explicit-replay-summary.v1",
+  "scope": "BENCH-1 single-case direct HO-ROUTE semantic evidence",
+  "source": {
+    "candidate_registry_sha256": "f370a0e87e7693d03a7ba9e074217a5e88641a5ea08d698a86211216bf84e750",
+    "case_definition_sha256": "122050ceb6d5b198a079142e131829f0cafe5520eff38bcef4bffb80c5dfd706",
+    "case_id": "ho-route-local-coder-explicit-002",
+    "h3_manifest_sha256": "10521b1cbc3762878a5b932d673d34d8744cade9acafd1f8da4dc386bbf0db3c",
+    "h3_summary_sha256": "4e92a93269f3c574c86224f24535122aa14e1976508adeac69a49ea6fdf3bfcf",
+    "plan_sha256": "b4853987a8aa3a2d3c6ed0b334a6e98c04871b3725cb2931fbd69dd08f716166",
+    "route_contract_commit_sha": "79ad53e1194edbb7414e5e38a96ca6f0114ebd6c"
+  },
+  "status": "complete",
+  "workflow": {
+    "checked_out_sha": "057c33ccbcb40acff3f840f642b5165f396df7f8",
+    "jobs_success": 5,
+    "jobs_total": 5,
+    "ref": "refs/heads/main",
+    "run_attempt": 1,
+    "run_id": 29232014623
+  }
+}

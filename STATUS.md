@@ -6,79 +6,67 @@ Status vocabulary: `planned`, `blocked`, `ready`, `in_progress`, `in_review`, `m
 
 | ID | Status | PR | Name | Dependencies | Scope |
 |---|---|---:|---|---|---|
-| BENCH-0 | merged | #1 | Foundation and runner contract | --- | Strict output extraction, manifests, local environment inventory, Windows self-hosted runner workflow, immutable artifacts, and safety rules. |
-| BENCH-1 | in_progress | #18 | Synthetic orchestration battery | BENCH-0 | Strict case contracts, deterministic HO-STOP/HO-ROUTE fixtures, and the bounded direct execution pipeline are merged. Two Qwythos runs exposed truncation and hidden-oracle defects; an explicit candidate-visible response contract is pending replay. |
-| BENCH-2 | planned | --- | Hermes orchestrator isolation | BENCH-1 | Hold worker pool and tools fixed while varying only the local model driving Hermes. |
-| BENCH-3 | planned | --- | Tool and coding fixtures | BENCH-2 | Windows/PowerShell, file edits, patching, test execution, bounded worker/critic/adjudicator loops. |
-| BENCH-4 | blocked | --- | Adaptive local model routing | BENCH-2, BENCH-3 | Hermes chooses among eligible local models by capability, latency, reliability, and resource cost. External APIs remain out of scope. |
-| BENCH-5 | planned | --- | Controlled self-improvement | BENCH-4 | Evaluate memory/skill/routing proposals, replay gates, overfitting, and promotion boundaries. |
+| BENCH-0 | merged | #1 | Foundation and runner contract | — | Strict extraction, manifests, local inventory, self-hosted Windows workflows, immutable artifacts, and safety boundaries. |
+| BENCH-1 | merged | #96 | Direct synthetic orchestration battery | BENCH-0 | Evidence-gated local direct results for explicit HO-STOP and HO-ROUTE contracts: 60 accepted runs across 10 candidates. |
+| BENCH-2 | planned | — | Hermes orchestrator isolation | BENCH-1 | Hold workers, tools, prompts, context, and runtime fixed while varying only the local model driving Hermes. |
+| BENCH-3 | planned | — | Tool and coding fixtures | BENCH-2 | Windows/PowerShell, file edits, patching, deterministic tests, and bounded worker/critic/adjudicator loops. |
+| BENCH-4 | blocked | — | Adaptive local model routing | BENCH-2, BENCH-3 | Route among eligible local models by capability, reliability, latency, and resource cost. External APIs remain out of scope. |
+| BENCH-5 | planned | — | Controlled self-improvement | BENCH-4 | Evaluate memory, skill, routing, replay, overfitting, and promotion boundaries. |
 
-## Latest trusted preflight evidence
+## Latest trusted runtime qualification
 
-- GitHub Actions run: `29101424988`, attempt `1`.
-- Trusted branch and SHA: `main` at `4437ae74e229b4c168cfbe89691c6d85a5690def`.
-- Artifact: `preflight-29101424988-1`.
-- Artifact digest: `sha256:5f38b2e945be0fa12dfeacaa2d011389d7a579ce86622802fbf56089a34d5aab`.
-- Deterministic tests: `61` passed; test exit code `0`.
-- Runtime inventory: exit code `0`, `status=ready`, `runner_ready=true`, `scoring_ready=true`, `local_only=true`, and no blocking reasons.
-- Hermes: version `0.18.2`, branch `main`, clean worktree, pinned commit `73b611ad19720d70308dad6b0fb64648aaadc216`.
-- Ollama: loopback endpoint, version `0.31.2`, and `15` model tags with digests recorded.
-- Candidate mapping: every enabled candidate tag and digest remained present and matched the trusted artifact inventory.
-- Reproducibility note: Hermes reports that the pinned checkout is behind upstream. This remains non-blocking while the exact clean commit is retained; updating Hermes creates a new baseline and requires replay.
+- H3 workflow run: `29106127334`, valid attempts `14`–`18`.
+- Trusted execution SHA: `202214c45a9a6952600bbd2d621697fcf349db25`.
+- Result: **10/10 candidates fully resident in VRAM at an actual 32768-token context**.
+- All five archives matched GitHub SHA-256 metadata; checkout, manifest, cleanup, context length, candidate identity, and local-only boundaries passed.
+- H3 is hardware/runtime qualification only. It is not semantic ranking.
 
-## First trusted direct-smoke evidence
+## BENCH-1 trusted semantic evidence
 
-- GitHub Actions run: `29103303992`, attempt `1`.
-- Trusted branch and SHA: `main` at `784ea2327dd444225c1319ef240db4a8c3cd388c`.
-- Artifact: `direct-smoke-29103303992-1`.
-- Artifact digest: `sha256:56497d28e33b6853be65bf29f28aa94b5b021ce77e389cd58fb4e6cc8adb505c`.
-- Deterministic tests: `73` passed; test exit code `0`.
-- Candidate: `minicpm5-fable-1b-control`.
-- Case: `ho-stop-reuse-001`.
-- Execution completed: `true`; infrastructure exit code `0`.
-- Candidate passed: `false`.
-- Deterministic failure: missing required `FINAL:` marker; the raw response was a generic self-description unrelated to the task.
-- Manifest SHA-256: `bae7e3a3d77d27a12c507fee433f3502bcffa00c34d7b38a0981d7cf8201b407`.
-- Interpretation: valid preliminary pipeline evidence and a semantic failure for the lightweight control, not a comparative ranking.
+### HO-STOP
 
-## First Qwythos-safe direct-smoke evidence
+- Workflow run: `29225755398`, attempt `1`.
+- Trusted SHA: `5d527a10e7e49140647a7475b2aebc35c4177078`.
+- Retained case: `ho-stop-reuse-explicit-002`.
+- Accepted evidence: **30 runs — 18 pass, 12 fail, 0 invalid**.
+- The HO-ROUTE half of this original campaign is excluded because its fixture did not make the expected route mechanically derivable.
 
-- GitHub Actions run: `29103995266`, attempt `1`.
-- Trusted branch and SHA: `main` at `6fafcee357bde1e375924e428bff3b703daf7d27`.
-- Artifact: `direct-smoke-29103995266-1`.
-- Artifact digest: `sha256:dcf7ec4841869119ce6c577c7f0c513bec063e1d20a60545e47632da9ae0aa3e`.
-- Deterministic tests: `75` passed; test exit code `0`.
-- Candidate: `qwythos-hermes-safe`.
-- Case: `ho-stop-reuse-001`.
-- Execution completed: `true`; infrastructure exit code `0`.
-- Ollama termination: `done_reason=length`, `eval_count=256`, configured `num_predict=256`.
-- Raw output ended mid-reasoning before a contracted `FINAL:` could be emitted.
-- Prior harness field: `candidate_passed=false`.
-- Correct result status: `invalid`; the benchmark truncated the response, so this is not a semantic Qwythos failure.
-- Manifest SHA-256: `b8881d0591d29899476bbe18fc28ec6140f81e963ff0281132a3b7cee75e0ce1`.
+### HO-ROUTE explicit replay
 
-## Second Qwythos-safe direct-smoke evidence
+- Workflow run: `29232014623`, attempt `1`.
+- Trusted SHA: `057c33ccbcb40acff3f840f642b5165f396df7f8`.
+- Case: `ho-route-local-coder-explicit-002`.
+- Accepted evidence: **30 runs — 18 pass, 12 fail, 0 invalid**.
+- All five jobs completed with capture and enforce success. Main and enforce archives matched GitHub digests; per-run manifests, serialized case snapshots, checkout bindings, and cleanup attestations passed.
 
-- GitHub Actions run: `29104571461`, attempt `1`.
-- Trusted branch and SHA: `main` at `50fc3b3c7b88c715c5f60b8538b6c8955ca99b1d`.
-- Artifact: `direct-smoke-29104571461-1`.
-- Artifact digest: `sha256:4af28ed332dd6f26551c33c0e7ddd3fd2c0a9f4a700b3ed909667ae812f88e74`.
-- Deterministic tests: `81` passed; test exit code `0`.
-- Candidate: `qwythos-hermes-safe`.
-- Case: `ho-stop-reuse-001`.
-- Execution completed: `true`; infrastructure exit code `0`.
-- Ollama termination: `done_reason=stop`, `eval_count=399`, configured `num_predict=1024`.
-- Harness result: `failed`; output used field `supplied_result` and action `return_supplied_result` without terminal `stop`.
-- Case defect: candidate-visible data did not specify the required output field `final` or the exact required action sequence, while evaluator-only `expected` required both.
-- Correct interpretation: invalidated by an underspecified case contract; this run must not be counted as a Qwythos failure.
-- Manifest SHA-256: `8eeaa46e7a1b293fe4ef237403af7679451ce2bd91d2d9ef92c767ac0e065200`.
+### Combined capability matrix
+
+- Accepted evidence: **60 runs — 36 pass, 24 fail, 0 invalid**.
+- Five candidates passed all three repetitions on both capabilities:
+  - `gemma4-12b-it-qat`
+  - `qwythos-mythos-9b`
+  - `qwen3.6-fablevibes-14b-a3b`
+  - `qwythos-hermes-64k`
+  - `qwythos-hermes-safe`
+- They remain tied. BENCH-1 declares no aggregate score or global winner.
+- Capability-specific asymmetry is retained: `qwable-9b-fable5` passed HO-ROUTE but failed HO-STOP; `qwen3-8b` passed HO-STOP but failed HO-ROUTE.
+
+Detailed evidence is stored in:
+
+- `reports/BENCH-1-HO-ROUTE-EXPLICIT-REPLAY/`
+- `reports/BENCH-1-DIRECT-SEMANTIC-CLOSEOUT/`
+
+## Excluded evidence
+
+- The original 30 HO-ROUTE outputs from run `29225755398` remain invalidated by the underspecified route fixture.
+- Run `29231060170` failed before model execution because the replay entrypoint lacked the `src` bootstrap.
+- Run `29231447924` produced six outputs, but its evidence gate was red because the manifest validator was patched in the wrong module; those outputs are not counted.
 
 ## Current operating order
 
-1. Replace real-model use of `ho-stop-reuse-001` with `ho-stop-reuse-explicit-002`; keep the old run artifacts immutable.
-2. Require exact evaluator expectations to match candidate-visible `inputs.response_contract` before any model call.
-3. Preserve the full evaluator-only case as `case_definition.json`, bind its SHA-256 into the environment fingerprint and manifest, and fail the infrastructure gate if the digest is absent.
-4. Replay the same `qwythos-hermes-safe` smoke with the new case; candidate, seed, temperature, context, generation limit, timeout, endpoint, and validator remain unchanged.
-5. Do not compare candidates until complete valid results exist and each candidate-capability pair has at least three repetitions under an unchanged environment fingerprint.
+1. Merge the BENCH-1 closeout and disarm the completed one-shot marker without triggering another campaign.
+2. Prepare a separately reviewed immutable BENCH-2 plan; do not execute Hermes models yet.
+3. Freeze worker pool, tools, prompt, context, generation parameters, timeout, cleanup, and evidence bindings before any BENCH-2 run.
+4. Preserve capability-specific outcomes and ties; do not collapse them into an unsupported global score.
 
 `planned` means an outline exists. It is not an implementation instruction and does not authorize unattended expansion of scope.

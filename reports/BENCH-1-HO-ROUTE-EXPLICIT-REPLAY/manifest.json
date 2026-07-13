@@ -1,0 +1,13 @@
+{
+  "artifacts": {
+    "summary.json": {
+      "sha256": "f77c813a9d4badbfef1d7ff345a71eedb6c1f56dd3d166e33ea1efb8413543c4",
+      "size_bytes": 16119
+    },
+    "summary.md": {
+      "sha256": "91ed3fec2bdd32d80653838fce4ff42b550508aa84be792a6e845efa327593db",
+      "size_bytes": 3681
+    }
+  },
+  "schema_version": "bench.ho-route-explicit-replay-summary-manifest.v1"
+}
