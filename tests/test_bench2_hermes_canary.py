@@ -18,8 +18,16 @@ class Bench2HermesCanaryTests(unittest.TestCase):
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
         self.assertEqual(
             digest,
-            "cccc8a7500de332895ffd156fbdb0b8e85ab0f856a92e1bcd3db8c7115166b65",
+            "e026b357d37a9927fb569a0c0a9b5e17af6c348d0d9bc44739ff9b5d6097e6ba",
         )
+
+    def test_runtime_config_sets_operational_ollama_context(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            runtime._write_isolated_home(root / "home", root / "work", "model:test")
+            config = (root / "home" / "config.yaml").read_text(encoding="utf-8")
+        self.assertIn("ollama_num_ctx: 65536", config)
+        self.assertIn("context_length: 65536", config)
 
     def test_plan_is_single_candidate_single_case_with_explicit_marker_state(self):
         plan, marker, case = validator.validate_canary_plan()

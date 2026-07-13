@@ -249,6 +249,7 @@ def _write_isolated_home(home: Path, workdir: Path, model: str) -> None:
         "  base_url: 'http://127.0.0.1:11434/v1'",
         "  api_mode: 'chat_completions'",
         "  context_length: 65536",
+        "  ollama_num_ctx: 65536",
         "  max_tokens: 256",
         "fallback_providers: []",
         "plugins:",
