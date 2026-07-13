@@ -1,0 +1,97 @@
+{
+  "artifact": {
+    "archive_sha256": "1668c880b82dde21f8d73d94e2425679815c57c66a6516afd85c211d8340ba4b",
+    "archive_size_bytes": 51762,
+    "artifact_id": 8294105375,
+    "artifact_name": "bench2-hermes-29288354274-1-b0",
+    "batch_index": 0,
+    "manifest_errors": 0,
+    "per_run_manifests_verified": 12,
+    "top_level_manifest_verified": true
+  },
+  "captured_evidence": {
+    "candidate_ids": [
+      "gemma4-12b-it-qat",
+      "qwable-9b-fable5"
+    ],
+    "captured_records": 12,
+    "case_ids": [
+      "ho-tools-hermes-lookup-001",
+      "ho-stop-hermes-reuse-001"
+    ],
+    "expected_records_in_batch": 12,
+    "failed": 0,
+    "invalid_infrastructure": 12,
+    "passed": 0,
+    "semantically_evaluable": 0
+  },
+  "decision": {
+    "cancelled_to_prevent_obsolete_batches": true,
+    "candidate_failures_attributable": false,
+    "corrected_wrapper_sha256": "854a14e3d13bd23402b9277fa97cc9e0af6567ef067548ef26c461e75a12f56a",
+    "marker_disabled_in_fix_commit": "e08a250134e08d3496827c0f698abf8967b54af0",
+    "rerun_required": true,
+    "run_status": "invalid_infrastructure",
+    "use_for_model_comparison": false,
+    "use_for_semantic_scoring": false
+  },
+  "integrity": {
+    "all_available_internal_manifests_verified": true,
+    "archive_sha256_matches_github": true,
+    "batch0_alias_cleanup_verified": true,
+    "external_provider_use_observed": false,
+    "jarvisos_access_observed": false,
+    "report_bound_to_activation_sha": true,
+    "report_bound_to_reviewed_plan": true,
+    "report_bound_to_run_and_attempt": true,
+    "semantic_results_valid": false,
+    "temporary_alias_context_65536_observed": true
+  },
+  "job_outcomes": [
+    {
+      "artifact_published": true,
+      "batch_index": 0,
+      "capture": "success",
+      "conclusion": "failure",
+      "job_id": 86946102939
+    },
+    {
+      "artifact_published": false,
+      "batch_index": 1,
+      "capture": "runner_lost_or_interrupted",
+      "conclusion": "failure",
+      "job_id": 86946678705
+    },
+    {
+      "artifact_published": false,
+      "batch_index": 2,
+      "capture": "not_started",
+      "conclusion": "cancelled",
+      "job_id": 86948472550
+    },
+    {
+      "artifact_published": false,
+      "batch_index": 3,
+      "capture": "not_started",
+      "conclusion": "cancelled",
+      "job_id": 86948983093
+    }
+  ],
+  "root_cause": {
+    "base_capture_cleanup": "shutil.rmtree(output_dir)",
+    "classification": "common_wrapper_ordering_bug",
+    "detail": "The v2 wrapper created per-run directories before delegating to base.capture. base.capture then removed the entire artifact root with shutil.rmtree(output_dir), so _run_once again reached raw-output.txt without an existing parent directory.",
+    "error_type": "FileNotFoundError",
+    "failed_persistence": "raw-output.txt"
+  },
+  "run": {
+    "activation_commit_sha": "51071ed211d23bf28b5804adfb2bca8d6d50df59",
+    "event": "push",
+    "final_status": "cancelled_after_common_infrastructure_failure",
+    "ref": "refs/heads/main",
+    "workflow": "BENCH-2 Hermes full matrix",
+    "workflow_run_attempt": 1,
+    "workflow_run_id": 29288354274
+  },
+  "schema_version": "bench.hermes-full-matrix-invalid-closeout.v2"
+}
