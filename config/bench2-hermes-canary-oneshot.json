@@ -1,0 +1,8 @@
+{
+  "candidate_id": "qwythos-hermes-safe",
+  "case_id": "ho-tools-hermes-lookup-001",
+  "enabled": false,
+  "plan_sha256": "3f0a80fb5033d987af1117dd0c61c391aae8b86b86fd22d532be9abfe430c925",
+  "repetitions": 1,
+  "schema_version": "bench.hermes-orchestrator-canary-oneshot.v1"
+}
