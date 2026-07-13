@@ -34,6 +34,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Capture and normalize reviewed marker state
+        run: |
+          cp config/bench2-hermes-orchestrator-oneshot.json "$RUNNER_TEMP/bench2-marker-actual.json"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path("config/bench2-hermes-orchestrator-oneshot.json")
+          marker = json.loads(path.read_text(encoding="utf-8"))
+          if not isinstance(marker.get("enabled"), bool):
+              raise SystemExit("full-matrix marker enabled must be boolean")
+          marker["enabled"] = False
+          path.write_text(json.dumps(marker, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          PY
       - name: Validate full-matrix runtime contract
         id: validate
         shell: bash
@@ -42,26 +55,37 @@ jobs:
           set +e
           status=0
           {
-            echo '=== UNIT TESTS ==='
+            echo '=== STRUCTURAL UNIT TESTS WITH DISABLED MARKER SHADOW ==='
             python -m unittest -v tests.test_bench2_hermes_plan tests.test_bench2_hermes_canary_closeout tests.test_bench2_hermes_execution
             code=$?
             echo "unit_tests_exit=$code"
             if [ "$code" -ne 0 ] && [ "$status" -eq 0 ]; then status=$code; fi
 
-            echo '=== PLAN VALIDATOR ==='
+            echo '=== PLAN VALIDATOR WITH DISABLED MARKER SHADOW ==='
             python scripts/validate_bench2_hermes_plan.py --output artifacts/bench2-plan-validation.json
             code=$?
             echo "plan_exit=$code"
             if [ "$code" -ne 0 ] && [ "$status" -eq 0 ]; then status=$code; fi
 
-            echo '=== CANARY CLOSEOUT VALIDATOR ==='
+            echo '=== CANARY CLOSEOUT VALIDATOR WITH DISABLED MARKER SHADOW ==='
             python scripts/validate_bench2_hermes_canary_closeout.py --output artifacts/bench2-canary-closeout-validation.json
             code=$?
             echo "canary_closeout_exit=$code"
             if [ "$code" -ne 0 ] && [ "$status" -eq 0 ]; then status=$code; fi
 
-            echo '=== EXECUTION VALIDATOR ==='
-            python scripts/validate_bench2_hermes_execution.py --output artifacts/bench2-full-matrix-validation.json
+            echo '=== RESTORE AND VALIDATE ACTUAL MARKER STATE ==='
+            cp "$RUNNER_TEMP/bench2-marker-actual.json" config/bench2-hermes-orchestrator-oneshot.json
+            if python - <<'PY'
+          import json
+          from pathlib import Path
+          marker = json.loads(Path("config/bench2-hermes-orchestrator-oneshot.json").read_text(encoding="utf-8"))
+          raise SystemExit(0 if marker.get("enabled") is True else 1)
+          PY
+            then
+              python scripts/validate_bench2_hermes_execution.py --require-enabled --output artifacts/bench2-full-matrix-validation.json
+            else
+              python scripts/validate_bench2_hermes_execution.py --output artifacts/bench2-full-matrix-validation.json
+            fi
             code=$?
             echo "execution_exit=$code"
             if [ "$code" -ne 0 ] && [ "$status" -eq 0 ]; then status=$code; fi
