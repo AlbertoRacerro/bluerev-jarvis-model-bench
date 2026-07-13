@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from scripts import run_h4_context_bound_job as bound_job
 from scripts import run_h4_context_job as job
 
 
@@ -33,6 +34,32 @@ class H4ContextJobTests(unittest.TestCase):
     def test_all_source_files_are_immutably_bound(self):
         self.assertTrue(job._source_files_are_bound())
         self.assertEqual(job.PROFILE["num_ctx"], 65536)
+
+    def test_windows_h4_workflows_do_not_depend_on_powershell_scripts(self):
+        for relative in (
+            ".github/workflows/h4-one-shot-bridge.yml",
+            ".github/workflows/local-context-64k-qualification.yml",
+        ):
+            text = (job.ROOT / relative).read_text(encoding="utf-8")
+            self.assertIn("shell: cmd", text, relative)
+            self.assertNotIn("shell: powershell", text, relative)
+            self.assertNotIn("$env:PYTHON", text, relative)
+            self.assertIn("set PYTHONUTF8=1", text, relative)
+            self.assertIn("ref: ${{ github.sha }}", text, relative)
+
+    def test_checkout_binding_requires_event_sha_identity(self):
+        sha = "a" * 40
+        current = {
+            "schema_version": "bench.checkout-binding.v1",
+            "checked_out_sha": sha,
+            "tracked_clean": True,
+            "event_sha": sha,
+            "ref": "refs/heads/main",
+        }
+        self.assertTrue(bound_job._valid_binding(dict(current), current))
+        drifted = dict(current)
+        drifted["event_sha"] = "b" * 40
+        self.assertFalse(bound_job._valid_binding(drifted, current))
 
     def test_enforce_accepts_nonqualification_as_valid_candidate_evidence(self):
         with tempfile.TemporaryDirectory() as directory:
