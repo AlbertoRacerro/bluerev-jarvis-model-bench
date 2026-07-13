@@ -1,0 +1,91 @@
+name: H4 observer snapshot
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/h4-observer-pr.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Capture H4 activation run snapshot
+        uses: actions/github-script@v7
+        env:
+          ACTIVATION_SHA: 81c5bc60e1c7b0c0bb38f001f656a6f10f42085d
+          WORKFLOW_NAME: H4 one-shot 64K qualification bridge
+        with:
+          script: |
+            const fs = require('fs');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const runs = await github.paginate(github.rest.actions.listWorkflowRunsForRepo, {
+              owner, repo, event: 'push', head_sha: process.env.ACTIVATION_SHA, per_page: 100
+            });
+            const matches = runs.filter(r => r.name === process.env.WORKFLOW_NAME);
+            if (matches.length !== 1) {
+              core.setFailed(`Expected exactly one H4 activation run, found ${matches.length}`);
+            }
+            const run = matches[0] || null;
+            let jobs = [];
+            let artifacts = [];
+            if (run) {
+              jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+                owner, repo, run_id: run.id, filter: 'latest', per_page: 100
+              });
+              artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
+                owner, repo, run_id: run.id, per_page: 100
+              });
+            }
+            const compact = {
+              schema_version: 'bench.h4-observer.v1',
+              captured_at: new Date().toISOString(),
+              activation_sha: process.env.ACTIVATION_SHA,
+              run: run && {
+                id: run.id,
+                run_attempt: run.run_attempt,
+                status: run.status,
+                conclusion: run.conclusion,
+                event: run.event,
+                head_sha: run.head_sha,
+                path: run.path,
+                html_url: run.html_url,
+                created_at: run.created_at,
+                updated_at: run.updated_at
+              },
+              jobs: jobs.map(j => ({
+                id: j.id,
+                name: j.name,
+                status: j.status,
+                conclusion: j.conclusion,
+                started_at: j.started_at,
+                completed_at: j.completed_at,
+                runner_name: j.runner_name,
+                runner_group_name: j.runner_group_name,
+                html_url: j.html_url,
+                steps: (j.steps || []).map(s => ({name: s.name, status: s.status, conclusion: s.conclusion, number: s.number}))
+              })),
+              artifacts: artifacts.map(a => ({
+                id: a.id,
+                name: a.name,
+                size_in_bytes: a.size_in_bytes,
+                digest: a.digest,
+                expired: a.expired,
+                created_at: a.created_at,
+                expires_at: a.expires_at,
+                archive_download_url: a.archive_download_url
+              }))
+            };
+            fs.writeFileSync('h4-observer.json', JSON.stringify(compact, null, 2) + '\n');
+            core.info(JSON.stringify(compact));
+      - name: Upload observer snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: h4-observer-snapshot
+          path: h4-observer.json
+          if-no-files-found: error
+          retention-days: 7
