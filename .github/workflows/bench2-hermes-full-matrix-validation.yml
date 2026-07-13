@@ -35,16 +35,55 @@ jobs:
         with:
           python-version: "3.11"
       - name: Validate full-matrix runtime contract
+        id: validate
+        shell: bash
         run: |
-          python -m unittest tests.test_bench2_hermes_plan tests.test_bench2_hermes_canary_closeout tests.test_bench2_hermes_execution
-          python scripts/validate_bench2_hermes_plan.py --output artifacts/bench2-plan-validation.json
-          python scripts/validate_bench2_hermes_canary_closeout.py --output artifacts/bench2-canary-closeout-validation.json
-          python scripts/validate_bench2_hermes_execution.py --output artifacts/bench2-full-matrix-validation.json
-          python -m py_compile scripts/run_bench2_hermes_batch.py
+          mkdir -p artifacts
+          set +e
+          status=0
+          {
+            echo '=== UNIT TESTS ==='
+            python -m unittest -v tests.test_bench2_hermes_plan tests.test_bench2_hermes_canary_closeout tests.test_bench2_hermes_execution
+            code=$?
+            echo "unit_tests_exit=$code"
+            if [ "$code" -ne 0 ] && [ "$status" -eq 0 ]; then status=$code; fi
+
+            echo '=== PLAN VALIDATOR ==='
+            python scripts/validate_bench2_hermes_plan.py --output artifacts/bench2-plan-validation.json
+            code=$?
+            echo "plan_exit=$code"
+            if [ "$code" -ne 0 ] && [ "$status" -eq 0 ]; then status=$code; fi
+
+            echo '=== CANARY CLOSEOUT VALIDATOR ==='
+            python scripts/validate_bench2_hermes_canary_closeout.py --output artifacts/bench2-canary-closeout-validation.json
+            code=$?
+            echo "canary_closeout_exit=$code"
+            if [ "$code" -ne 0 ] && [ "$status" -eq 0 ]; then status=$code; fi
+
+            echo '=== EXECUTION VALIDATOR ==='
+            python scripts/validate_bench2_hermes_execution.py --output artifacts/bench2-full-matrix-validation.json
+            code=$?
+            echo "execution_exit=$code"
+            if [ "$code" -ne 0 ] && [ "$status" -eq 0 ]; then status=$code; fi
+
+            echo '=== PYTHON COMPILE ==='
+            python -m py_compile scripts/run_bench2_hermes_batch.py
+            code=$?
+            echo "compile_exit=$code"
+            if [ "$code" -ne 0 ] && [ "$status" -eq 0 ]; then status=$code; fi
+          } > artifacts/full-matrix-validation.log 2>&1
+          cat artifacts/full-matrix-validation.log
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          exit 0
       - name: Upload validation evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: bench2-hermes-full-matrix-validation
           path: artifacts/
           if-no-files-found: error
           retention-days: 14
+      - name: Enforce validation result
+        if: always()
+        shell: bash
+        run: test "${{ steps.validate.outputs.exit_code }}" = "0"
