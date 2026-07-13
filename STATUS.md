@@ -107,6 +107,7 @@ Detailed evidence is stored in `reports/BENCH-1-HO-ROUTE-EXPLICIT-REPLAY/` and `
 - Candidate setup failures are contained: a missing model or alias failure produces six `invalid_infrastructure` records for that candidate without preventing the second candidate in the batch from running.
 - Alias cleanup is attempted by deterministic expected name even after partial setup failure.
 - Per-run evidence binds validator, environment, usage, runtime alias, context, VRAM residency, cleanup and artifact manifest back to the batch report.
+- The complete per-run verifier block is syntax-normalized and submitted for final hosted compilation and contract validation.
 - HO-STOP enforces its one-model-call budget; HO-TOOLS permits at most two model calls and exactly one reviewed tool call.
 - Semantic failures do not stop later runs. Infrastructure-invalid results are preserved separately and make the corresponding batch evidence gate red.
 - No global composite score is calculated.
