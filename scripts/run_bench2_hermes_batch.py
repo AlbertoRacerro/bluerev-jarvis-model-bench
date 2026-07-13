@@ -952,27 +952,27 @@ def _verify_result_artifacts(
     alias = result.get("runtime_alias")
     if infrastructure_valid:
         if not isinstance(alias, dict):
-  raise HermesBatchError("valid run alias evidence is missing")
+            raise HermesBatchError("valid run alias evidence is missing")
         runtime_model = environment.get("runtime_model")
         if not isinstance(runtime_model, dict):
-  raise HermesBatchError("valid run runtime model evidence is missing")
+            raise HermesBatchError("valid run runtime model evidence is missing")
         if runtime_model.get("name") != alias.get("name") or runtime_model.get("digest") != alias.get("digest"):
-  raise HermesBatchError("valid run runtime alias identity drifted")
+            raise HermesBatchError("valid run runtime alias identity drifted")
         if runtime_model.get("context_length") != 65536:
-  raise HermesBatchError("valid run context is not 65536")
+            raise HermesBatchError("valid run context is not 65536")
         if environment.get("residency_class") != "full_vram":
-  raise HermesBatchError("valid run is not fully resident in VRAM")
+            raise HermesBatchError("valid run is not fully resident in VRAM")
         if environment.get("infrastructure_error") is not None:
-  raise HermesBatchError("valid run carries an infrastructure error")
+            raise HermesBatchError("valid run carries an infrastructure error")
         if usage.get("provider") != "custom" or usage.get("model") != alias.get("name"):
-  raise HermesBatchError("valid run usage binding drifted")
+            raise HermesBatchError("valid run usage binding drifted")
         if result.get("cleanup_verified") is not True:
-  raise HermesBatchError("valid run cleanup is not verified")
+            raise HermesBatchError("valid run cleanup is not verified")
     else:
         if not isinstance(result.get("infrastructure_error"), dict):
-  raise HermesBatchError("invalid run infrastructure error is missing")
+            raise HermesBatchError("invalid run infrastructure error is missing")
         if not isinstance(environment.get("infrastructure_error"), dict):
-  raise HermesBatchError("invalid run environment error is missing")
+            raise HermesBatchError("invalid run environment error is missing")
 
 
 def enforce(output_dir: Path = DEFAULT_ARTIFACTS) -> int:

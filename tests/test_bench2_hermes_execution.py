@@ -228,7 +228,7 @@ class Bench2HermesExecutionTests(unittest.TestCase):
 
     def test_full_matrix_reviewed_sources_match_hashes(self):
         expected = {
-            "scripts/run_bench2_hermes_batch.py": "08066a7dc754386165277d06f3312516c224f5f59454fd28e439c92291fb483c",
+            "scripts/run_bench2_hermes_batch.py": "b3442609ab421e75c0401faf73dca96a3ab5b05f3cb0a059e0860970b04fb872",
             "scripts/validate_bench2_hermes_execution.py": "5eccd88920e923f21de84a8e57a892bc139513f2506f07c97ffc806c5d27f575",
             ".github/workflows/bench2-hermes-full-matrix-oneshot.yml": "c4a4256db9b20dd318b46a533532c6169bd834dcfb7ff148daa5251323028e87",
         }
