@@ -13,6 +13,22 @@ from scripts import run_bench2_hermes_batch_v2 as runner_v2
 from scripts import validate_bench2_hermes_execution as execution
 
 
+def _usage_checks() -> list[dict[str, object]]:
+    return [
+        {"check": name, "passed": True, "detail": ""}
+        for name in (
+            "usage_provider_custom",
+            "usage_model_exact",
+            "usage_completed",
+            "usage_not_failed",
+            "usage_api_calls_bounded",
+            "usage_input_tokens_nonnegative",
+            "usage_output_tokens_nonnegative",
+            "usage_total_tokens_nonnegative",
+        )
+    ]
+
+
 class Bench2HermesExecutionTests(unittest.TestCase):
     def test_disabled_full_matrix_is_valid_but_not_authorized(self):
         plan, marker, candidates, cases = execution.validate_execution(
@@ -72,16 +88,6 @@ class Bench2HermesExecutionTests(unittest.TestCase):
         )
 
     def test_semantic_validator_separates_valid_failure_from_infrastructure(self):
-        usage_checks = [
-            {"check": "usage_provider_custom", "passed": True, "detail": ""},
-            {"check": "usage_model_exact", "passed": True, "detail": ""},
-            {"check": "usage_completed", "passed": True, "detail": ""},
-            {"check": "usage_not_failed", "passed": True, "detail": ""},
-            {"check": "usage_api_calls_bounded", "passed": True, "detail": ""},
-            {"check": "usage_input_tokens_nonnegative", "passed": True, "detail": ""},
-            {"check": "usage_output_tokens_nonnegative", "passed": True, "detail": ""},
-            {"check": "usage_total_tokens_nonnegative", "passed": True, "detail": ""},
-        ]
         case = {
             "case_id": "ho-tools-hermes-lookup-001",
             "capability": "HO-TOOLS",
@@ -101,7 +107,7 @@ class Bench2HermesExecutionTests(unittest.TestCase):
             output_error=None,
             tool_records=[],
             trace_error=None,
-            usage_checks=usage_checks,
+            usage_checks=_usage_checks(),
             usage={"api_calls": 1},
             runtime_model={"context_length": 65536},
             residency_class="full_vram",
@@ -113,16 +119,6 @@ class Bench2HermesExecutionTests(unittest.TestCase):
         self.assertFalse(result["passed"])
 
     def test_stop_case_requires_no_tool_trace(self):
-        usage_checks = [
-            {"check": "usage_provider_custom", "passed": True, "detail": ""},
-            {"check": "usage_model_exact", "passed": True, "detail": ""},
-            {"check": "usage_completed", "passed": True, "detail": ""},
-            {"check": "usage_not_failed", "passed": True, "detail": ""},
-            {"check": "usage_api_calls_bounded", "passed": True, "detail": ""},
-            {"check": "usage_input_tokens_nonnegative", "passed": True, "detail": ""},
-            {"check": "usage_output_tokens_nonnegative", "passed": True, "detail": ""},
-            {"check": "usage_total_tokens_nonnegative", "passed": True, "detail": ""},
-        ]
         case = {
             "case_id": "ho-stop-hermes-reuse-001",
             "capability": "HO-STOP",
@@ -142,7 +138,7 @@ class Bench2HermesExecutionTests(unittest.TestCase):
             output_error=None,
             tool_records=[],
             trace_error=None,
-            usage_checks=usage_checks,
+            usage_checks=_usage_checks(),
             usage={"api_calls": 1},
             runtime_model={"context_length": 65536},
             residency_class="full_vram",
@@ -153,41 +149,53 @@ class Bench2HermesExecutionTests(unittest.TestCase):
         self.assertTrue(result["semantic_pass"])
         self.assertTrue(result["passed"])
 
-    def test_v2_wrapper_precreates_exact_batch_directories(self):
-        candidates = [{"candidate_id": "candidate-a"}, {"candidate_id": "candidate-b"}]
-        cases = [{"case_id": "case-tools"}, {"case_id": "case-stop"}]
+    def test_v2_wrapper_creates_directory_at_run_once_boundary(self):
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+            run_dir = Path(directory) / "runs" / "candidate" / "case" / "r1"
+            with mock.patch.object(
+                runner_v2,
+                "_ORIGINAL_RUN_ONCE",
+                return_value={"ok": True},
+            ) as delegated:
+                result = runner_v2._run_once_with_output_dir(
+                    output_dir=run_dir,
+                    candidate={"candidate_id": "candidate"},
+                )
+            self.assertTrue(run_dir.is_dir())
+            self.assertEqual(result, {"ok": True})
+            delegated.assert_called_once_with(
+                output_dir=run_dir,
+                candidate={"candidate_id": "candidate"},
+            )
+
+    def test_v2_capture_patches_base_for_actual_run_once_calls(self):
+        observed: dict[str, bool] = {}
+
+        def fake_capture(output_dir: Path) -> int:
+            observed["patched"] = (
+                runner_v2.base._run_once is runner_v2._run_once_with_output_dir
+            )
+            return runner_v2.base._run_once(
+                output_dir=output_dir / "runs" / "candidate" / "case" / "r1",
+                candidate={"candidate_id": "candidate"},
+            )["code"]
+
+        with tempfile.TemporaryDirectory() as directory:
+            output_dir = Path(directory) / "artifacts"
             with (
+                mock.patch.object(runner_v2.base, "capture", side_effect=fake_capture),
                 mock.patch.object(
-                    runner_v2.execution,
-                    "validate_execution",
-                    return_value=({}, {"enabled": True}, candidates, cases),
-                ),
-                mock.patch.object(
-                    runner_v2.base,
-                    "batch_index_from_environment",
-                    return_value=0,
-                ),
-                mock.patch.object(
-                    runner_v2.execution,
-                    "select_batch",
-                    return_value=(candidates, {"expected_runs": 12}),
+                    runner_v2,
+                    "_ORIGINAL_RUN_ONCE",
+                    return_value={"code": 17},
                 ),
             ):
-                runner_v2.prepare_output_directories(root)
-            observed = {
-                path.relative_to(root).as_posix()
-                for path in root.glob("runs/*/*/r*")
-                if path.is_dir()
-            }
-        expected = {
-            f"runs/{candidate['candidate_id']}/{case['case_id']}/r{repetition}"
-            for candidate in candidates
-            for case in cases
-            for repetition in range(1, 4)
-        }
-        self.assertEqual(observed, expected)
+                self.assertEqual(runner_v2.capture(output_dir), 17)
+            self.assertTrue(
+                (output_dir / "runs" / "candidate" / "case" / "r1").is_dir()
+            )
+        self.assertTrue(observed["patched"])
+        self.assertIs(runner_v2.base._run_once, runner_v2._ORIGINAL_RUN_ONCE)
 
     def test_full_matrix_workflow_is_guarded_and_serial(self):
         text = execution.RUNTIME_WORKFLOW_PATH.read_text(encoding="utf-8")
@@ -196,11 +204,16 @@ class Bench2HermesExecutionTests(unittest.TestCase):
         self.assertIn("shell: cmd", text)
         self.assertIn("ref: ${{ github.sha }}", text)
         self.assertIn(
-            "startsWith(github.event.head_commit.message, 'Activate BENCH-2 Hermes full matrix')",
+            "startsWith(github.event.head_commit.message, "
+            "'Activate BENCH-2 Hermes full matrix')",
             text,
         )
-        self.assertIn("python -m scripts.run_bench2_hermes_batch_v2 capture", text)
-        self.assertIn("python -m scripts.run_bench2_hermes_batch_v2 enforce", text)
+        self.assertIn(
+            "python -m scripts.run_bench2_hermes_batch_v2 capture", text
+        )
+        self.assertIn(
+            "python -m scripts.run_bench2_hermes_batch_v2 enforce", text
+        )
         self.assertNotIn("workflow_dispatch", text)
 
     def test_full_marker_tampering_is_rejected(self):
@@ -227,15 +240,6 @@ class Bench2HermesExecutionTests(unittest.TestCase):
                 execution.MARKER_PATH = original
 
     def test_stop_case_rejects_two_model_calls_as_semantic_failure(self):
-        usage_checks = [
-            {"check": name, "passed": True, "detail": ""}
-            for name in (
-                "usage_provider_custom", "usage_model_exact", "usage_completed",
-                "usage_not_failed", "usage_api_calls_bounded",
-                "usage_input_tokens_nonnegative", "usage_output_tokens_nonnegative",
-                "usage_total_tokens_nonnegative",
-            )
-        ]
         case = {
             "case_id": "ho-stop-hermes-reuse-001",
             "capability": "HO-STOP",
@@ -248,11 +252,14 @@ class Bench2HermesExecutionTests(unittest.TestCase):
         result = runner._semantic_validator(
             case=case,
             process={"returncode": 0, "timed_out": False},
-            output={"actions": ["return_supplied_result", "stop"], "final": "stable-result"},
+            output={
+                "actions": ["return_supplied_result", "stop"],
+                "final": "stable-result",
+            },
             output_error=None,
             tool_records=[],
             trace_error=None,
-            usage_checks=usage_checks,
+            usage_checks=_usage_checks(),
             usage={"api_calls": 2},
             runtime_model={"context_length": 65536},
             residency_class="full_vram",
@@ -266,17 +273,27 @@ class Bench2HermesExecutionTests(unittest.TestCase):
         source = execution.RUNNER_PATH.read_text(encoding="utf-8")
         self.assertIn("installed = _installed_candidate(candidate)", source)
         self.assertIn("_remove_model_if_present(expected_alias_name)", source)
-        self.assertNotIn("for candidate in selected:\n            installed = _installed_candidate(candidate)", source)
+        self.assertNotIn(
+            "for candidate in selected:\n"
+            "            installed = _installed_candidate(candidate)",
+            source,
+        )
 
     def test_full_matrix_reviewed_sources_match_hashes(self):
         expected = {
-            "scripts/run_bench2_hermes_batch.py": "b3442609ab421e75c0401faf73dca96a3ab5b05f3cb0a059e0860970b04fb872",
-            "scripts/run_bench2_hermes_batch_v2.py": "07e1fb87b1e21fa3c54976785392490af5796c33aa74551f67afffadc70d5ea6",
-            "scripts/validate_bench2_hermes_execution.py": "5eccd88920e923f21de84a8e57a892bc139513f2506f07c97ffc806c5d27f575",
-            ".github/workflows/bench2-hermes-full-matrix-oneshot.yml": "df973dd0446ee69264c6319719f2164d5ddcfdd5b6c3ebab775bba97fc215671",
+            "scripts/run_bench2_hermes_batch.py":
+                "b3442609ab421e75c0401faf73dca96a3ab5b05f3cb0a059e0860970b04fb872",
+            "scripts/run_bench2_hermes_batch_v2.py":
+                "854a14e3d13bd23402b9277fa97cc9e0af6567ef067548ef26c461e75a12f56a",
+            "scripts/validate_bench2_hermes_execution.py":
+                "5eccd88920e923f21de84a8e57a892bc139513f2506f07c97ffc806c5d27f575",
+            ".github/workflows/bench2-hermes-full-matrix-oneshot.yml":
+                "df973dd0446ee69264c6319719f2164d5ddcfdd5b6c3ebab775bba97fc215671",
         }
         for relative, digest in expected.items():
-            observed = hashlib.sha256((execution.ROOT / relative).read_bytes()).hexdigest()
+            observed = hashlib.sha256(
+                (execution.ROOT / relative).read_bytes()
+            ).hexdigest()
             self.assertEqual(observed, digest, relative)
 
 
