@@ -42,7 +42,7 @@
     },
     {
       "candidate_id": "qwen3.6-fablevibes-14b-a3b",
-      "digest": "0714a296bfcc73c72cc504045140c02bd3",
+      "digest": "0714a296bfcc73c72cc5042ab6754d77ae3871e42ce864d50243f3f116ec33e7",
       "model_tag": "hf.co/tvall43/Qwen3.6-14B-A3B-FableVibes-GGUF:Q4_K_M",
       "sequence": 4
     },
