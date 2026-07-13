@@ -42,11 +42,41 @@ jobs:
         run: |
           $env:PYTHONUTF8 = '1'
           $env:PYTHONIOENCODING = 'utf-8'
-          $captureLog = Join-Path $env:RUNNER_TEMP "direct-semantic-capture-$env:GITHUB_RUN_ID-b$env:BENCH_SEMANTIC_BATCH_INDEX.log"
-          python -m scripts.run_direct_semantic_campaign_bound_job capture *>&1 | Tee-Object -FilePath $captureLog
-          $captureExit = $LASTEXITCODE
-          New-Item -ItemType Directory -Force artifacts/direct-semantic | Out-Null
-          Copy-Item -Force $captureLog artifacts/direct-semantic/capture-shell.log
+          $stdoutLog = Join-Path $env:RUNNER_TEMP "direct-semantic-capture-$env:GITHUB_RUN_ID-b$env:BENCH_SEMANTIC_BATCH_INDEX.stdout.log"
+          $stderrLog = Join-Path $env:RUNNER_TEMP "direct-semantic-capture-$env:GITHUB_RUN_ID-b$env:BENCH_SEMANTIC_BATCH_INDEX.stderr.log"
+          $captureExit = 127
+          try {
+            $python = (Get-Command python -ErrorAction Stop).Source
+            $process = Start-Process `
+              -FilePath $python `
+              -ArgumentList @('-m', 'scripts.run_direct_semantic_campaign_bound_job', 'capture') `
+              -NoNewWindow `
+              -Wait `
+              -PassThru `
+              -RedirectStandardOutput $stdoutLog `
+              -RedirectStandardError $stderrLog
+            $captureExit = $process.ExitCode
+          }
+          catch {
+            $_ | Out-String | Set-Content -Path $stderrLog -Encoding utf8
+          }
+          finally {
+            New-Item -ItemType Directory -Force artifacts/direct-semantic | Out-Null
+            if (Test-Path $stdoutLog) {
+              Copy-Item -Force $stdoutLog artifacts/direct-semantic/capture-stdout.log
+              Get-Content $stdoutLog | ForEach-Object { Write-Host $_ }
+            }
+            if (Test-Path $stderrLog) {
+              Copy-Item -Force $stderrLog artifacts/direct-semantic/capture-stderr.log
+              Get-Content $stderrLog | ForEach-Object { Write-Host $_ }
+            }
+            @{
+              schema_version = 'bench.direct-semantic-shell-capture.v1'
+              exit_code = $captureExit
+              stdout_recorded = (Test-Path $stdoutLog)
+              stderr_recorded = (Test-Path $stderrLog)
+            } | ConvertTo-Json | Set-Content -Path artifacts/direct-semantic/capture-shell-summary.json -Encoding utf8
+          }
           if ($captureExit -ne 0) { exit $captureExit }
       - name: Upload immutable semantic artifact
         id: upload
