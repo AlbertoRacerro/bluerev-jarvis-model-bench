@@ -38,6 +38,7 @@ Status vocabulary: `planned`, `blocked`, `ready`, `in_progress`, `in_review`, `m
 - Case: `ho-route-local-coder-explicit-002`.
 - Accepted evidence: **30 runs — 18 pass, 12 fail, 0 invalid**.
 - All five jobs completed with capture and enforce success. Main and enforce archives matched GitHub digests; per-run manifests, serialized case snapshots, checkout bindings, and cleanup attestations passed.
+- The replay workflow is manual-only and the completed one-shot marker is disabled. A future replay requires a separately reviewed marker change and explicit dispatch.
 
 ### Combined capability matrix
 
@@ -64,9 +65,9 @@ Detailed evidence is stored in:
 
 ## Current operating order
 
-1. Merge the BENCH-1 closeout and disarm the completed one-shot marker without triggering another campaign.
-2. Prepare a separately reviewed immutable BENCH-2 plan; do not execute Hermes models yet.
-3. Freeze worker pool, tools, prompt, context, generation parameters, timeout, cleanup, and evidence bindings before any BENCH-2 run.
-4. Preserve capability-specific outcomes and ties; do not collapse them into an unsupported global score.
+1. Prepare a separately reviewed immutable BENCH-2 plan; do not execute Hermes models yet.
+2. Freeze worker pool, tools, prompt, context, generation parameters, timeout, cleanup, and evidence bindings before any BENCH-2 run.
+3. Preserve capability-specific outcomes and ties; do not collapse them into an unsupported global score.
+4. Keep the BENCH-1 replay marker disabled unless a new, explicit replay plan is reviewed and authorized.
 
 `planned` means an outline exists. It is not an implementation instruction and does not authorize unattended expansion of scope.
