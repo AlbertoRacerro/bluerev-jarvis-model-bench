@@ -179,7 +179,16 @@ class HoRouteExplicitReplayTests(unittest.TestCase):
                 "runs": 30,
             },
         )
-        self.assertTrue(all(summary["integrity"].values()))
+        for key, value in summary["integrity"].items():
+            if key in {
+                "external_providers_used",
+                "hermes_executed",
+                "jarvisos_accessed",
+                "secret_values_recorded",
+            }:
+                self.assertFalse(value, msg=key)
+            else:
+                self.assertTrue(value, msg=key)
         self.assertEqual(len(summary["results"]), 10)
 
     def test_bench1_closeout_manifest_and_capability_matrix(self):
@@ -206,7 +215,16 @@ class HoRouteExplicitReplayTests(unittest.TestCase):
             ],
         )
         self.assertFalse(summary["interpretation"]["global_winner_declared"])
-        self.assertTrue(all(summary["integrity"].values()))
+        for key, value in summary["integrity"].items():
+            if key in {
+                "external_providers_used",
+                "hermes_executed",
+                "jarvisos_accessed",
+                "secret_values_recorded",
+            }:
+                self.assertFalse(value, msg=key)
+            else:
+                self.assertTrue(value, msg=key)
         self.assertEqual(len(summary["results"]), 10)
 
     def test_capture_entry_materializes_pre_import_failure(self):
