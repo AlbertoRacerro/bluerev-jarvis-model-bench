@@ -1,0 +1,47 @@
+name: BENCH-2 Hermes canary validation
+
+on:
+  pull_request:
+    paths:
+      - candidates/bench2-h4-eligible.json
+      - config/bench2-hermes-canary-oneshot.json
+      - config/bench2-hermes-orchestrator-oneshot.json
+      - fixtures/bench-2/**
+      - fixtures/bench-plans/hermes-orchestrator-canary-v1.json
+      - fixtures/bench-plans/hermes-orchestrator-h4-eligible-plan-v2.json
+      - reports/H4-HERMES-MINIMUM-64K/**
+      - scripts/run_bench2_hermes_canary.py
+      - scripts/validate_bench2_hermes_canary.py
+      - scripts/validate_bench2_hermes_plan.py
+      - tests/test_bench2_hermes_canary.py
+      - tests/test_bench2_hermes_plan.py
+      - .github/workflows/bench2-hermes-canary-validation.yml
+      - .github/workflows/bench2-hermes-canary-oneshot.yml
+      - .gitattributes
+      - STATUS.md
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run BENCH-2 plan and canary contract tests
+        run: |
+          python -m unittest tests.test_bench2_hermes_plan tests.test_bench2_hermes_canary
+          python scripts/validate_bench2_hermes_plan.py --output artifacts/bench2-plan-validation.json
+          python scripts/validate_bench2_hermes_canary.py --output artifacts/bench2-canary-validation.json
+      - name: Upload validation evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench2-hermes-canary-validation
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 14

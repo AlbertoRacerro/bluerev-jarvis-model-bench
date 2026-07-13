@@ -8,8 +8,8 @@ Status vocabulary: `planned`, `blocked`, `ready`, `in_progress`, `in_review`, `m
 |---|---|---:|---|---|---|
 | BENCH-0 | merged | #1 | Foundation and runner contract | — | Strict extraction, manifests, local inventory, self-hosted Windows workflows, immutable artifacts, and safety boundaries. |
 | BENCH-1 | merged | #96 | Direct synthetic orchestration battery | BENCH-0 | Evidence-gated local direct results for explicit HO-STOP and HO-ROUTE contracts: 60 accepted runs across 10 candidates. |
-| H4 | in_review | #104 | Hermes minimum 64K admission | H3 | All ten Lane 1 candidates attempted on trusted run `29260032005`: 8 qualified, 1 CPU offload, 1 context mismatch. |
-| BENCH-2 | in_review | #104 | Hermes orchestrator isolation | H4 | H4-bound v2 plan: eight infrastructure-qualified candidates, two capabilities, three repetitions, 48 total runs at an actual 65536-token context. |
+| H4 | merged | #104 | Hermes minimum 64K admission | H3 | All ten Lane 1 candidates attempted on trusted run `29260032005`: 8 qualified, 1 CPU offload, 1 context mismatch. |
+| BENCH-2 | in_review | #105 | Hermes orchestrator isolation | H4 | H4-bound v2 plan plus a disabled 1×1 isolated canary; the full 48-run matrix remains unauthorized. |
 | BENCH-3 | planned | — | Tool and coding fixtures | BENCH-2 | Windows/cmd, file edits, patching, deterministic tests, and bounded worker/critic/adjudicator loops. |
 | BENCH-4 | blocked | — | Adaptive local model routing | BENCH-2, BENCH-3 | Route among eligible local models by capability, reliability, latency, and resource cost. External APIs remain out of scope. |
 | BENCH-5 | planned | — | Controlled self-improvement | BENCH-4 | Evaluate memory, skill, routing, replay, overfitting, and promotion boundaries. |
@@ -86,7 +86,18 @@ Detailed evidence is stored in `reports/BENCH-1-HO-ROUTE-EXPLICIT-REPLAY/` and `
 - Required runtime context: actual `num_ctx = 65536`.
 - Matrix: 8 candidates × 2 cases × 3 repetitions = **48 runs**, four serial batches.
 - Comparison remains capability-specific; global composite scores are forbidden and ties remain ties.
-- The execution marker remains disabled. PR validation cannot run Hermes, Ollama, external providers, or JarvisOS.
+- The full execution marker remains disabled.
+
+### Isolated Hermes canary
+
+- PR #105 prepares exactly **1 candidate × 1 case × 1 repetition**.
+- Candidate: `qwythos-hermes-safe`; selection is an infrastructure canary, not a ranking or admission preference.
+- Case: `ho-tools-hermes-lookup-001`.
+- Hermes Agent is pinned to version `0.18.2`, commit `73b611ad19720d70308dad6b0fb64648aaadc216`.
+- Required evidence: clean pinned Hermes checkout, isolated home/workdir, custom loopback provider, deterministic plugin trace, usage file, strict final JSON, actual 65536 context, full VRAM residency, cleanup, immutable repository binding, and manifest verification.
+- Credential-bearing environment variables are removed and non-loopback proxy traffic is sinked to `127.0.0.1:9`.
+- Semantic failure is retained separately from invalid infrastructure.
+- The canary marker is disabled in PR #105. Hosted PR validation cannot execute Hermes, Ollama, external providers, or JarvisOS.
 
 ## Excluded evidence
 
@@ -97,10 +108,11 @@ Detailed evidence is stored in `reports/BENCH-1-HO-ROUTE-EXPLICIT-REPLAY/` and `
 
 ## Current operating order
 
-1. Merge PR #104 only after both hosted validation workflows are green.
-2. Implement a single-candidate isolated Hermes canary against the v2 plan, without enabling the full marker.
-3. Verify Hermes initialization, isolated home/workdir, local custom provider, plugin loading, tool trace, usage file, context observation, cleanup, and immutable artifact binding.
-4. Only after a valid canary, enable and dispatch the four serial BENCH-2 batches for all eight H4-qualified candidates.
-5. Close BENCH-2 capability-by-capability; preserve invalid infrastructure separately and do not calculate a global winner.
+1. Merge PR #105 only after the hosted canary validator and existing BENCH-2 validator are green.
+2. Enable only the dedicated canary marker in a separate reviewed activation commit; keep the full BENCH-2 marker disabled.
+3. Execute and verify the single trusted canary artifact, including GitHub digest, internal manifest, Hermes identity, local-only boundary, tool trace, usage, context, VRAM residency, and cleanup.
+4. Treat a semantic canary failure as valid model evidence that blocks the full matrix; repair only demonstrated harness defects.
+5. Only after a valid semantic canary, enable the four serial BENCH-2 batches for all eight H4-qualified candidates.
+6. Close BENCH-2 capability-by-capability; preserve invalid infrastructure separately and do not calculate a global winner.
 
 `planned` means an outline exists. It is not an implementation instruction and does not authorize unattended expansion of scope.
