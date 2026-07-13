@@ -67,7 +67,21 @@ jobs:
       - name: Enforce semantic infrastructure and evidence gate
         id: enforce
         if: always()
-        run: python -m scripts.run_direct_semantic_campaign_bound_job enforce
+        shell: cmd
+        run: python scripts/run_direct_semantic_enforce_entry.py
+      - name: Upload immutable enforce diagnostics
+        id: enforce_upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: direct-semantic-enforce-${{ github.run_id }}-${{ github.run_attempt }}-b${{ matrix.batch }}
+          path: |
+            artifacts/direct-semantic/enforce-stdout.log
+            artifacts/direct-semantic/enforce-stderr.log
+            artifacts/direct-semantic/enforce-summary.json
+            artifacts/direct-semantic/enforce-traceback.txt
+          if-no-files-found: error
+          retention-days: 30
       - name: Publish compact semantic result
         if: always()
         continue-on-error: true
@@ -82,12 +96,15 @@ jobs:
           ENFORCE: ${{ steps.enforce.outcome }}
           URL: ${{ steps.upload.outputs.artifact-url }}
           DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+          ENFORCE_URL: ${{ steps.enforce_upload.outputs.artifact-url }}
+          ENFORCE_DIGEST: ${{ steps.enforce_upload.outputs.artifact-digest }}
         with:
           script: |
             const fs = require('fs');
             const load = (path) => { try { return JSON.parse(fs.readFileSync(path, 'utf8')); } catch (_) { return null; } };
             const summary = load('artifacts/direct-semantic/job-summary.json');
             const report = load('artifacts/direct-semantic/campaign/report.json');
+            const enforceSummary = load('artifacts/direct-semantic/enforce-summary.json');
             const payload = {
               schema_version: 'bench.direct-semantic-inbox.v1',
               run_id: Number(context.runId),
@@ -98,10 +115,12 @@ jobs:
               job_status: process.env.STATUS,
               phases: {capture: process.env.CAPTURE, enforce: process.env.ENFORCE},
               artifact: {url: process.env.URL || null, digest: process.env.DIGEST || null},
+              enforce_artifact: {url: process.env.ENFORCE_URL || null, digest: process.env.ENFORCE_DIGEST || null},
+              enforce_summary: enforceSummary,
               repository: report?.repository ?? summary?.repository ?? null,
               selection: report?.selection ?? summary?.selection ?? null,
               result_counts: report?.result_counts ?? null,
-              infrastructure_error: report?.infrastructure_error ?? summary?.capture_error ?? null,
+              infrastructure_error: report?.infrastructure_error ?? summary?.capture_error ?? enforceSummary?.error ?? null,
               source: report?.source ?? summary?.source ?? null,
             };
             await github.rest.issues.createComment({

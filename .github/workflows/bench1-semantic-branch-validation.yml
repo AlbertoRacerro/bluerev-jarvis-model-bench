@@ -10,6 +10,7 @@ on:
       - fix/semantic-cmd-bootstrap
       - fix/semantic-case-snapshot-digest
       - fix/semantic-case-report-digests
+      - fix/semantic-enforce-diagnostics
 
 permissions:
   contents: read
@@ -37,7 +38,9 @@ jobs:
             scripts/run_direct_semantic_campaign_job.py \
             scripts/run_direct_semantic_campaign_bound_job.py \
             scripts/run_direct_semantic_capture_entry.py \
-            tests/test_direct_semantic_campaign.py 2>&1 | tee compile.log
+            scripts/run_direct_semantic_enforce_entry.py \
+            tests/test_direct_semantic_campaign.py \
+            tests/test_direct_semantic_enforce_entry.py 2>&1 | tee compile.log
       - name: Run deterministic semantic campaign tests
         id: tests
         env:
@@ -46,6 +49,7 @@ jobs:
           set -o pipefail
           python -m unittest -v \
             tests.test_direct_semantic_campaign \
+            tests.test_direct_semantic_enforce_entry \
             tests.test_direct_execution_v3 \
             tests.test_evaluator \
             tests.test_cases \
