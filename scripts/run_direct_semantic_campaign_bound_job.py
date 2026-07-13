@@ -11,6 +11,8 @@ from scripts import probe_direct_semantic_campaign as probe
 from scripts import probe_model_residency as residency
 from scripts import run_direct_semantic_campaign_job as job
 
+_ORIGINAL_VALIDATE_PLAN = probe.validate_plan
+
 
 def repository_snapshot() -> dict[str, Any]:
     head = residency._run(["git", "rev-parse", "HEAD"], timeout=30)
@@ -38,6 +40,33 @@ def _write_json(path: Path, value: dict[str, Any]) -> None:
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def _validated_cases() -> list[dict[str, Any]]:
+    _, _, cases = _ORIGINAL_VALIDATE_PLAN(
+        job.PLAN_PATH,
+        job.REGISTRY_PATH,
+        job.H3_SUMMARY_PATH,
+        job.H3_MANIFEST_PATH,
+        probe.EXPECTED_PLAN_SHA256,
+    )
+    return cases
+
+
+def _validate_plan_with_snapshot_digests(*args: Any, **kwargs: Any):
+    """Keep canonical plan validation, then bind runtime results to exact case bytes."""
+
+    plan, candidates, cases = _ORIGINAL_VALIDATE_PLAN(*args, **kwargs)
+    runtime_cases: list[dict[str, Any]] = []
+    for case in cases:
+        runtime_cases.append(
+            {
+                **case,
+                "canonical_case_definition_sha256": case["case_definition_sha256"],
+                "case_definition_sha256": probe._raw_sha256(case["path_object"]),
+            }
+        )
+    return plan, candidates, runtime_cases
+
+
 def _inject_binding(artifact_dir: Path, binding: dict[str, Any]) -> None:
     summary_path = artifact_dir / "job-summary.json"
     if summary_path.is_file():
@@ -49,6 +78,17 @@ def _inject_binding(artifact_dir: Path, binding: dict[str, Any]) -> None:
     if report_path.is_file():
         report = job._load_json(report_path)
         report["repository"] = binding
+        canonical_by_case = {
+            case["case_id"]: case["case_definition_sha256"]
+            for case in _validated_cases()
+        }
+        results = report.get("results")
+        if isinstance(results, list):
+            for result in results:
+                if isinstance(result, dict):
+                    case_id = result.get("case_id")
+                    if case_id in canonical_by_case:
+                        result["canonical_case_definition_sha256"] = canonical_by_case[case_id]
         _write_json(report_path, report)
         probe.write_manifest(campaign_dir)
 
@@ -144,8 +184,24 @@ def _valid_binding(value: Any, current: dict[str, Any]) -> bool:
     )
 
 
+def _canonical_result_bindings_are_valid(report: dict[str, Any]) -> bool:
+    canonical_by_case = {
+        case["case_id"]: case["case_definition_sha256"]
+        for case in _validated_cases()
+    }
+    results = report.get("results")
+    return isinstance(results, list) and all(
+        isinstance(result, dict)
+        and result.get("case_id") in canonical_by_case
+        and result.get("canonical_case_definition_sha256")
+        == canonical_by_case[result["case_id"]]
+        for result in results
+    )
+
+
 def enforce(artifact_dir: Path = job.DEFAULT_ARTIFACTS) -> int:
     job._validate_campaign_manifest = _campaign_manifest_without_nested_manifests
+    job.probe.validate_plan = _validate_plan_with_snapshot_digests
     result = job.enforce(artifact_dir)
     if result != 0:
         return result
@@ -161,6 +217,9 @@ def enforce(artifact_dir: Path = job.DEFAULT_ARTIFACTS) -> int:
         return 1
     if not _valid_binding(report.get("repository"), current):
         print("semantic report checkout binding is invalid", file=sys.stderr)
+        return 1
+    if not _canonical_result_bindings_are_valid(report):
+        print("semantic canonical case binding is invalid", file=sys.stderr)
         return 1
     print(f"semantic checkout binding passed; sha={current['checked_out_sha']}")
     return 0
