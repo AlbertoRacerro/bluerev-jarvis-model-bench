@@ -114,7 +114,11 @@ class DirectSemanticCampaignTests(unittest.TestCase):
         self.assertIn("fail-fast: true", workflow)
         self.assertIn("max-parallel: 1", workflow)
         self.assertIn("runs-on: [self-hosted, Windows, X64, bluerev-bench]", workflow)
-        self.assertIn("capture-shell.log", workflow)
+        self.assertIn("Start-Process", workflow)
+        self.assertIn("-RedirectStandardOutput", workflow)
+        self.assertIn("-RedirectStandardError", workflow)
+        self.assertIn("capture-shell-summary.json", workflow)
+        self.assertNotIn("*>&1 | Tee-Object", workflow)
         self.assertNotIn("pull_request:", workflow)
 
     def test_capture_errors_always_materialize_evidence(self):

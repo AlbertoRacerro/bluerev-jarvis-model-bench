@@ -5,6 +5,7 @@ on:
     branches:
       - bench/bench1-direct-semantic-campaign
       - fix/semantic-capture-diagnostics
+      - fix/semantic-powershell-capture
 
 permissions:
   contents: read
