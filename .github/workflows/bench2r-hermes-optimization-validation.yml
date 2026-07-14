@@ -1,0 +1,58 @@
+name: BENCH-2R Hermes optimization validation
+
+on:
+  pull_request:
+    paths:
+      - config/bench2r-hermes-optimization-profiles.json
+      - config/bench2r-hermes-preflight-marker.json
+      - fixtures/bench-2r/**
+      - fixtures/bench-plans/bench2r-hermes-optimization-plan.json
+      - scripts/bench2r_hermes_runtime.py
+      - scripts/validate_bench2r_hermes_optimization.py
+      - tests/test_bench2r_hermes_optimization.py
+      - reports/BENCH-2R-HERMES-OPTIMIZATION-DESIGN/**
+      - .github/workflows/bench2r-hermes-optimization-validation.yml
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate disabled optimization design
+        run: |
+          mkdir -p artifacts
+          python -m unittest -v tests.test_bench2r_hermes_optimization
+          python -m scripts.validate_bench2r_hermes_optimization --output artifacts/bench2r-optimization-validation.json
+          python -m py_compile scripts/bench2r_hermes_runtime.py scripts/validate_bench2r_hermes_optimization.py
+      - name: Assert validation cannot execute models
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          text = Path(".github/workflows/bench2r-hermes-optimization-validation.yml").read_text(encoding="utf-8")
+          forbidden = [
+              "self" + "-hosted",
+              "ollama " + "create",
+              "hermes " + "-z",
+              "workflow_" + "dispatch",
+          ]
+          found = [token for token in forbidden if token in text]
+          if found:
+              raise SystemExit(f"runtime-capable workflow tokens found: {found}")
+          PY
+      - name: Upload validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench2r-hermes-optimization-validation
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 14

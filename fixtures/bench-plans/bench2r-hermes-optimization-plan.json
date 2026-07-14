@@ -1,0 +1,75 @@
+{
+  "arms": [
+    {
+      "arm_id": "profile_only",
+      "description": "Model-specific runtime profile without the orchestration skill"
+    },
+    {
+      "arm_id": "profile_plus_skill",
+      "description": "Same runtime profile with the bounded-tool-orchestration skill explicitly loaded"
+    }
+  ],
+  "authorization": {
+    "activation_requires_separate_reviewed_commit": true,
+    "marker_path": "config/bench2r-hermes-preflight-marker.json",
+    "marker_must_remain_disabled_in_design_slice": true
+  },
+  "candidate_registry_path": "candidates/bench2-h4-eligible.json",
+  "cases": [
+    "fixtures/bench-2/ho-tools-hermes-lookup-001.json",
+    "fixtures/bench-2/ho-stop-hermes-reuse-001.json"
+  ],
+  "execution": {
+    "context_length": 65536,
+    "external_providers_allowed": false,
+    "fallback_chain": [],
+    "jarvisos_access_allowed": false,
+    "local_only": true,
+    "max_parallel_models": 1,
+    "native_trajectory_required": true,
+    "profile_path": "config/bench2r-hermes-optimization-profiles.json",
+    "skill_path": "fixtures/bench-2r/hermes-skills/bounded-tool-orchestration/SKILL.md",
+    "wire_request_trace_required_before_admission": true
+  },
+  "objective": "Find at least one H4-qualified Lane 1 model that can reliably serve as a bounded Hermes orchestrator after documented model-specific optimization.",
+  "promotion_policy": {
+    "admission_requires_profile_plus_skill_holdout": true,
+    "benchmark_specific_literals_forbidden_in_skill": true,
+    "model_weight_update_allowed_in_this_plan": false,
+    "original_bench2_artifacts_are_baseline_only": true,
+    "silent_candidate_substitution_allowed": false
+  },
+  "schema_version": "bench.hermes-optimization-plan.v1",
+  "stages": [
+    {
+      "stage_id": "S0-STRUCTURE",
+      "runs": 0,
+      "success_gate": "profiles, skill, marker, tests and validator are valid"
+    },
+    {
+      "stage_id": "S1-PROTOCOL-PREFLIGHT",
+      "runs_per_candidate_case_arm": 1,
+      "seed_phase": "tuning",
+      "success_gate": "runtime protocol valid and complete trace captured"
+    },
+    {
+      "stage_id": "S2-DIAGNOSTIC-SELECTION",
+      "runs_per_candidate_case_arm": 1,
+      "seed_phase": "tuning",
+      "success_gate": "retain the best valid arm per candidate without using admission holdouts"
+    },
+    {
+      "stage_id": "S3-ADMISSION",
+      "runs_per_candidate_case": 3,
+      "seed_phase": "admission",
+      "success_gate": "at least 2 of 3 passes on every required capability with no protocol invalidity"
+    },
+    {
+      "stage_id": "S4-HOLDOUT",
+      "runs_per_candidate_case": 3,
+      "seed_phase": "admission",
+      "success_gate": "transfer to unseen equivalent tasks and variable tool registries"
+    }
+  ],
+  "status": "design_ready_execution_disabled"
+}

@@ -1,0 +1,184 @@
+{
+  "candidate_profiles": [
+    {
+      "candidate_id": "gemma4-12b-it-qat",
+      "digest": "38044be4f923e5a55264ed7df4eaac2676651a905f735197c504045140c02bd3",
+      "max_output_tokens": 4096,
+      "model_tag": "gemma4:12b-it-qat",
+      "notes": [
+        "Use the producer's standard sampling profile for general instruction/tool orchestration.",
+        "Do not replay hidden thinking from earlier turns."
+      ],
+      "profile_basis": "producer_model_card",
+      "sampling": {
+        "temperature": 1.0,
+        "top_k": 64,
+        "top_p": 0.95
+      },
+      "source_url": "https://ollama.com/library/gemma4:12b-it-qat",
+      "thinking_mode": "enabled",
+      "tool_protocol": "openai_compatible"
+    },
+    {
+      "candidate_id": "qwable-9b-fable5",
+      "digest": "6e3590af5e19106c55a25aec936d7e55a0d23b602bb276ad32321f8a49a3c1d0",
+      "max_output_tokens": 4096,
+      "model_tag": "hf.co/empero-ai/Qwable-9B-Claude-Fable-5-GGUF:Q4_K_M",
+      "notes": [
+        "Use the producer's precise/coding profile for bounded orchestration.",
+        "Keep repeat_penalty=1.05 to reduce non-terminating reasoning loops."
+      ],
+      "profile_basis": "producer_model_card",
+      "sampling": {
+        "repeat_penalty": 1.05,
+        "temperature": 0.6,
+        "top_k": 20,
+        "top_p": 0.95
+      },
+      "source_url": "https://huggingface.co/empero-ai/Qwable-9B-Claude-Fable-5-GGUF",
+      "thinking_mode": "enabled",
+      "tool_protocol": "openai_compatible"
+    },
+    {
+      "candidate_id": "qwythos-mythos-9b",
+      "digest": "7c3d0c28e4db742c4c6cd2925627acb09b610faec86a32ac872190aee8bc67d0",
+      "max_output_tokens": 16384,
+      "model_tag": "hf.co/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF:Q4_K_M",
+      "notes": [
+        "Avoid greedy decoding and temperatures at or below 0.3; the producer reports repetition loops.",
+        "Use the native function-calling template exposed by the model conversion."
+      ],
+      "profile_basis": "producer_model_card",
+      "sampling": {
+        "repeat_penalty": 1.05,
+        "temperature": 0.6,
+        "top_k": 20,
+        "top_p": 0.95
+      },
+      "source_url": "https://huggingface.co/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF",
+      "thinking_mode": "enabled",
+      "tool_protocol": "native_function_calling"
+    },
+    {
+      "candidate_id": "minicpm5-fable-1b-control",
+      "digest": "9273fd7794224d33f1ce2364c395df1eeb049e56705d635b29cfc51dfd6d157e",
+      "max_output_tokens": 512,
+      "model_tag": "hf.co/GnLOLot/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-GGUF:Q4_K_M",
+      "notes": [
+        "Use the producer's thinking-mode sampling profile.",
+        "Protocol compatibility must pass before semantic scoring; BENCH-2 produced an Ollama chat-template HTTP 400.",
+        "The tested Q4_K_M quantization is below the producer's Q8_0 recommendation and remains a documented quality ceiling."
+      ],
+      "profile_basis": "producer_model_card",
+      "sampling": {
+        "temperature": 0.9,
+        "top_p": 0.95
+      },
+      "source_url": "https://huggingface.co/GnLOLot/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-GGUF",
+      "thinking_mode": "enabled",
+      "tool_protocol": "requires_protocol_preflight"
+    },
+    {
+      "candidate_id": "gemma4-fable-agentic-12b",
+      "digest": "036489398bf6af6874783c754592a90f12a036b20cbbf47a867a3ac938868aff",
+      "max_output_tokens": 4096,
+      "model_tag": "hf.co/yuxinlu1/gemma-4-12B-agentic-fable5-composer2.5-v2-3.5x-tau2-GGUF:Q4_K_M",
+      "notes": [
+        "Use the producer's general sampling profile and keep thinking enabled.",
+        "Use repeat_penalty=1.1 because the producer recommends it for repetition/garbling.",
+        "Tool names not present in the active registry must be rejected deterministically."
+      ],
+      "profile_basis": "producer_model_card",
+      "sampling": {
+        "repeat_penalty": 1.1,
+        "temperature": 1.0,
+        "top_k": 64,
+        "top_p": 0.95
+      },
+      "source_url": "https://huggingface.co/yuxinlu1/gemma-4-12B-agentic-fable5-composer2.5-v2-3.5x-tau2-GGUF",
+      "thinking_mode": "enabled",
+      "tool_protocol": "native_template_required"
+    },
+    {
+      "candidate_id": "gemma4-fable-coder-12b",
+      "digest": "5434f64afb3f2b49f0c8d5e6950313a119303b6dbea21ce542e1f82122427391",
+      "max_output_tokens": 4096,
+      "model_tag": "hf.co/yuxinlu1/gemma-4-12B-coder-fable5-composer2.5-v1-GGUF:Q4_K_M",
+      "notes": [
+        "Use the producer's standard profile rather than the optional greedy coding profile because this lane tests orchestration.",
+        "Keep thinking enabled and require exact channel/tool parsing."
+      ],
+      "profile_basis": "producer_model_card",
+      "sampling": {
+        "temperature": 1.0,
+        "top_k": 64,
+        "top_p": 0.95
+      },
+      "source_url": "https://huggingface.co/yuxinlu1/gemma-4-12B-coder-fable5-composer2.5-v1-GGUF",
+      "thinking_mode": "enabled",
+      "tool_protocol": "native_template_required"
+    },
+    {
+      "candidate_id": "qwythos-hermes-64k",
+      "digest": "466701318bae40cfcf42682a17dc8b5a1e2e99a19fb157cdc0cd09a2abc7a991",
+      "max_output_tokens": 2048,
+      "model_tag": "qwythos-hermes-64k:latest",
+      "notes": [
+        "Preserve the observed local alias output cap and sampling parameters for the first optimization arm.",
+        "The upstream Qwythos card is the external sampling reference; no separate public producer card was found for this local alias."
+      ],
+      "profile_basis": "observed_runtime_alias_and_upstream_model_card",
+      "sampling": {
+        "repeat_penalty": 1.05,
+        "temperature": 0.6,
+        "top_k": 20,
+        "top_p": 0.95
+      },
+      "source_url": "https://huggingface.co/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF",
+      "thinking_mode": "enabled",
+      "tool_protocol": "native_function_calling"
+    },
+    {
+      "candidate_id": "qwythos-hermes-safe",
+      "digest": "f1b4ecbbe67a7adef8f8f975cdbfb3eb08a04b8d91737b2b96e7b761187c668d",
+      "max_output_tokens": 900,
+      "model_tag": "qwythos-hermes-safe:latest",
+      "notes": [
+        "Preserve the observed local alias output cap and sampling parameters for the first optimization arm.",
+        "The upstream Qwythos card is the external sampling reference; no separate public producer card was found for this local alias."
+      ],
+      "profile_basis": "observed_runtime_alias_and_upstream_model_card",
+      "sampling": {
+        "repeat_penalty": 1.05,
+        "temperature": 0.6,
+        "top_k": 20,
+        "top_p": 0.95
+      },
+      "source_url": "https://huggingface.co/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF",
+      "thinking_mode": "enabled",
+      "tool_protocol": "native_function_calling"
+    }
+  ],
+  "context_length": 65536,
+  "hermes": {
+    "commit_sha": "73b611ad19720d70308dad6b0fb64648aaadc216",
+    "version": "0.18.2"
+  },
+  "profile_policy": {
+    "blanket_greedy_decoding_allowed": false,
+    "producer_documentation_preferred": true,
+    "runtime_alias_parameters_must_be_attested": true,
+    "silent_model_substitution_allowed": false
+  },
+  "schema_version": "bench.hermes-optimization-profiles.v1",
+  "seed_policy": {
+    "admission": [
+      17,
+      42,
+      314159
+    ],
+    "tuning": [
+      42
+    ]
+  }
+}
