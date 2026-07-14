@@ -1,0 +1,123 @@
+name: BENCH-2R Hermes S1 observer
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/bench2r-hermes-s1-observer.yml
+  workflow_run:
+    workflows: ["BENCH-2R Hermes S1 observed preflight"]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish observable S1 run state
+        uses: actions/github-script@v7
+        env:
+          TARGET_SHA: 3e927da14fd172ba450e2033b6f8bc20d6d68555
+          ISSUE_TITLE: BENCH-2R S1 run observer — 3e927da
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const targetSha = process.env.TARGET_SHA;
+            let run = null;
+
+            if (context.eventName === 'workflow_run') {
+              const observed = context.payload.workflow_run;
+              if (observed.head_sha === targetSha) {
+                run = observed;
+              }
+            }
+
+            if (!run) {
+              const response = await github.rest.actions.listWorkflowRuns({
+                owner,
+                repo,
+                workflow_id: 'bench2r-hermes-s1-oneshot.yml',
+                branch: 'main',
+                per_page: 30,
+              });
+              run = response.data.workflow_runs.find(item => item.head_sha === targetSha) || null;
+            }
+
+            let payload;
+            if (!run) {
+              payload = {
+                schema_version: 'bench.hermes-s1-observer.v1',
+                target_sha: targetSha,
+                run_found: false,
+                observer_event: context.eventName,
+              };
+            } else {
+              const artifactsResponse = await github.rest.actions.listWorkflowRunArtifacts({
+                owner,
+                repo,
+                run_id: run.id,
+                per_page: 100,
+              });
+              payload = {
+                schema_version: 'bench.hermes-s1-observer.v1',
+                target_sha: targetSha,
+                run_found: true,
+                run: {
+                  id: run.id,
+                  status: run.status,
+                  conclusion: run.conclusion,
+                  attempt: run.run_attempt,
+                  event: run.event,
+                  created_at: run.created_at,
+                  updated_at: run.updated_at,
+                  html_url: run.html_url,
+                },
+                artifacts: artifactsResponse.data.artifacts.map(item => ({
+                  id: item.id,
+                  name: item.name,
+                  size_in_bytes: item.size_in_bytes,
+                  expired: item.expired,
+                  created_at: item.created_at,
+                  digest: item.digest || null,
+                })),
+                observer_event: context.eventName,
+              };
+            }
+
+            const body = [
+              'Deterministic observer for the guarded BENCH-2R Hermes S1 run.',
+              '',
+              '```json',
+              JSON.stringify(payload, null, 2),
+              '```',
+            ].join('\n');
+
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'all',
+              per_page: 100,
+            });
+            const existing = issues.find(item => item.title === process.env.ISSUE_TITLE);
+            if (existing) {
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body,
+                state: run && run.status === 'completed' ? 'closed' : 'open',
+              });
+              core.info(`updated issue #${existing.number}`);
+            } else {
+              const created = await github.rest.issues.create({
+                owner,
+                repo,
+                title: process.env.ISSUE_TITLE,
+                body,
+              });
+              core.info(`created issue #${created.data.number}`);
+            }
