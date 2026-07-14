@@ -5,8 +5,9 @@ import ast
 import hashlib
 import json
 import sys
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 ROOT = Path(__file__).resolve().parents[1]
 for item in (ROOT, ROOT / "src"):
@@ -31,6 +32,7 @@ FINALIZER_PATH = ROOT / "scripts/bench2r_deterministic_finalizer.py"
 PROXY_PATH = ROOT / "scripts/bench2r_loopback_wire_proxy.py"
 RUNTIME_WORKFLOW_PATH = ROOT / ".github/workflows/bench2r-hermes-s3a-oneshot.yml"
 VALIDATION_WORKFLOW_PATH = ROOT / ".github/workflows/bench2r-hermes-s3a-validation.yml"
+HISTORICAL_DESIGN_WORKFLOW_SENTINEL = ROOT / ".bench2r-s3a-historical-design-no-workflow"
 EXPECTED_PROXY_BLOB_SHA = "eed3b03c22d9b87c54ed697ecd611c40f64973ea"
 EXPECTED_CANDIDATE = {
     "candidate_id": "gemma4-12b-it-qat",
@@ -116,8 +118,19 @@ def _git_blob_sha(path: Path) -> str:
     return hashlib.sha1(f"blob {len(data)}\0".encode("ascii") + data).hexdigest()
 
 
+@contextmanager
+def _historical_design_boundary() -> Iterator[None]:
+    original = design.RUNTIME_WORKFLOW_PATH
+    design.RUNTIME_WORKFLOW_PATH = HISTORICAL_DESIGN_WORKFLOW_SENTINEL
+    try:
+        yield
+    finally:
+        design.RUNTIME_WORKFLOW_PATH = original
+
+
 def _validate_runtime_plan() -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
-    strict_design.validate()
+    with _historical_design_boundary():
+        strict_design.validate()
     plan = _load(RUNTIME_PLAN_PATH)
     if plan.get("schema_version") != "bench.hermes-s3a-runtime-plan.v1":
         raise HermesS3ARuntimeValidationError("S3A runtime plan schema drifted")
@@ -472,6 +485,7 @@ def main() -> int:
                 "repetitions": plan["repetitions"],
                 "total_runs": plan["counts"]["total_runs"],
                 "runtime_workflow_present": RUNTIME_WORKFLOW_PATH.is_file(),
+                "historical_design_workflow_masked": True,
                 "automatic_production_promotion_allowed": False,
             }
         code = 0
