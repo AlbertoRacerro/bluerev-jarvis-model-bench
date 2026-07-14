@@ -1,0 +1,6 @@
+name: bench2r-s3a-fixture
+version: 1.0.0
+description: Deterministic local-only tools for BENCH-2R Hermes S3A
+toolsets:
+  - bench2r_s3a_fixture
+entrypoint: __init__.py
