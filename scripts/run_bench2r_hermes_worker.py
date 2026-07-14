@@ -56,13 +56,7 @@ def _usage_from_result(result: dict[str, Any], failure: str | None) -> dict[str,
 
 @contextmanager
 def _force_native_trajectory_capture() -> Iterator[None]:
-    """Force the pinned oneshot-created AIAgent to save its native trajectory.
-
-    Hermes 0.18.2 exposes ``save_trajectories`` as an AIAgent constructor
-    argument defaulting to False. The oneshot helper does not propagate the
-    similarly named config key, so the isolated benchmark worker must bind the
-    constructor explicitly. This process runs one conversation and is discarded.
-    """
+    """Force the pinned oneshot-created AIAgent to save its native trajectory."""
     from run_agent import AIAgent
 
     original_init = AIAgent.__init__
@@ -80,15 +74,19 @@ def _force_native_trajectory_capture() -> Iterator[None]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Run one observed Hermes conversation for BENCH-2R S1."
+        description="Run one observed Hermes conversation for BENCH-2R."
     )
     parser.add_argument("--model", required=True)
     parser.add_argument("--arm", choices=("profile_only", "profile_plus_skill"), required=True)
+    parser.add_argument("--toolset", default="bench2_fixture")
     parser.add_argument("--prompt-file", type=Path, required=True)
     parser.add_argument("--usage-file", type=Path, required=True)
     parser.add_argument("--result-file", type=Path, required=True)
     parser.add_argument("--debug-file", type=Path, required=True)
     args = parser.parse_args()
+
+    if not args.toolset.strip():
+        parser.error("--toolset must be non-empty")
 
     os.environ["HERMES_YOLO_MODE"] = "1"
     os.environ["HERMES_ACCEPT_HOOKS"] = "1"
@@ -128,7 +126,7 @@ def main() -> int:
                     prompt,
                     model=args.model,
                     provider="custom",
-                    toolsets=["bench2_fixture"],
+                    toolsets=[args.toolset],
                     use_config_toolsets=False,
                 )
     except BaseException as exc:  # noqa: BLE001 - worker must persist evidence
@@ -144,6 +142,7 @@ def main() -> int:
     )
     payload = {
         "arm": args.arm,
+        "toolset": args.toolset,
         "failure": failure,
         "final_response": response,
         "messages": result.get("messages"),
