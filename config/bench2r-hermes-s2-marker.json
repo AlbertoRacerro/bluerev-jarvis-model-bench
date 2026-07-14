@@ -1,6 +1,6 @@
 {
   "schema_version": "bench.hermes-s2-oneshot.v1",
-  "enabled": true,
+  "enabled": false,
   "batch_count": 3,
   "batch_size": 1,
   "seeds": [17, 42, 314159],
