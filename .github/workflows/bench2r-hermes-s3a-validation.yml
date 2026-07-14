@@ -12,6 +12,7 @@ on:
       - reports/BENCH-2R-HERMES-S2-CLOSEOUT/**
       - reports/BENCH-2R-HERMES-S3A-DESIGN/**
       - reports/BENCH-2R-HERMES-S3A-WINDOWS-SOURCE-FIX/**
+      - reports/BENCH-2R-HERMES-S3A-CLOSEOUT/**
       - scripts/bench2r_deterministic_finalizer.py
       - scripts/bench2r_loopback_wire_proxy.py
       - scripts/run_bench2r_hermes_worker.py
@@ -23,11 +24,13 @@ on:
       - scripts/validate_bench2r_hermes_s3a_contract.py
       - scripts/validate_bench2r_hermes_s3a_runtime.py
       - scripts/validate_bench2r_hermes_s3a_windows.py
+      - scripts/validate_bench2r_hermes_s3a_closeout.py
       - tests/test_bench2r_hermes_s3a.py
       - tests/test_bench2r_hermes_s3a_contract.py
       - tests/test_bench2r_hermes_s3a_runtime.py
       - tests/test_bench2r_hermes_s3a_windows.py
       - tests/test_bench2r_hermes_s3a_preflight.py
+      - tests/test_bench2r_hermes_s3a_closeout.py
       - .github/workflows/bench2r-hermes-s3a-oneshot.yml
       - .github/workflows/bench2r-hermes-s3a-validation.yml
 
@@ -44,7 +47,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Validate S3A durable preflight and Windows boundary
+      - name: Validate S3A runtime and failed closeout boundaries
         shell: bash
         run: |
           mkdir -p artifacts
@@ -54,9 +57,12 @@ jobs:
               tests.test_bench2r_hermes_s3a \
               tests.test_bench2r_hermes_s3a_contract \
               tests.test_bench2r_hermes_s3a_windows \
-              tests.test_bench2r_hermes_s3a_preflight
+              tests.test_bench2r_hermes_s3a_preflight \
+              tests.test_bench2r_hermes_s3a_closeout
             python -m scripts.validate_bench2r_hermes_s3a_windows \
               --output artifacts/bench2r-s3a-windows-disabled-validation.json
+            python -m scripts.validate_bench2r_hermes_s3a_closeout \
+              --output artifacts/bench2r-s3a-closeout-validation.json
             python -m py_compile \
               scripts/run_bench2r_hermes_s3a.py \
               scripts/run_bench2r_hermes_s3a_safe.py \
@@ -66,11 +72,13 @@ jobs:
               scripts/validate_bench2r_hermes_s3a_contract.py \
               scripts/validate_bench2r_hermes_s3a_runtime.py \
               scripts/validate_bench2r_hermes_s3a_windows.py \
+              scripts/validate_bench2r_hermes_s3a_closeout.py \
               tests/test_bench2r_hermes_s3a.py \
               tests/test_bench2r_hermes_s3a_contract.py \
               tests/test_bench2r_hermes_s3a_runtime.py \
               tests/test_bench2r_hermes_s3a_windows.py \
-              tests/test_bench2r_hermes_s3a_preflight.py
+              tests/test_bench2r_hermes_s3a_preflight.py \
+              tests/test_bench2r_hermes_s3a_closeout.py
           } 2>&1 | tee artifacts/validation.log
       - name: Upload validation evidence
         if: always()
