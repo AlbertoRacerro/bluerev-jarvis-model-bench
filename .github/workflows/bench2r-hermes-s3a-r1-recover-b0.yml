@@ -1,0 +1,29 @@
+name: Recover BENCH-2R Hermes S3A-R1 batch 0 evidence
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/bench2r-hermes-s3a-r1-recover-b0.yml
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    runs-on: [self-hosted, Windows, X64, bluerev-bench]
+    timeout-minutes: 10
+    steps:
+      - name: Inventory preserved batch 0 workspace
+        shell: cmd
+        run: |
+          if not exist artifacts\bench2r-hermes-s3a-r1-repair\batch-report.json exit /b 2
+          dir /s /b artifacts\bench2r-hermes-s3a-r1-repair > artifacts\bench2r-hermes-s3a-r1-repair\recovery-inventory.txt
+      - name: Upload preserved S3A-R1 batch 0 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench2r-hermes-s3a-r1-recovered-29364133435-b0
+          path: artifacts/bench2r-hermes-s3a-r1-repair/
+          if-no-files-found: error
+          retention-days: 45
