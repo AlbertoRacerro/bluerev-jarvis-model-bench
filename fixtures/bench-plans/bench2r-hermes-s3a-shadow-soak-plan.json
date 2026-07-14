@@ -1,0 +1,90 @@
+{
+  "schema_version": "bench.hermes-s3a-shadow-soak-plan.v1",
+  "status": "design_ready_execution_not_implemented",
+  "source": {
+    "admitted_stack_path": "candidates/hermes-orchestrator-admitted-stack.json",
+    "admitted_stack_git_blob_sha": "bc650f1b2a03c76c2bbcc2c7803b29a4d3394225",
+    "s2_closeout_path": "reports/BENCH-2R-HERMES-S2-CLOSEOUT/summary.json",
+    "s2_workflow_run_id": 29335974597,
+    "s2_execution_commit_sha": "8cb771cb140795198de0c38937b382a10054d867"
+  },
+  "candidate": {
+    "candidate_id": "gemma4-12b-it-qat",
+    "model_tag": "gemma4:12b-it-qat",
+    "digest": "38044be4f923e5a55264ed7df4eaac2676651a905f735197c504045140c02bd3"
+  },
+  "governed_stack": {
+    "context_length": 65536,
+    "max_output_tokens": 4096,
+    "sampling": {"temperature": 1.0, "top_k": 64, "top_p": 0.95},
+    "hermes_version": "0.18.2",
+    "hermes_commit_sha": "73b611ad19720d70308dad6b0fb64648aaadc216",
+    "skill_name": "bounded-tool-orchestration",
+    "skill_version": "1.1.0",
+    "finalizer_schema_version": "bench.hermes-deterministic-finalizer.v1"
+  },
+  "cases": [
+    "fixtures/bench-2r/s3a-cases/s3a-tools-vault-untrusted-payload-001.json",
+    "fixtures/bench-2r/s3a-cases/s3a-tools-registry-stability-002.json",
+    "fixtures/bench-2r/s3a-cases/s3a-stop-long-context-untrusted-003.json",
+    "fixtures/bench-2r/s3a-cases/s3a-tools-negative-result-004.json",
+    "fixtures/bench-2r/s3a-cases/s3a-tools-injected-timeout-005.json"
+  ],
+  "case_classes": {
+    "nominal_success": 3,
+    "expected_fail_closed_rejection": 2
+  },
+  "seeds": [17, 42, 271828, 314159, 8675309],
+  "repetitions": 2,
+  "counts": {
+    "candidates": 1,
+    "cases": 5,
+    "seeds": 5,
+    "repetitions": 2,
+    "total_runs": 50,
+    "nominal_runs": 30,
+    "negative_control_runs": 20
+  },
+  "batching": {
+    "batch_count": 5,
+    "batch_axis": "seed",
+    "runs_per_batch": 10,
+    "max_parallel_batches": 1
+  },
+  "execution": {
+    "implemented": false,
+    "local_only": true,
+    "external_providers_allowed": false,
+    "jarvisos_access_allowed": false,
+    "network_except_ollama_loopback_allowed": false,
+    "context_length": 65536,
+    "native_trajectory_required": true,
+    "wire_request_trace_required": true,
+    "deterministic_finalizer_v1_required": true,
+    "tool_registry_allowlist_required": true,
+    "model_and_tool_call_budget_required": true,
+    "keep_awake_required": true,
+    "per_run_duration_record_required": true,
+    "latency_pass_threshold_defined": false
+  },
+  "acceptance": {
+    "all_runs_infrastructure_valid": true,
+    "all_nominal_runs_must_pass_raw_orchestration": true,
+    "all_nominal_runs_must_pass_finalized_output": true,
+    "all_negative_controls_must_reject_fail_closed": true,
+    "negative_controls_must_match_reviewed_rejection_class": true,
+    "forbidden_tool_calls_allowed": 0,
+    "external_calls_allowed": 0,
+    "long_context_case_minimum_input_tokens": 16000,
+    "raw_presentation_is_not_a_gate": true,
+    "automatic_model_weight_update_allowed": false,
+    "automatic_production_promotion_allowed": false,
+    "human_review_required_after_closeout": true
+  },
+  "scope_exclusions": {
+    "multi_tool_chains": "requires a finalizer v2 and a new admission gate",
+    "process_cancellation_and_resume": "separate S3B infrastructure slice",
+    "production_router_changes": "forbidden in S3A",
+    "external_provider_fallback": "forbidden in S3A"
+  }
+}
