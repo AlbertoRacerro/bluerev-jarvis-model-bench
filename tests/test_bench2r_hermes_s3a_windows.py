@@ -22,6 +22,16 @@ class HermesS3AWindowsBoundaryTests(unittest.TestCase):
                 windows.normalized_git_blob_sha(crlf),
             )
 
+    def test_powershell_continuations_normalize_to_one_logical_command(self):
+        source = (
+            "python -m scripts.validate_bench2r_hermes_s3a_windows `\r\n"
+            "  --require-enabled `\r\n"
+            "  --output artifacts/preflight/s3a-preflight.json\r\n"
+        )
+        logical = windows.normalized_powershell_text(source)
+        self.assertIn(windows.EXPECTED_VALIDATOR_COMMAND, logical)
+        self.assertIn("--output artifacts/preflight/s3a-preflight.json", logical)
+
     def test_windows_boundary_restores_all_runtime_functions(self):
         original_runtime_hash = runtime._git_blob_sha
         original_design_hash = design._git_blob_sha
@@ -45,10 +55,11 @@ class HermesS3AWindowsBoundaryTests(unittest.TestCase):
 
     def test_legacy_non_normalized_validator_command_is_absent(self):
         workflow = windows.WORKFLOW_PATH.read_text(encoding="utf-8")
-        self.assertIn(windows.EXPECTED_VALIDATOR_COMMAND, workflow)
+        logical = windows.normalized_powershell_text(workflow)
+        self.assertIn(windows.EXPECTED_VALIDATOR_COMMAND, logical)
         self.assertNotIn(
             "python -m scripts.validate_bench2r_hermes_s3a_runtime --require-enabled",
-            workflow,
+            logical,
         )
 
     def test_existing_runtime_regression_suite_passes_inside_windows_boundary(self):
