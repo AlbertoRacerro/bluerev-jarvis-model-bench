@@ -88,10 +88,10 @@ def _validate_case_contract(case: dict[str, Any]) -> None:
             raise HermesS3AContractError("negative-result rejection reason drifted")
     if case_id == "s3a-tools-injected-timeout-005":
         fault = _object(inputs.get("fault_injection"), "timeout fault injection")
-        if fault != {"type": "deterministic_timeout_exception", "trace_before_raise": True}:
+        if fault != {"type": "deterministic_timeout_result", "trace_before_return": True}:
             raise HermesS3AContractError("timeout fault-injection signature drifted")
-        if expected.get("required_rejection_classes") != ["worker_failed_or_tool_result_not_verified"]:
-            raise HermesS3AContractError("timeout rejection class drifted")
+        if expected.get("required_rejection_reasons") != ["tool_result_not_verified"]:
+            raise HermesS3AContractError("timeout rejection reason drifted")
 
 
 def validate() -> dict[str, Any]:
