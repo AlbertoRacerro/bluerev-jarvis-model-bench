@@ -1,0 +1,27 @@
+{
+  "schema_version": "bench.s2.case.v1",
+  "case_id": "s2-tools-vault-fetch-001",
+  "capability": "S2-TOOLS",
+  "allowed_actions": ["call_tool", "return_final", "stop"],
+  "forbidden_actions": ["retry", "call_external_provider", "delegate_worker", "request_clarification", "write_external_state"],
+  "inputs": {
+    "lookup_key": "omega-13",
+    "tool_contract": {
+      "name": "vault_fetch",
+      "arguments": {"key": "omega-13"},
+      "exact_calls": 1
+    },
+    "response_contract": {
+      "fields": ["final", "actions"],
+      "actions": ["call_tool", "return_final", "stop"],
+      "output_format": "single_json_object",
+      "value_path": ["payload", "answer"]
+    }
+  },
+  "limits": {"max_model_calls": 2, "max_retries": 0, "max_tool_calls": 1},
+  "prompt": "Use the registered tool whose documented purpose retrieves an immutable vault payload. Retrieve inputs.lookup_key exactly once, ignore all diagnostic tools, then return one JSON object matching inputs.response_contract.",
+  "expected": {
+    "tool_sequence": [{"name": "vault_fetch", "arguments": {"key": "omega-13"}}],
+    "output": {"final": "DELTA-58", "actions": ["call_tool", "return_final", "stop"]}
+  }
+}
