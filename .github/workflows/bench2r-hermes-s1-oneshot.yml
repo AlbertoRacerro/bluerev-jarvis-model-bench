@@ -3,6 +3,8 @@ name: BENCH-2R Hermes S1 observed preflight
 on:
   push:
     branches: [main]
+    paths:
+      - config/bench2r-hermes-s1-marker.json
 
 permissions:
   contents: read
