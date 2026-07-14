@@ -11,7 +11,9 @@ on:
       - reports/BENCH-2R-HERMES-S3A-DESIGN/**
       - scripts/bench2r_deterministic_finalizer.py
       - scripts/validate_bench2r_hermes_s3a.py
+      - scripts/validate_bench2r_hermes_s3a_contract.py
       - tests/test_bench2r_hermes_s3a.py
+      - tests/test_bench2r_hermes_s3a_contract.py
       - .github/workflows/bench2r-hermes-s3a-validation.yml
 
 permissions:
@@ -30,9 +32,18 @@ jobs:
       - name: Validate S3A design-only boundary
         run: |
           mkdir -p artifacts
-          python -m unittest -v tests.test_bench2r_hermes_s3a
-          python -m scripts.validate_bench2r_hermes_s3a --output artifacts/bench2r-s3a-design-validation.json
-          python -m py_compile scripts/validate_bench2r_hermes_s3a.py tests/test_bench2r_hermes_s3a.py
+          python -m unittest -v \
+            tests.test_bench2r_hermes_s3a \
+            tests.test_bench2r_hermes_s3a_contract
+          python -m scripts.validate_bench2r_hermes_s3a \
+            --output artifacts/bench2r-s3a-design-validation.json
+          python -m scripts.validate_bench2r_hermes_s3a_contract \
+            --output artifacts/bench2r-s3a-strict-contract-validation.json
+          python -m py_compile \
+            scripts/validate_bench2r_hermes_s3a.py \
+            scripts/validate_bench2r_hermes_s3a_contract.py \
+            tests/test_bench2r_hermes_s3a.py \
+            tests/test_bench2r_hermes_s3a_contract.py
       - name: Upload validation evidence
         if: always()
         uses: actions/upload-artifact@v4
