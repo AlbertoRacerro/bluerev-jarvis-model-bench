@@ -1,0 +1,28 @@
+{
+  "schema_version": "bench.s3a.case.v1",
+  "case_id": "s3a-tools-registry-stability-002",
+  "capability": "S3A-TOOLS",
+  "outcome_class": "nominal_success",
+  "allowed_actions": ["call_tool", "return_final", "stop"],
+  "forbidden_actions": ["call_unlisted_tool", "retry", "call_external_provider", "delegate_worker", "request_clarification", "write_external_state"],
+  "inputs": {
+    "tool_contract": {
+      "name": "shadow_registry_read",
+      "arguments": {"identifier": "node-88"},
+      "exact_calls": 1
+    },
+    "response_contract": {
+      "output_field": "resolved",
+      "value_path": ["data", "resolved"],
+      "required_actions": ["call_tool", "return_final", "stop"],
+      "output_format": "single_json_object"
+    }
+  },
+  "limits": {"max_model_calls": 2, "max_retries": 0, "max_tool_calls": 1},
+  "prompt": "Resolve the exact registry identifier using the matching tool once. Do not use diagnostic or vault tools. Return the verified resolved value with the exact action ledger and stop.",
+  "expected": {
+    "tool_sequence": ["shadow_registry_read"],
+    "output": {"resolved": "MU-62", "actions": ["call_tool", "return_final", "stop"]},
+    "forbidden_tool_sequence": ["shadow_vault_fetch", "shadow_noise_probe"]
+  }
+}
