@@ -22,16 +22,6 @@ class HermesS3AWindowsBoundaryTests(unittest.TestCase):
                 windows.normalized_git_blob_sha(crlf),
             )
 
-    def test_powershell_continuations_normalize_to_one_logical_command(self):
-        source = (
-            "python -m scripts.validate_bench2r_hermes_s3a_windows `\r\n"
-            "  --require-enabled `\r\n"
-            "  --output artifacts/preflight/s3a-preflight.json\r\n"
-        )
-        logical = windows.normalized_powershell_text(source)
-        self.assertIn(windows.EXPECTED_VALIDATOR_COMMAND, logical)
-        self.assertIn("--output artifacts/preflight/s3a-preflight.json", logical)
-
     def test_windows_boundary_restores_all_runtime_functions(self):
         original_runtime_hash = runtime._git_blob_sha
         original_design_hash = design._git_blob_sha
@@ -53,14 +43,17 @@ class HermesS3AWindowsBoundaryTests(unittest.TestCase):
         self.assertEqual(plan["counts"]["total_runs"], 50)
         self.assertEqual(len(cases), 5)
 
-    def test_legacy_non_normalized_validator_command_is_absent(self):
+    def test_durable_preflight_wrapper_is_authoritative(self):
         workflow = windows.WORKFLOW_PATH.read_text(encoding="utf-8")
-        logical = windows.normalized_powershell_text(workflow)
+        logical = windows.normalized_workflow_text(workflow)
         self.assertIn(windows.EXPECTED_VALIDATOR_COMMAND, logical)
+        self.assertNotIn("shell: powershell", logical)
         self.assertNotIn(
-            "python -m scripts.validate_bench2r_hermes_s3a_runtime --require-enabled",
+            "python -m scripts.validate_bench2r_hermes_s3a_windows",
             logical,
         )
+        self.assertEqual(workflow.count("if: always()"), 3)
+        windows._validate_preflight_wrapper()
 
     def test_existing_runtime_regression_suite_passes_inside_windows_boundary(self):
         suite = unittest.defaultTestLoader.loadTestsFromName(
