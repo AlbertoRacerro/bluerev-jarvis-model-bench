@@ -5,7 +5,7 @@
   ],
   "batch_count": 4,
   "batch_size": 2,
-  "enabled": false,
+  "enabled": true,
   "repetitions": 1,
   "schema_version": "bench.hermes-s1-oneshot.v1",
   "seed": 42
