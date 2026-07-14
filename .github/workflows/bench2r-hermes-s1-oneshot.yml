@@ -1,0 +1,48 @@
+name: BENCH-2R Hermes S1 observed preflight
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bench2r-hermes-s1
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    if: startsWith(github.event.head_commit.message, 'Activate BENCH-2R Hermes S1 preflight')
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        batch: [0, 1, 2, 3]
+    runs-on: [self-hosted, Windows, X64, bluerev-bench]
+    timeout-minutes: 120
+    env:
+      BENCH2R_HERMES_BATCH_INDEX: ${{ matrix.batch }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Validate authorized S1 contract
+        shell: cmd
+        run: python -m scripts.validate_bench2r_hermes_s1 --require-enabled
+      - name: Capture S1 batch
+        shell: cmd
+        run: python -m scripts.run_bench2r_hermes_s1 capture
+      - name: Enforce S1 artifact integrity
+        if: always()
+        shell: cmd
+        run: python -m scripts.run_bench2r_hermes_s1 enforce
+      - name: Upload S1 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench2r-hermes-s1-${{ github.run_id }}-${{ github.run_attempt }}-b${{ matrix.batch }}
+          path: artifacts/bench2r-hermes-s1/
+          if-no-files-found: error
+          retention-days: 30
