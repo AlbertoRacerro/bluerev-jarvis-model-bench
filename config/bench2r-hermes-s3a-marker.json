@@ -1,6 +1,6 @@
 {
   "schema_version": "bench.hermes-s3a-shadow-soak.v1",
-  "enabled": true,
+  "enabled": false,
   "candidate_id": "gemma4-12b-it-qat",
   "batch_count": 5,
   "batch_size": 1,
