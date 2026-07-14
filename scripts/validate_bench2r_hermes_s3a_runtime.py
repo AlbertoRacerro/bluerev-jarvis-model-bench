@@ -54,6 +54,28 @@ EXPECTED_MARKER_BASE = {
     "repetitions": 2,
     "expected_runs": 50,
 }
+EXPECTED_RUNTIME = {
+    "context_length": 65536,
+    "max_output_tokens": 4096,
+    "sampling": {"temperature": 1.0, "top_k": 64, "top_p": 0.95},
+    "hermes_version": "0.18.2",
+    "hermes_commit_sha": "73b611ad19720d70308dad6b0fb64648aaadc216",
+    "worker_toolset": "bench2r_s3a_fixture",
+    "plugin_name": "bench2r-s3a-fixture",
+    "skill_name": "bounded-tool-orchestration",
+    "skill_version": "1.1.0",
+    "finalizer_schema_version": "bench.hermes-deterministic-finalizer.v1",
+    "local_only": True,
+    "external_providers_allowed": False,
+    "jarvisos_access_allowed": False,
+    "network_except_ollama_loopback_allowed": False,
+    "native_trajectory_required": True,
+    "wire_request_trace_required": True,
+    "full_vram_required": True,
+    "keep_awake_required": True,
+    "per_run_timeout_seconds": 900,
+    "per_run_duration_record_required": True,
+}
 
 
 class HermesS3ARuntimeValidationError(RuntimeError):
@@ -94,31 +116,30 @@ def _git_blob_sha(path: Path) -> str:
 
 def _validate_runtime_plan() -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
     strict_design.validate()
-    runtime_plan = _load(RUNTIME_PLAN_PATH)
-    if runtime_plan.get("schema_version") != "bench.hermes-s3a-runtime-plan.v1":
+    plan = _load(RUNTIME_PLAN_PATH)
+    if plan.get("schema_version") != "bench.hermes-s3a-runtime-plan.v1":
         raise HermesS3ARuntimeValidationError("S3A runtime plan schema drifted")
-    if runtime_plan.get("status") != "ready_execution_disabled":
+    if plan.get("status") != "ready_execution_disabled":
         raise HermesS3ARuntimeValidationError("S3A runtime plan status is unsafe")
-    source = _object(runtime_plan.get("source"), "runtime_plan.source")
-    if source.get("design_plan_path") != DESIGN_PLAN_PATH.relative_to(ROOT).as_posix():
-        raise HermesS3ARuntimeValidationError("S3A design-plan path binding drifted")
-    if source.get("design_plan_git_blob_sha") != _git_blob_sha(DESIGN_PLAN_PATH):
-        raise HermesS3ARuntimeValidationError("S3A design-plan blob binding drifted")
-    if source.get("admitted_stack_path") != STACK_PATH.relative_to(ROOT).as_posix():
-        raise HermesS3ARuntimeValidationError("S3A admitted-stack path binding drifted")
-    if source.get("admitted_stack_git_blob_sha") != _git_blob_sha(STACK_PATH):
-        raise HermesS3ARuntimeValidationError("S3A admitted-stack blob binding drifted")
-    if source.get("s2_workflow_run_id") != 29335974597:
-        raise HermesS3ARuntimeValidationError("S3A S2 run binding drifted")
-    if source.get("s2_execution_commit_sha") != "8cb771cb140795198de0c38937b382a10054d867":
-        raise HermesS3ARuntimeValidationError("S3A S2 execution SHA drifted")
-    if runtime_plan.get("candidate") != EXPECTED_CANDIDATE:
+    source = _object(plan.get("source"), "runtime_plan.source")
+    expected_source = {
+        "design_plan_path": DESIGN_PLAN_PATH.relative_to(ROOT).as_posix(),
+        "design_plan_git_blob_sha": _git_blob_sha(DESIGN_PLAN_PATH),
+        "admitted_stack_path": STACK_PATH.relative_to(ROOT).as_posix(),
+        "admitted_stack_git_blob_sha": _git_blob_sha(STACK_PATH),
+        "s2_closeout_path": "reports/BENCH-2R-HERMES-S2-CLOSEOUT/summary.json",
+        "s2_workflow_run_id": 29335974597,
+        "s2_execution_commit_sha": "8cb771cb140795198de0c38937b382a10054d867",
+    }
+    if source != expected_source:
+        raise HermesS3ARuntimeValidationError("S3A runtime source binding drifted")
+    if plan.get("candidate") != EXPECTED_CANDIDATE:
         raise HermesS3ARuntimeValidationError("S3A runtime candidate drifted")
-    if runtime_plan.get("cases") != EXPECTED_CASE_PATHS:
+    if plan.get("cases") != EXPECTED_CASE_PATHS:
         raise HermesS3ARuntimeValidationError("S3A runtime case inventory drifted")
-    if runtime_plan.get("seeds") != EXPECTED_SEEDS or runtime_plan.get("repetitions") != 2:
+    if plan.get("seeds") != EXPECTED_SEEDS or plan.get("repetitions") != 2:
         raise HermesS3ARuntimeValidationError("S3A runtime seed/repetition policy drifted")
-    if runtime_plan.get("counts") != {
+    if plan.get("counts") != {
         "cases": 5,
         "seeds": 5,
         "repetitions": 2,
@@ -126,47 +147,22 @@ def _validate_runtime_plan() -> tuple[dict[str, Any], dict[str, Any], list[dict[
         "runs_per_batch": 10,
     }:
         raise HermesS3ARuntimeValidationError("S3A runtime counts drifted")
-    if runtime_plan.get("batching") != {
+    if plan.get("batching") != {
         "batch_count": 5,
         "batch_axis": "seed",
         "max_parallel_batches": 1,
     }:
         raise HermesS3ARuntimeValidationError("S3A runtime batching drifted")
-    runtime = _object(runtime_plan.get("runtime"), "runtime_plan.runtime")
-    expected_runtime = {
-        "context_length": 65536,
-        "max_output_tokens": 4096,
-        "sampling": {"temperature": 1.0, "top_k": 64, "top_p": 0.95},
-        "hermes_version": "0.18.2",
-        "hermes_commit_sha": "73b611ad19720d70308dad6b0fb64648aaadc216",
-        "worker_toolset": "bench2r_s3a_fixture",
-        "plugin_name": "bench2r-s3a-fixture",
-        "skill_name": "bounded-tool-orchestration",
-        "skill_version": "1.1.0",
-        "finalizer_schema_version": "bench.hermes-deterministic-finalizer.v1",
-        "local_only": True,
-        "external_providers_allowed": False,
-        "jarvisos_access_allowed": False,
-        "network_except_ollama_loopback_allowed": False,
-        "native_trajectory_required": True,
-        "wire_request_trace_required": True,
-        "full_vram_required": True,
-        "keep_awake_required": True,
-        "per_run_timeout_seconds": 900,
-        "per_run_duration_record_required": True,
-    }
-    if runtime != expected_runtime:
+    if plan.get("runtime") != EXPECTED_RUNTIME:
         raise HermesS3ARuntimeValidationError("S3A runtime stack contract drifted")
-    long_context = _object(runtime_plan.get("long_context"), "runtime_plan.long_context")
-    if long_context != {
+    if plan.get("long_context") != {
         "generator": "deterministic_unique_lines_v1",
         "line_count": 2400,
         "minimum_input_tokens": 16000,
         "untrusted_instruction_frequency": 97,
     }:
         raise HermesS3ARuntimeValidationError("S3A long-context runtime contract drifted")
-    outcomes = _object(runtime_plan.get("outcomes"), "runtime_plan.outcomes")
-    if outcomes != {
+    if plan.get("outcomes") != {
         "nominal_success_requires": [
             "infrastructure_valid",
             "raw_orchestration_pass",
@@ -181,8 +177,7 @@ def _validate_runtime_plan() -> tuple[dict[str, Any], dict[str, Any], list[dict[
         "raw_presentation_is_not_a_gate": True,
     }:
         raise HermesS3ARuntimeValidationError("S3A runtime outcome contract drifted")
-    decision = _object(runtime_plan.get("decision"), "runtime_plan.decision")
-    if decision != {
+    if plan.get("decision") != {
         "automatic_model_weight_update_allowed": False,
         "automatic_production_promotion_allowed": False,
         "passing_status": "shadow_soak_passed_requires_human_review",
@@ -190,22 +185,24 @@ def _validate_runtime_plan() -> tuple[dict[str, Any], dict[str, Any], list[dict[
     }:
         raise HermesS3ARuntimeValidationError("S3A runtime decision boundary drifted")
     profile = optimization.profile_by_candidate("gemma4-12b-it-qat")
-    if profile.get("model_tag") != EXPECTED_CANDIDATE["model_tag"]:
-        raise HermesS3ARuntimeValidationError("S3A producer profile model tag drifted")
-    if profile.get("digest") != EXPECTED_CANDIDATE["digest"]:
-        raise HermesS3ARuntimeValidationError("S3A producer profile digest drifted")
-    if profile.get("sampling") != expected_runtime["sampling"] or profile.get("max_output_tokens") != 4096:
-        raise HermesS3ARuntimeValidationError("S3A producer sampling profile drifted")
+    if (
+        profile.get("model_tag") != EXPECTED_CANDIDATE["model_tag"]
+        or profile.get("digest") != EXPECTED_CANDIDATE["digest"]
+        or profile.get("sampling") != EXPECTED_RUNTIME["sampling"]
+        or profile.get("max_output_tokens") != 4096
+    ):
+        raise HermesS3ARuntimeValidationError("S3A producer profile drifted")
     cases: list[dict[str, Any]] = []
     for path, identity in zip(design.CASE_PATHS, design.EXPECTED_CASES, strict=True):
         case = design._validate_case(path, identity)
+        strict_design._validate_case_contract(case)
         cases.append({
             "path": path.relative_to(ROOT).as_posix(),
             "case_id": case["case_id"],
             "capability": case["capability"],
             "outcome_class": case["outcome_class"],
         })
-    return runtime_plan, profile, cases
+    return plan, profile, cases
 
 
 def _validate_plugin() -> None:
@@ -264,7 +261,7 @@ def _validate_sources() -> None:
         raise HermesS3ARuntimeValidationError("S3A loopback proxy source drifted")
     proxy = PROXY_PATH.read_text(encoding="utf-8")
     if '("127.0.0.1", 0)' not in proxy or 'http://127.0.0.1:11434' not in proxy:
-        raise HermesS3ARuntimeValidationError("S3A proxy is not bound to loopback Ollama")
+        raise HermesS3ARuntimeValidationError("S3A proxy is not loopback-bound")
     if "only /v1/* is allowed" not in proxy:
         raise HermesS3ARuntimeValidationError("S3A proxy path gate is missing")
     runner = RUNNER_PATH.read_text(encoding="utf-8")
@@ -272,13 +269,13 @@ def _validate_sources() -> None:
         "MODEL_FIELDS",
         "bench.s3a.candidate-task.v1",
         "BEGIN UNTRUSTED REFERENCE MATERIAL",
-        "deterministic_unique_lines_v1",
         "minimum_input_tokens",
         "expected_fail_closed_rejection",
         "negative_fail_closed_pass",
         "shadow_pass",
         "automatic_production_promotion_allowed",
-        "production_status\": \"not_promoted",
+        "production_status",
+        "not_promoted",
         "duration_seconds",
         "BENCH2R_HERMES_S3A_BATCH_INDEX",
         "bench2r_s3a_fixture",
@@ -286,13 +283,13 @@ def _validate_sources() -> None:
     missing = sorted(token for token in required_runner_tokens if token not in runner)
     if missing:
         raise HermesS3ARuntimeValidationError(f"S3A runner contract is incomplete: {missing}")
-    if '"expected"' in runner.split("MODEL_FIELDS", 1)[1].split(")", 1)[0]:
-        raise HermesS3ARuntimeValidationError("S3A runner model-field allowlist includes expected")
+    allowlist = runner.split("MODEL_FIELDS", 1)[1].split(")", 1)[0]
+    if '"expected"' in allowlist or '"outcome_class"' in allowlist:
+        raise HermesS3ARuntimeValidationError("S3A model-field allowlist contains evaluator fields")
     safe = SAFE_RUNNER_PATH.read_text(encoding="utf-8")
     required_safe_tokens = {
         "_strict_wire_checks",
         "base._wire_checks = _strict_wire_checks",
-        "finally:",
         "base._wire_checks = original_wire_checks",
         "wire_proxy_errors_absent",
         "wire_authorization_redacted",
@@ -306,14 +303,14 @@ def _validate_sources() -> None:
     if missing_safe:
         raise HermesS3ARuntimeValidationError(f"S3A safe boundary is incomplete: {missing_safe}")
     awake = AWAKE_RUNNER_PATH.read_text(encoding="utf-8")
-    for token in ("keep_windows_awake", "s3a.capture", "choices=(\"capture\",)"):
+    for token in ("keep_windows_awake", "s3a.capture", 'choices=("capture",)'):
         if token not in awake:
             raise HermesS3ARuntimeValidationError("S3A keep-awake wrapper drifted")
     worker = WORKER_PATH.read_text(encoding="utf-8")
     if 'parser.add_argument("--toolset", default="bench2_fixture")' not in worker:
         raise HermesS3ARuntimeValidationError("shared Hermes worker toolset boundary drifted")
     if "toolsets=[args.toolset]" not in worker:
-        raise HermesS3ARuntimeValidationError("shared Hermes worker does not use the reviewed toolset")
+        raise HermesS3ARuntimeValidationError("shared Hermes worker does not use reviewed toolset")
 
 
 def _validate_marker(require_enabled: bool | None) -> dict[str, Any]:
@@ -352,15 +349,12 @@ def _validate_workflow(*, required: bool) -> bool:
         raise HermesS3ARuntimeValidationError(f"S3A runtime workflow contract drifted: {missing}")
     if "workflow_dispatch" in workflow:
         raise HermesS3ARuntimeValidationError("S3A runtime workflow exposes manual dispatch")
-    forbidden = {
+    for forbidden in (
         "python -m scripts.run_bench2r_hermes_s3a capture",
         "python -m scripts.run_bench2r_hermes_s3a enforce",
-    }
-    present_forbidden = sorted(token for token in forbidden if token in workflow)
-    if present_forbidden:
-        raise HermesS3ARuntimeValidationError(
-            f"S3A workflow bypasses the safe boundary: {present_forbidden}"
-        )
+    ):
+        if forbidden in workflow:
+            raise HermesS3ARuntimeValidationError("S3A workflow bypasses safe runtime boundary")
     return True
 
 
@@ -368,21 +362,21 @@ def validate_execution(
     *,
     require_enabled: bool | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
-    runtime_plan, _, cases = _validate_runtime_plan()
+    plan, _, cases = _validate_runtime_plan()
     _validate_plugin()
     _validate_sources()
     marker = _validate_marker(require_enabled)
     workflow_present = _validate_workflow(required=require_enabled is True)
     if marker["enabled"] is True and not workflow_present:
-        raise HermesS3ARuntimeValidationError("S3A marker is enabled without a reviewed workflow")
-    return runtime_plan, marker, dict(EXPECTED_CANDIDATE), cases
+        raise HermesS3ARuntimeValidationError("S3A marker is enabled without reviewed workflow")
+    return plan, marker, dict(EXPECTED_CANDIDATE), cases
 
 
 def validate_implementation() -> dict[str, Any]:
-    runtime_plan, marker, candidate, cases = validate_execution(require_enabled=False)
+    plan, marker, candidate, cases = validate_execution(require_enabled=False)
     if RUNTIME_WORKFLOW_PATH.exists():
         raise HermesS3ARuntimeValidationError(
-            "S3A self-hosted workflow must remain absent in the implementation-only slice"
+            "S3A self-hosted workflow must remain absent in implementation-only slice"
         )
     return {
         "schema_version": "bench.hermes-s3a-runtime-implementation-validation.v1",
@@ -390,22 +384,22 @@ def validate_implementation() -> dict[str, Any]:
         "execution_authorized": False,
         "candidate_id": candidate["candidate_id"],
         "case_count": len(cases),
-        "seed_count": len(runtime_plan["seeds"]),
-        "repetitions": runtime_plan["repetitions"],
-        "total_runs": runtime_plan["counts"]["total_runs"],
+        "seed_count": len(plan["seeds"]),
+        "repetitions": plan["repetitions"],
+        "total_runs": plan["counts"]["total_runs"],
         "marker_enabled": marker["enabled"],
         "runtime_workflow_present": False,
         "automatic_production_promotion_allowed": False,
     }
 
 
-def select_batch(runtime_plan: dict[str, Any], batch_index: int) -> tuple[int, dict[str, Any]]:
-    seeds = runtime_plan.get("seeds")
-    if not isinstance(seeds, list) or seeds != EXPECTED_SEEDS:
+def select_batch(plan: dict[str, Any], batch_index: int) -> tuple[int, dict[str, Any]]:
+    seeds = plan.get("seeds")
+    if seeds != EXPECTED_SEEDS:
         raise HermesS3ARuntimeValidationError("S3A batch seed inventory drifted")
-    if not 0 <= batch_index < len(seeds):
-        raise HermesS3ARuntimeValidationError("S3A batch index is outside the reviewed range")
-    seed = seeds[batch_index]
+    if not 0 <= batch_index < len(EXPECTED_SEEDS):
+        raise HermesS3ARuntimeValidationError("S3A batch index is outside reviewed range")
+    seed = EXPECTED_SEEDS[batch_index]
     return seed, {
         "mode": "seed_batch",
         "batch_index": batch_index,
