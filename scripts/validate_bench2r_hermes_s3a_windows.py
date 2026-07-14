@@ -94,6 +94,10 @@ def _validate_live_workflow(*, required: bool) -> bool:
         raise HermesS3AWindowsValidationError(
             "S3A workflow lost a required failure-evidence boundary"
         )
+    if workflow.count("shell: cmd") != 3:
+        raise HermesS3AWindowsValidationError(
+            "S3A Windows Python steps must use exactly three cmd shells"
+        )
     if "workflow_dispatch" in workflow:
         raise HermesS3AWindowsValidationError("S3A workflow exposes manual dispatch")
     forbidden = {
