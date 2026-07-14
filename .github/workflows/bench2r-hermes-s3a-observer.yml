@@ -21,9 +21,9 @@ jobs:
       - name: Publish S3A run state
         uses: actions/github-script@v7
         env:
-          TARGET_SHA: d4516d167527c24a41ada8f72233d730b8ddfb42
+          TARGET_SHA: 810400f7b1e5b7659daa16e8ce3516682ce95ada
           WORKFLOW_NAME: BENCH-2R Hermes S3A shadow soak
-          ISSUE_TITLE: BENCH-2R S3A run observer — d4516d1
+          ISSUE_TITLE: BENCH-2R S3A run observer — 810400f
         with:
           script: |
             const { owner, repo } = context.repo;
