@@ -1,0 +1,49 @@
+{
+  "arms": [
+    "profile_only",
+    "profile_plus_skill"
+  ],
+  "authorization": {
+    "activation_commit_prefix": "Activate BENCH-2R Hermes S1 preflight",
+    "marker_path": "config/bench2r-hermes-s1-marker.json",
+    "reviewed_activation_required": true
+  },
+  "batching": {
+    "batch_count": 4,
+    "batch_size": 2,
+    "max_parallel_batches": 1
+  },
+  "cases": [
+    "fixtures/bench-2/ho-tools-hermes-lookup-001.json",
+    "fixtures/bench-2/ho-stop-hermes-reuse-001.json"
+  ],
+  "counts": {
+    "arms": 2,
+    "candidates": 8,
+    "cases": 2,
+    "repetitions": 1,
+    "total_runs": 32
+  },
+  "execution": {
+    "context_length": 65536,
+    "external_providers_allowed": false,
+    "fallback_chain": [],
+    "jarvisos_access_allowed": false,
+    "local_only": true,
+    "max_parallel_models": 1,
+    "native_trajectory_required": true,
+    "profile_path": "config/bench2r-hermes-optimization-profiles.json",
+    "seed_phase": "tuning",
+    "skill_path": "fixtures/bench-2r/hermes-skills/bounded-tool-orchestration/SKILL.md",
+    "worker_path": "scripts/run_bench2r_hermes_worker.py"
+  },
+  "purpose": "Diagnose protocol, tool selection, finalization and stopping under model-specific profiles with and without a generic Hermes skill.",
+  "promotion": {
+    "admission_decision_allowed": false,
+    "model_weight_update_allowed": false,
+    "original_bench2_cases_are_diagnostic_only": true,
+    "wire_trace_required_before_admission": true
+  },
+  "schema_version": "bench.hermes-s1-plan.v1",
+  "status": "ready_execution_disabled"
+}

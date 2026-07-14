@@ -1,0 +1,12 @@
+{
+  "arms": [
+    "profile_only",
+    "profile_plus_skill"
+  ],
+  "batch_count": 4,
+  "batch_size": 2,
+  "enabled": false,
+  "repetitions": 1,
+  "schema_version": "bench.hermes-s1-oneshot.v1",
+  "seed": 42
+}
