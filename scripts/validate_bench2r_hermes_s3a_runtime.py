@@ -83,12 +83,12 @@ class HermesS3ARuntimeValidationError(RuntimeError):
 
 
 def _reject_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-    result: dict[str, Any] = {}
-    for key, value in pairs:
-        if key in result:
+    value: dict[str, Any] = {}
+    for key, item in pairs:
+        if key in value:
             raise ValueError(f"duplicate JSON key: {key}")
-        result[key] = value
-    return result
+        value[key] = item
+    return value
 
 
 def _load(path: Path) -> dict[str, Any]:
@@ -100,12 +100,6 @@ def _load(path: Path) -> dict[str, Any]:
         ) from exc
     if not isinstance(value, dict):
         raise HermesS3ARuntimeValidationError(f"{path} must contain an object")
-    return value
-
-
-def _object(value: Any, label: str) -> dict[str, Any]:
-    if not isinstance(value, dict):
-        raise HermesS3ARuntimeValidationError(f"{label} must be an object")
     return value
 
 
@@ -121,7 +115,6 @@ def _validate_runtime_plan() -> tuple[dict[str, Any], dict[str, Any], list[dict[
         raise HermesS3ARuntimeValidationError("S3A runtime plan schema drifted")
     if plan.get("status") != "ready_execution_disabled":
         raise HermesS3ARuntimeValidationError("S3A runtime plan status is unsafe")
-    source = _object(plan.get("source"), "runtime_plan.source")
     expected_source = {
         "design_plan_path": DESIGN_PLAN_PATH.relative_to(ROOT).as_posix(),
         "design_plan_git_blob_sha": _git_blob_sha(DESIGN_PLAN_PATH),
@@ -131,7 +124,7 @@ def _validate_runtime_plan() -> tuple[dict[str, Any], dict[str, Any], list[dict[
         "s2_workflow_run_id": 29335974597,
         "s2_execution_commit_sha": "8cb771cb140795198de0c38937b382a10054d867",
     }
-    if source != expected_source:
+    if plan.get("source") != expected_source:
         raise HermesS3ARuntimeValidationError("S3A runtime source binding drifted")
     if plan.get("candidate") != EXPECTED_CANDIDATE:
         raise HermesS3ARuntimeValidationError("S3A runtime candidate drifted")
@@ -209,14 +202,13 @@ def _validate_plugin() -> None:
     if not PLUGIN_PATH.is_file() or not PLUGIN_MANIFEST_PATH.is_file():
         raise HermesS3ARuntimeValidationError("S3A plugin source or manifest is missing")
     manifest = PLUGIN_MANIFEST_PATH.read_text(encoding="utf-8")
-    for token in (
+    if any(token not in manifest for token in (
         "name: bench2r-s3a-fixture",
         "version: 1.0.0",
         "- bench2r_s3a_fixture",
         "entrypoint: __init__.py",
-    ):
-        if token not in manifest:
-            raise HermesS3ARuntimeValidationError("S3A plugin manifest drifted")
+    )):
+        raise HermesS3ARuntimeValidationError("S3A plugin manifest drifted")
     source = PLUGIN_PATH.read_text(encoding="utf-8")
     tree = ast.parse(source, filename=str(PLUGIN_PATH))
     forbidden_imports = {"http", "requests", "socket", "subprocess", "urllib"}
@@ -243,6 +235,47 @@ def _validate_plugin() -> None:
     ):
         if literal not in source:
             raise HermesS3ARuntimeValidationError(f"S3A plugin fixture binding drifted: {literal}")
+
+
+def _worker_toolset_binding_valid(worker_source: str) -> bool:
+    tree = ast.parse(worker_source, filename=str(WORKER_PATH))
+    selected_function = any(
+        isinstance(node, ast.FunctionDef) and node.name == "_selected_toolsets"
+        for node in tree.body
+    )
+    selected_assignment = False
+    agent_call_valid = False
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Assign, ast.AnnAssign)):
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            value = node.value
+            if (
+                any(isinstance(target, ast.Name) and target.id == "selected_toolsets" for target in targets)
+                and isinstance(value, ast.Call)
+                and isinstance(value.func, ast.Name)
+                and value.func.id == "_selected_toolsets"
+                and len(value.args) == 1
+                and isinstance(value.args[0], ast.Attribute)
+                and isinstance(value.args[0].value, ast.Name)
+                and value.args[0].value.id == "args"
+                and value.args[0].attr == "toolset"
+            ):
+                selected_assignment = True
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "_run_agent"
+        ):
+            keywords = {item.arg: item.value for item in node.keywords if item.arg}
+            toolsets = keywords.get("toolsets")
+            config = keywords.get("use_config_toolsets")
+            agent_call_valid = (
+                isinstance(toolsets, ast.Name)
+                and toolsets.id == "selected_toolsets"
+                and isinstance(config, ast.Constant)
+                and config.value is False
+            )
+    return selected_function and selected_assignment and agent_call_valid
 
 
 def _validate_sources() -> None:
@@ -303,14 +336,17 @@ def _validate_sources() -> None:
     if missing_safe:
         raise HermesS3ARuntimeValidationError(f"S3A safe boundary is incomplete: {missing_safe}")
     awake = AWAKE_RUNNER_PATH.read_text(encoding="utf-8")
-    for token in ("keep_windows_awake", "s3a.capture", 'choices=("capture",)'):
-        if token not in awake:
-            raise HermesS3ARuntimeValidationError("S3A keep-awake wrapper drifted")
+    if any(token not in awake for token in (
+        "keep_windows_awake",
+        "s3a.capture",
+        'choices=("capture",)',
+    )):
+        raise HermesS3ARuntimeValidationError("S3A keep-awake wrapper drifted")
     worker = WORKER_PATH.read_text(encoding="utf-8")
     if 'parser.add_argument("--toolset", default="bench2_fixture")' not in worker:
-        raise HermesS3ARuntimeValidationError("shared Hermes worker toolset boundary drifted")
-    if "toolsets=[args.toolset]" not in worker:
-        raise HermesS3ARuntimeValidationError("shared Hermes worker does not use reviewed toolset")
+        raise HermesS3ARuntimeValidationError("shared Hermes worker CLI toolset boundary drifted")
+    if not _worker_toolset_binding_valid(worker):
+        raise HermesS3ARuntimeValidationError("shared Hermes worker toolset AST binding drifted")
 
 
 def _validate_marker(require_enabled: bool | None) -> dict[str, Any]:
@@ -394,8 +430,7 @@ def validate_implementation() -> dict[str, Any]:
 
 
 def select_batch(plan: dict[str, Any], batch_index: int) -> tuple[int, dict[str, Any]]:
-    seeds = plan.get("seeds")
-    if seeds != EXPECTED_SEEDS:
+    if plan.get("seeds") != EXPECTED_SEEDS:
         raise HermesS3ARuntimeValidationError("S3A batch seed inventory drifted")
     if not 0 <= batch_index < len(EXPECTED_SEEDS):
         raise HermesS3ARuntimeValidationError("S3A batch index is outside reviewed range")
