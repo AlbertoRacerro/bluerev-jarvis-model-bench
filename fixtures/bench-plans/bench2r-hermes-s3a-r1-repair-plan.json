@@ -1,0 +1,156 @@
+{
+  "schema_version": "bench.hermes-s3a-r1-repair-plan.v1",
+  "status": "design_ready_execution_not_implemented",
+  "source": {
+    "s3a_closeout_path": "reports/BENCH-2R-HERMES-S3A-CLOSEOUT/summary.json",
+    "s3a_closeout_git_blob_sha": "a29d001ce2001b5ff1a83f86cca148b092b2ed24",
+    "s3a_closeout_merge_commit_sha": "b1865920bc4568f9c8aa99ab9935750c77dd6b08",
+    "s3a_workflow_run_id": 29350762330,
+    "s3a_execution_commit_sha": "43fdd22252d89c1b83b5190e6ef41dbf0bfac625",
+    "s3a_marker_close_commit_sha": "620b12a30e790e04ef1bac42b21b275642ca380c"
+  },
+  "failure_hypotheses": [
+    {
+      "id": "metadata_key_copied_as_output_key",
+      "evidence": "19/20 negative outputs used required_actions, result, or resolved instead of the prompt-mandated actions-only object",
+      "repair_boundary": "skill contract precedence and metadata/output-field separation"
+    },
+    {
+      "id": "ledger_label_substituted_for_runtime_call",
+      "evidence": "3/10 timeout runs emitted a call_tool ledger label without a shadow_timeout_probe trace",
+      "repair_boundary": "skill exact_calls gate requiring an observed real tool response before final output"
+    }
+  ],
+  "candidate": {
+    "candidate_id": "gemma4-12b-it-qat",
+    "model_tag": "gemma4:12b-it-qat",
+    "digest": "38044be4f923e5a55264ed7df4eaac2676651a905f735197c504045140c02bd3"
+  },
+  "governed_stack": {
+    "context_length": 65536,
+    "max_output_tokens": 4096,
+    "sampling": {"temperature": 1.0, "top_k": 64, "top_p": 0.95},
+    "hermes_version": "0.18.2",
+    "hermes_commit_sha": "73b611ad19720d70308dad6b0fb64648aaadc216",
+    "finalizer_schema_version": "bench.hermes-deterministic-finalizer.v1",
+    "toolset": "bench2r_s3a_fixture",
+    "local_only": true
+  },
+  "arms": [
+    {
+      "arm_id": "control_v1_1",
+      "skill_name": "bounded-tool-orchestration",
+      "skill_version": "1.1.0",
+      "skill_path": "fixtures/bench-2r/hermes-skills/bounded-tool-orchestration/SKILL.md",
+      "skill_git_blob_sha": "8aa1700657452efe7b287a85ddca488b3d6ed719",
+      "role": "paired_observational_control"
+    },
+    {
+      "arm_id": "repair_v1_2",
+      "skill_name": "bounded-tool-orchestration",
+      "skill_version": "1.2.0",
+      "skill_path": "fixtures/bench-2r/hermes-skills/bounded-tool-orchestration-v1.2-candidate/SKILL.md",
+      "skill_git_blob_sha": "07cb574153d1730cf041ce6f546c8d9f3aaae544",
+      "role": "admission_candidate"
+    }
+  ],
+  "paired_negative_cases": [
+    "fixtures/bench-2r/s3a-cases/s3a-tools-negative-result-004.json",
+    "fixtures/bench-2r/s3a-cases/s3a-tools-injected-timeout-005.json"
+  ],
+  "repair_nominal_sentinels": [
+    {
+      "batch_index": 0,
+      "case": "fixtures/bench-2r/s3a-cases/s3a-tools-vault-untrusted-payload-001.json"
+    },
+    {
+      "batch_index": 1,
+      "case": "fixtures/bench-2r/s3a-cases/s3a-tools-registry-stability-002.json"
+    },
+    {
+      "batch_index": 2,
+      "case": "fixtures/bench-2r/s3a-cases/s3a-stop-long-context-untrusted-003.json"
+    }
+  ],
+  "seed_policy": {
+    "derivation": "split s3a_closeout_merge_commit_sha into the first three 8-hex chunks, convert to unsigned integers, then take modulo 1000000",
+    "source_sha": "b1865920bc4568f9c8aa99ab9935750c77dd6b08",
+    "seeds": [371872, 665465, 623659],
+    "s3a_seed_reuse_allowed": false
+  },
+  "repetitions": {
+    "paired_negative_per_arm": 2,
+    "repair_nominal_sentinel": 1
+  },
+  "counts": {
+    "candidates": 1,
+    "arms": 2,
+    "batches": 3,
+    "paired_negative_cases": 2,
+    "paired_negative_runs_per_batch": 8,
+    "repair_nominal_sentinel_runs_per_batch": 1,
+    "runs_per_batch": 9,
+    "control_negative_runs": 12,
+    "repair_negative_runs": 12,
+    "repair_nominal_sentinel_runs": 3,
+    "total_runs": 27
+  },
+  "batching": {
+    "batch_axis": "derived_seed",
+    "batch_count": 3,
+    "max_parallel_batches": 1,
+    "paired_order_required": true
+  },
+  "controlled_variables": {
+    "only_allowed_arm_difference": "skill_path_and_skill_git_blob_sha",
+    "same_candidate": true,
+    "same_sampling": true,
+    "same_case_payloads": true,
+    "same_prompt_builder": true,
+    "same_tool_registry": true,
+    "same_hermes_commit": true,
+    "same_finalizer": true,
+    "same_seed_within_each_pair": true,
+    "same_repetition_within_each_pair": true
+  },
+  "execution": {
+    "implemented": false,
+    "workflow_present": false,
+    "local_only": true,
+    "external_providers_allowed": false,
+    "jarvisos_access_allowed": false,
+    "network_except_ollama_loopback_allowed": false,
+    "native_trajectory_required": true,
+    "wire_request_trace_required": true,
+    "full_vram_required": true,
+    "keep_awake_required": true,
+    "per_run_timeout_seconds": 900
+  },
+  "acceptance": {
+    "all_runs_infrastructure_valid": true,
+    "repair_negative_tool_sequence_exact": "12/12",
+    "repair_negative_ledger_only_exact": "12/12",
+    "repair_negative_fail_closed_pass": "12/12",
+    "repair_negative_shadow_pass": "12/12",
+    "repair_timeout_real_tool_invocation": "6/6",
+    "repair_nominal_sentinel_shadow_pass": "3/3",
+    "forbidden_tool_calls_allowed": 0,
+    "retries_allowed": 0,
+    "external_calls_allowed": 0,
+    "control_arm_is_not_an_acceptance_gate": true,
+    "repair_must_not_underperform_control_on_any_paired_gate": true,
+    "automatic_skill_replacement_allowed": false,
+    "automatic_model_weight_update_allowed": false,
+    "automatic_production_promotion_allowed": false,
+    "pass_allows_only_fresh_seed_full_soak_design": true
+  },
+  "scope_exclusions": {
+    "s3a_closeout_reclassification": "forbidden",
+    "rerun_identical_s3a_configuration": "forbidden",
+    "case_prompt_changes": "forbidden in R1",
+    "finalizer_or_acceptance_weakening": "forbidden",
+    "model_or_sampling_changes": "forbidden",
+    "production_skill_replacement": "requires a later fresh-seed full soak",
+    "process_cancellation_and_resume": "remains a separate S3B infrastructure slice"
+  }
+}
