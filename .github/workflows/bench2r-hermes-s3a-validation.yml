@@ -1,4 +1,4 @@
-name: BENCH-2R Hermes S3A design validation
+name: BENCH-2R Hermes S3A validation
 
 on:
   pull_request:
@@ -6,14 +6,23 @@ on:
       - candidates/hermes-orchestrator-admitted-stack.json
       - config/bench2r-hermes-s3a-marker.json
       - fixtures/bench-2r/s3a-cases/**
+      - fixtures/bench-2r/s3a-hermes-plugin/**
       - fixtures/bench-plans/bench2r-hermes-s3a-shadow-soak-plan.json
+      - fixtures/bench-plans/bench2r-hermes-s3a-runtime-plan.json
       - reports/BENCH-2R-HERMES-S2-CLOSEOUT/**
       - reports/BENCH-2R-HERMES-S3A-DESIGN/**
       - scripts/bench2r_deterministic_finalizer.py
+      - scripts/bench2r_loopback_wire_proxy.py
+      - scripts/run_bench2r_hermes_worker.py
+      - scripts/run_bench2r_hermes_s3a.py
+      - scripts/run_bench2r_hermes_s3a_safe.py
+      - scripts/run_bench2r_hermes_s3a_awake.py
       - scripts/validate_bench2r_hermes_s3a.py
       - scripts/validate_bench2r_hermes_s3a_contract.py
+      - scripts/validate_bench2r_hermes_s3a_runtime.py
       - tests/test_bench2r_hermes_s3a.py
       - tests/test_bench2r_hermes_s3a_contract.py
+      - tests/test_bench2r_hermes_s3a_runtime.py
       - .github/workflows/bench2r-hermes-s3a-validation.yml
 
 permissions:
@@ -29,26 +38,35 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Validate S3A design-only boundary
+      - name: Validate S3A design and runtime implementation boundary
         run: |
           mkdir -p artifacts
           python -m unittest -v \
             tests.test_bench2r_hermes_s3a \
-            tests.test_bench2r_hermes_s3a_contract
+            tests.test_bench2r_hermes_s3a_contract \
+            tests.test_bench2r_hermes_s3a_runtime
           python -m scripts.validate_bench2r_hermes_s3a \
             --output artifacts/bench2r-s3a-design-validation.json
           python -m scripts.validate_bench2r_hermes_s3a_contract \
             --output artifacts/bench2r-s3a-strict-contract-validation.json
+          python -m scripts.validate_bench2r_hermes_s3a_runtime \
+            --implementation-only \
+            --output artifacts/bench2r-s3a-runtime-implementation-validation.json
           python -m py_compile \
+            scripts/run_bench2r_hermes_s3a.py \
+            scripts/run_bench2r_hermes_s3a_safe.py \
+            scripts/run_bench2r_hermes_s3a_awake.py \
             scripts/validate_bench2r_hermes_s3a.py \
             scripts/validate_bench2r_hermes_s3a_contract.py \
+            scripts/validate_bench2r_hermes_s3a_runtime.py \
             tests/test_bench2r_hermes_s3a.py \
-            tests/test_bench2r_hermes_s3a_contract.py
+            tests/test_bench2r_hermes_s3a_contract.py \
+            tests/test_bench2r_hermes_s3a_runtime.py
       - name: Upload validation evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: bench2r-hermes-s3a-design-validation
+          name: bench2r-hermes-s3a-validation
           path: artifacts/
           if-no-files-found: error
           retention-days: 21
