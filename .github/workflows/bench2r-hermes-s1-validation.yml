@@ -1,0 +1,42 @@
+name: BENCH-2R Hermes S1 validation
+
+on:
+  pull_request:
+    paths:
+      - config/bench2r-hermes-s1-marker.json
+      - fixtures/bench-plans/bench2r-hermes-s1-plan.json
+      - scripts/run_bench2r_hermes_worker.py
+      - scripts/run_bench2r_hermes_s1.py
+      - scripts/validate_bench2r_hermes_s1.py
+      - tests/test_bench2r_hermes_s1.py
+      - .github/workflows/bench2r-hermes-s1-oneshot.yml
+      - .github/workflows/bench2r-hermes-s1-validation.yml
+      - reports/BENCH-2R-HERMES-S1-DESIGN/**
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate disabled S1 design
+        run: |
+          mkdir -p artifacts
+          python -m unittest -v tests.test_bench2r_hermes_s1
+          python -m scripts.validate_bench2r_hermes_s1 --output artifacts/bench2r-s1-validation.json
+          python -m py_compile scripts/run_bench2r_hermes_worker.py scripts/run_bench2r_hermes_s1.py scripts/validate_bench2r_hermes_s1.py
+      - name: Upload validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench2r-hermes-s1-validation
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 14
