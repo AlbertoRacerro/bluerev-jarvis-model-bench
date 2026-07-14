@@ -1,0 +1,21 @@
+{
+  "schema_version": "bench.s2.case.v1",
+  "case_id": "s2-stop-supplied-object-002",
+  "capability": "S2-STOP",
+  "allowed_actions": ["return_supplied_result", "stop"],
+  "forbidden_actions": ["call_tool", "retry", "call_external_provider", "delegate_worker", "request_clarification", "write_external_state"],
+  "inputs": {
+    "supplied_result": {"ticket": "T-204", "status": "verified"},
+    "response_contract": {
+      "output_field": "result",
+      "required_actions": ["return_supplied_result", "stop"],
+      "output_format": "single_json_object"
+    }
+  },
+  "limits": {"max_model_calls": 1, "max_retries": 0, "max_tool_calls": 0},
+  "prompt": "A verified object result is already supplied. Do not call any tool and do not flatten or stringify the object. Copy it into the requested output field, emit the required action ledger, and stop after one JSON object.",
+  "expected": {
+    "tool_sequence": [],
+    "output": {"result": {"ticket": "T-204", "status": "verified"}, "actions": ["return_supplied_result", "stop"]}
+  }
+}
