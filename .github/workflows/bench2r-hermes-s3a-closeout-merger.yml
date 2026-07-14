@@ -1,0 +1,127 @@
+name: BENCH-2R Hermes S3A closeout merger
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/bench2r-hermes-s3a-closeout-merger.yml
+
+permissions:
+  actions: read
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for exact closeout validation and merge allowlisted draft
+        uses: actions/github-script@v7
+        env:
+          PR_PREFIX: BENCH-2R: close S3A shadow soak
+          WORKFLOW_NAME: BENCH-2R Hermes S3A closeout validation
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+            const prs = await github.paginate(
+              github.rest.pulls.list,
+              { owner, repo, state: 'open', per_page: 100 }
+            );
+            const matches = prs.filter(item => item.title.startsWith(process.env.PR_PREFIX));
+            if (matches.length !== 1) {
+              core.setFailed(`expected one S3A closeout PR, observed ${matches.length}`);
+              return;
+            }
+            let pr = matches[0];
+            const allowed = new Set([
+              'config/bench2r-hermes-s3a-marker.json',
+              'reports/BENCH-2R-HERMES-S3A-CLOSEOUT/summary.json',
+              'reports/BENCH-2R-HERMES-S3A-CLOSEOUT/summary.md',
+              'scripts/validate_bench2r_hermes_s3a_closeout.py',
+              'tests/test_bench2r_hermes_s3a_closeout.py',
+              '.github/workflows/bench2r-hermes-s3a-closeout-validation.yml',
+            ]);
+            const files = await github.paginate(
+              github.rest.pulls.listFiles,
+              { owner, repo, pull_number: pr.number, per_page: 100 }
+            );
+            const observed = new Set(files.map(item => item.filename));
+            const unexpected = [...observed].filter(path => !allowed.has(path));
+            const missing = [...allowed].filter(path => !observed.has(path));
+            if (unexpected.length || missing.length) {
+              core.setFailed(`closeout file allowlist mismatch; unexpected=${unexpected}, missing=${missing}`);
+              return;
+            }
+
+            let validation = null;
+            for (let attempt = 0; attempt < 60; attempt += 1) {
+              const runs = await github.paginate(
+                github.rest.actions.listWorkflowRunsForRepo,
+                {
+                  owner,
+                  repo,
+                  event: 'pull_request',
+                  head_sha: pr.head.sha,
+                  per_page: 100,
+                }
+              );
+              const matching = runs
+                .filter(item => item.name === process.env.WORKFLOW_NAME)
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+              if (matching.length > 0 && matching[0].status === 'completed') {
+                validation = matching[0];
+                break;
+              }
+              await sleep(10000);
+            }
+            if (!validation) {
+              core.setFailed('closeout validation did not complete within the reviewed wait window');
+              return;
+            }
+            if (validation.conclusion !== 'success') {
+              core.setFailed(`closeout validation conclusion is ${validation.conclusion}`);
+              return;
+            }
+
+            pr = (await github.rest.pulls.get({ owner, repo, pull_number: pr.number })).data;
+            if (pr.head.sha !== validation.head_sha) {
+              core.setFailed(`validation/head mismatch: ${validation.head_sha} != ${pr.head.sha}`);
+              return;
+            }
+            if (pr.draft) {
+              await github.graphql(
+                `mutation($id: ID!) {
+                  markPullRequestReadyForReview(input: {pullRequestId: $id}) {
+                    pullRequest { number isDraft }
+                  }
+                }`,
+                { id: pr.node_id }
+              );
+            }
+            const aggregate = await github.rest.repos.compareCommits({
+              owner,
+              repo,
+              base: pr.base.sha,
+              head: pr.head.sha,
+            });
+            if (aggregate.data.behind_by !== 0) {
+              core.setFailed(`closeout branch is behind base by ${aggregate.data.behind_by}`);
+              return;
+            }
+            const merge = await github.rest.pulls.merge({
+              owner,
+              repo,
+              pull_number: pr.number,
+              sha: pr.head.sha,
+              merge_method: 'squash',
+              commit_title: pr.title,
+              commit_message: [
+                `Freeze BENCH-2R Hermes S3A closeout from validated run evidence.`,
+                `Validation run: ${validation.id}.`,
+                `Production remains not_promoted.`,
+              ].join('\n'),
+            });
+            if (!merge.data.merged) {
+              core.setFailed(`GitHub refused closeout merge: ${merge.data.message}`);
+            }
