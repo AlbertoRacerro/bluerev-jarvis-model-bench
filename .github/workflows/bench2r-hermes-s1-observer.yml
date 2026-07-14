@@ -22,30 +22,25 @@ jobs:
         uses: actions/github-script@v7
         env:
           TARGET_SHA: 3e927da14fd172ba450e2033b6f8bc20d6d68555
+          WORKFLOW_NAME: BENCH-2R Hermes S1 observed preflight
           ISSUE_TITLE: BENCH-2R S1 run observer — 3e927da
         with:
           script: |
             const { owner, repo } = context.repo;
             const targetSha = process.env.TARGET_SHA;
-            let run = null;
 
-            if (context.eventName === 'workflow_run') {
-              const observed = context.payload.workflow_run;
-              if (observed.head_sha === targetSha) {
-                run = observed;
-              }
-            }
-
-            if (!run) {
-              const response = await github.rest.actions.listWorkflowRuns({
+            const runs = await github.paginate(
+              github.rest.actions.listWorkflowRunsForRepo,
+              {
                 owner,
                 repo,
-                workflow_id: 'bench2r-hermes-s1-oneshot.yml',
-                branch: 'main',
-                per_page: 30,
-              });
-              run = response.data.workflow_runs.find(item => item.head_sha === targetSha) || null;
-            }
+                event: 'push',
+                head_sha: targetSha,
+                per_page: 100,
+              }
+            );
+            const matches = runs.filter(item => item.name === process.env.WORKFLOW_NAME);
+            const run = matches.length === 1 ? matches[0] : null;
 
             let payload;
             if (!run) {
@@ -53,15 +48,29 @@ jobs:
                 schema_version: 'bench.hermes-s1-observer.v1',
                 target_sha: targetSha,
                 run_found: false,
+                matching_run_count: matches.length,
                 observer_event: context.eventName,
               };
             } else {
-              const artifactsResponse = await github.rest.actions.listWorkflowRunArtifacts({
-                owner,
-                repo,
-                run_id: run.id,
-                per_page: 100,
-              });
+              const jobs = await github.paginate(
+                github.rest.actions.listJobsForWorkflowRun,
+                {
+                  owner,
+                  repo,
+                  run_id: run.id,
+                  filter: 'latest',
+                  per_page: 100,
+                }
+              );
+              const artifacts = await github.paginate(
+                github.rest.actions.listWorkflowRunArtifacts,
+                {
+                  owner,
+                  repo,
+                  run_id: run.id,
+                  per_page: 100,
+                }
+              );
               payload = {
                 schema_version: 'bench.hermes-s1-observer.v1',
                 target_sha: targetSha,
@@ -76,7 +85,21 @@ jobs:
                   updated_at: run.updated_at,
                   html_url: run.html_url,
                 },
-                artifacts: artifactsResponse.data.artifacts.map(item => ({
+                jobs: jobs.map(item => ({
+                  id: item.id,
+                  name: item.name,
+                  status: item.status,
+                  conclusion: item.conclusion,
+                  runner_name: item.runner_name,
+                  started_at: item.started_at,
+                  completed_at: item.completed_at,
+                  steps: (item.steps || []).map(step => ({
+                    name: step.name,
+                    status: step.status,
+                    conclusion: step.conclusion,
+                  })),
+                })),
+                artifacts: artifacts.map(item => ({
                   id: item.id,
                   name: item.name,
                   size_in_bytes: item.size_in_bytes,
