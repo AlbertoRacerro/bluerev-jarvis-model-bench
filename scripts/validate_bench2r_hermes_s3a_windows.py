@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import sys
+import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
@@ -36,6 +37,33 @@ def normalized_git_blob_sha(path: Path) -> str:
 def normalized_workflow_text(text: str) -> str:
     normalized = text.replace("\r\n", "\n").replace("\r", "\n")
     return " ".join(normalized.split())
+
+
+def _historical_disabled_marker() -> dict[str, Any]:
+    return {
+        **runtime.EXPECTED_MARKER_BASE,
+        "enabled": False,
+    }
+
+
+@contextmanager
+def historical_design_disabled_boundary() -> Iterator[None]:
+    """Validate immutable design with its reviewed disabled marker only."""
+    original_workflow_path = design.RUNTIME_WORKFLOW_PATH
+    original_marker_path = design.MARKER_PATH
+    with tempfile.TemporaryDirectory(prefix="bench2r-s3a-historical-") as directory:
+        marker_path = Path(directory) / "marker.json"
+        marker_path.write_text(
+            json.dumps(_historical_disabled_marker(), indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        design.RUNTIME_WORKFLOW_PATH = runtime.HISTORICAL_DESIGN_WORKFLOW_SENTINEL
+        design.MARKER_PATH = marker_path
+        try:
+            yield
+        finally:
+            design.RUNTIME_WORKFLOW_PATH = original_workflow_path
+            design.MARKER_PATH = original_marker_path
 
 
 def _validate_preflight_wrapper() -> None:
@@ -121,15 +149,18 @@ def windows_runtime_boundary() -> Iterator[None]:
     original_runtime_hash = runtime._git_blob_sha
     original_design_hash = design._git_blob_sha
     original_workflow_validator = runtime._validate_workflow
+    original_historical_boundary = runtime._historical_design_boundary
     runtime._git_blob_sha = normalized_git_blob_sha
     design._git_blob_sha = normalized_git_blob_sha
     runtime._validate_workflow = _validate_live_workflow
+    runtime._historical_design_boundary = historical_design_disabled_boundary
     try:
         yield
     finally:
         runtime._git_blob_sha = original_runtime_hash
         design._git_blob_sha = original_design_hash
         runtime._validate_workflow = original_workflow_validator
+        runtime._historical_design_boundary = original_historical_boundary
 
 
 def validate_execution(
@@ -165,6 +196,7 @@ def main() -> int:
             "repetitions": plan["repetitions"],
             "total_runs": plan["counts"]["total_runs"],
             "text_blob_eol_normalized": True,
+            "historical_marker_isolated": True,
             "workflow_boundary_authoritative": True,
             "automatic_production_promotion_allowed": False,
         }
