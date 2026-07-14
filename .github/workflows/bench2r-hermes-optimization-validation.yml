@@ -34,8 +34,20 @@ jobs:
           python -m py_compile scripts/bench2r_hermes_runtime.py scripts/validate_bench2r_hermes_optimization.py
       - name: Assert validation cannot execute models
         run: |
-          ! grep -R "runs-on: \[self-hosted" .github/workflows/bench2r-hermes-optimization-validation.yml
-          ! grep -R "ollama create\|hermes -z\|workflow_dispatch" .github/workflows/bench2r-hermes-optimization-validation.yml
+          python - <<'PY'
+          from pathlib import Path
+
+          text = Path(".github/workflows/bench2r-hermes-optimization-validation.yml").read_text(encoding="utf-8")
+          forbidden = [
+              "self" + "-hosted",
+              "ollama " + "create",
+              "hermes " + "-z",
+              "workflow_" + "dispatch",
+          ]
+          found = [token for token in forbidden if token in text]
+          if found:
+              raise SystemExit(f"runtime-capable workflow tokens found: {found}")
+          PY
       - name: Upload validation evidence
         if: always()
         uses: actions/upload-artifact@v4
