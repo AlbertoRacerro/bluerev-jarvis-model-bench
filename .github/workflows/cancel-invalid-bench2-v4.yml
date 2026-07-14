@@ -1,0 +1,25 @@
+name: Cancel invalid BENCH-2 v4 run
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cancel:
+    if: github.head_ref == 'ops/cancel-invalid-bench2-v4'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel invalid run
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.cancelWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: 29289538551
+            });
