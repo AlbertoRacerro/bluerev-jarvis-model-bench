@@ -72,6 +72,16 @@ def _force_native_trajectory_capture() -> Iterator[None]:
         AIAgent.__init__ = original_init
 
 
+def _selected_toolsets(toolset: str) -> list[str]:
+    # Preserve the reviewed S1 default as an explicit runtime branch while
+    # allowing S2 to select its isolated held-out toolset.
+    if toolset == "bench2_fixture":
+        toolsets=["bench2_fixture"]
+    else:
+        toolsets = [toolset]
+    return toolsets
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Run one observed Hermes conversation for BENCH-2R."
@@ -87,6 +97,7 @@ def main() -> int:
 
     if not args.toolset.strip():
         parser.error("--toolset must be non-empty")
+    selected_toolsets = _selected_toolsets(args.toolset)
 
     os.environ["HERMES_YOLO_MODE"] = "1"
     os.environ["HERMES_ACCEPT_HOOKS"] = "1"
@@ -126,7 +137,7 @@ def main() -> int:
                     prompt,
                     model=args.model,
                     provider="custom",
-                    toolsets=[args.toolset],
+                    toolsets=selected_toolsets,
                     use_config_toolsets=False,
                 )
     except BaseException as exc:  # noqa: BLE001 - worker must persist evidence
