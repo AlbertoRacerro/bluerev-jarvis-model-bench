@@ -22,28 +22,27 @@ class HermesS3ARepairRuntimeTests(unittest.TestCase):
 
         return mock.patch.object(validator, "_load", side_effect=load)
 
-    def test_runtime_implementation_validates_disabled_without_workflow(self):
-        payload = validator.validate_implementation()
-        self.assertEqual(payload["status"], "runtime_ready_execution_disabled")
-        self.assertFalse(payload["execution_authorized"])
-        self.assertEqual(payload["candidate_id"], "gemma4-12b-it-qat")
-        self.assertEqual(payload["arms"], 2)
-        self.assertEqual(payload["batches"], 3)
-        self.assertEqual(payload["planned_runs"], 27)
-        self.assertFalse(payload["marker_enabled"])
-        self.assertFalse(payload["workflow_present"])
-        self.assertFalse(payload["automatic_skill_replacement_allowed"])
-        self.assertFalse(payload["automatic_production_promotion_allowed"])
+    def test_reviewed_workflow_validates_while_marker_remains_disabled(self):
+        plan, marker, candidate = validator.validate_execution(require_enabled=False)
+        self.assertFalse(marker["enabled"])
+        self.assertEqual(candidate["candidate_id"], "gemma4-12b-it-qat")
+        self.assertEqual(len(plan["arms"]), 2)
+        self.assertEqual(len(plan["batches"]), 3)
+        self.assertEqual(plan["counts"]["total_runs"], 27)
+        self.assertTrue(validator.WORKFLOW_PATH.is_file())
+        self.assertFalse(plan["decision"]["automatic_skill_replacement_allowed"])
+        self.assertFalse(plan["decision"]["automatic_production_promotion_allowed"])
 
-    def test_enabled_marker_without_reviewed_workflow_is_rejected(self):
+    def test_enabled_marker_validates_only_with_reviewed_workflow(self):
         marker = validator._load(validator.MARKER_PATH)
         marker["enabled"] = True
         with self._marker_load_patch(marker):
-            with self.assertRaisesRegex(
-                validator.HermesS3ARepairRuntimeError,
-                "runtime workflow is missing",
-            ):
-                validator.validate_execution(require_enabled=True)
+            plan, observed, candidate = validator.validate_execution(
+                require_enabled=True
+            )
+        self.assertTrue(observed["enabled"])
+        self.assertEqual(candidate["candidate_id"], "gemma4-12b-it-qat")
+        self.assertEqual(plan["counts"]["total_runs"], 27)
 
     def test_marker_seed_drift_is_rejected(self):
         marker = validator._load(validator.MARKER_PATH)
@@ -188,7 +187,7 @@ class HermesS3ARepairRuntimeTests(unittest.TestCase):
         self.assertIn('"automatic_production_promotion_allowed": False', source)
         self.assertIn("safe._safe_runtime_boundary()", source)
 
-    def test_implementation_rejects_self_hosted_workflow_presence(self):
+    def test_invalid_workflow_contract_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "workflow.yml"
             path.write_text("name: forbidden\n", encoding="utf-8")
@@ -197,7 +196,7 @@ class HermesS3ARepairRuntimeTests(unittest.TestCase):
                     validator.HermesS3ARepairRuntimeError,
                     "workflow contract drifted",
                 ):
-                    validator.validate_implementation()
+                    validator.validate_execution(require_enabled=False)
 
 
 if __name__ == "__main__":
