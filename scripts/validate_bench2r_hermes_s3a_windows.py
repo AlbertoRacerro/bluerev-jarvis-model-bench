@@ -13,9 +13,8 @@ from scripts import validate_bench2r_hermes_s3a_runtime as runtime
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_PATH = ROOT / ".github/workflows/bench2r-hermes-s3a-oneshot.yml"
-EXPECTED_VALIDATOR_COMMAND = (
-    "python -m scripts.validate_bench2r_hermes_s3a_windows --require-enabled"
-)
+PREFLIGHT_WRAPPER_PATH = ROOT / "scripts/run_bench2r_hermes_s3a_preflight.py"
+EXPECTED_VALIDATOR_COMMAND = "python -m scripts.run_bench2r_hermes_s3a_preflight"
 
 
 class HermesS3AWindowsValidationError(RuntimeError):
@@ -34,11 +33,30 @@ def normalized_git_blob_sha(path: Path) -> str:
     return hashlib.sha1(f"blob {len(data)}\0".encode("ascii") + data).hexdigest()
 
 
-def normalized_powershell_text(text: str) -> str:
-    """Collapse PowerShell continuations without weakening command-token checks."""
+def normalized_workflow_text(text: str) -> str:
     normalized = text.replace("\r\n", "\n").replace("\r", "\n")
-    normalized = normalized.replace("`\n", " ")
     return " ".join(normalized.split())
+
+
+def _validate_preflight_wrapper() -> None:
+    if not PREFLIGHT_WRAPPER_PATH.is_file():
+        raise HermesS3AWindowsValidationError("S3A durable preflight wrapper is missing")
+    source = PREFLIGHT_WRAPPER_PATH.read_text(encoding="utf-8")
+    required = {
+        "output_dir.mkdir(parents=True, exist_ok=True)",
+        "subprocess.run(",
+        "capture_output=True",
+        "check=False",
+        "if not json_path.is_file():",
+        '"execution_authorized": False',
+        'JSON_NAME = "s3a-preflight.json"',
+        'LOG_NAME = "s3a-preflight.log"',
+    }
+    missing = sorted(token for token in required if token not in source)
+    if missing:
+        raise HermesS3AWindowsValidationError(
+            f"S3A durable preflight wrapper drifted: {missing}"
+        )
 
 
 def _validate_live_workflow(*, required: bool) -> bool:
@@ -47,38 +65,49 @@ def _validate_live_workflow(*, required: bool) -> bool:
         raise HermesS3AWindowsValidationError("S3A runtime workflow is missing")
     if not present:
         return False
+    _validate_preflight_wrapper()
     workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
-    logical_workflow = normalized_powershell_text(workflow)
+    logical_workflow = normalized_workflow_text(workflow)
     required_tokens = {
         "paths:\n      - config/bench2r-hermes-s3a-marker.json",
         "runs-on: [self-hosted, Windows, X64, bluerev-bench]",
         "batch: [0, 1, 2, 3, 4]",
         "max-parallel: 1",
         "cancel-in-progress: true",
+        EXPECTED_VALIDATOR_COMMAND,
+        "name: bench2r-hermes-s3a-preflight-${{ github.run_id }}-${{ github.run_attempt }}-b${{ matrix.batch }}",
+        "path: artifacts/preflight/",
         "python -m scripts.run_bench2r_hermes_s3a_awake capture",
         "python -m scripts.run_bench2r_hermes_s3a_safe enforce",
         "Activate BENCH-2R Hermes S3A shadow soak",
     }
-    missing = sorted(token for token in required_tokens if token not in workflow)
-    if EXPECTED_VALIDATOR_COMMAND not in logical_workflow:
-        missing.append(EXPECTED_VALIDATOR_COMMAND)
+    missing = sorted(
+        token
+        for token in required_tokens
+        if token not in workflow and token not in logical_workflow
+    )
     if missing:
         raise HermesS3AWindowsValidationError(
-            f"S3A Windows workflow contract drifted: {sorted(missing)}"
+            f"S3A Windows workflow contract drifted: {missing}"
+        )
+    if workflow.count("if: always()") < 3:
+        raise HermesS3AWindowsValidationError(
+            "S3A workflow lost a required failure-evidence boundary"
         )
     if "workflow_dispatch" in workflow:
         raise HermesS3AWindowsValidationError("S3A workflow exposes manual dispatch")
     forbidden = {
+        "shell: powershell",
+        "python -m scripts.validate_bench2r_hermes_s3a_windows",
         "python -m scripts.validate_bench2r_hermes_s3a_runtime --require-enabled",
         "python -m scripts.run_bench2r_hermes_s3a capture",
         "python -m scripts.run_bench2r_hermes_s3a enforce",
+        "*> artifacts/preflight",
     }
-    present_forbidden = sorted(
-        token for token in forbidden if token in logical_workflow
-    )
+    present_forbidden = sorted(token for token in forbidden if token in logical_workflow)
     if present_forbidden:
         raise HermesS3AWindowsValidationError(
-            f"S3A workflow bypasses the Windows/safe boundary: {present_forbidden}"
+            f"S3A workflow bypasses the durable Windows/safe boundary: {present_forbidden}"
         )
     return True
 
