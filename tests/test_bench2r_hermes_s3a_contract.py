@@ -43,13 +43,13 @@ class HermesS3AStrictContractTests(unittest.TestCase):
             with self.assertRaisesRegex(strict.HermesS3AContractError, "scope boundary drifted"):
                 strict.validate()
 
-    def test_automatic_production_promotion_is_rejected(self):
+    def test_strict_nominal_acceptance_gate_cannot_be_disabled(self):
         plan = base._load(base.PLAN_PATH)
-        plan["acceptance"]["automatic_production_promotion_allowed"] = True
+        plan["acceptance"]["all_nominal_runs_must_pass_raw_orchestration"] = False
         directory, path = self._temporary_plan(plan)
         self.addCleanup(directory.cleanup)
         with mock.patch.object(base, "PLAN_PATH", path):
-            with self.assertRaisesRegex(strict.HermesS3AContractError, "automatic production promotion"):
+            with self.assertRaisesRegex(strict.HermesS3AContractError, "acceptance gate disabled"):
                 strict.validate()
 
     def test_tool_sequence_must_match_exact_tool_contract(self):
