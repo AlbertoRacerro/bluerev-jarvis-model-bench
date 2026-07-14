@@ -23,6 +23,7 @@ on:
       - tests/test_bench2r_hermes_s3a.py
       - tests/test_bench2r_hermes_s3a_contract.py
       - tests/test_bench2r_hermes_s3a_runtime.py
+      - .github/workflows/bench2r-hermes-s3a-oneshot.yml
       - .github/workflows/bench2r-hermes-s3a-validation.yml
 
 permissions:
@@ -38,7 +39,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Validate S3A design and runtime implementation boundary
+      - name: Validate S3A historical design and live disabled workflow
         shell: bash
         run: |
           mkdir -p artifacts
@@ -48,13 +49,8 @@ jobs:
               tests.test_bench2r_hermes_s3a \
               tests.test_bench2r_hermes_s3a_contract \
               tests.test_bench2r_hermes_s3a_runtime
-            python -m scripts.validate_bench2r_hermes_s3a \
-              --output artifacts/bench2r-s3a-design-validation.json
-            python -m scripts.validate_bench2r_hermes_s3a_contract \
-              --output artifacts/bench2r-s3a-strict-contract-validation.json
             python -m scripts.validate_bench2r_hermes_s3a_runtime \
-              --implementation-only \
-              --output artifacts/bench2r-s3a-runtime-implementation-validation.json
+              --output artifacts/bench2r-s3a-runtime-disabled-validation.json
             python -m py_compile \
               scripts/run_bench2r_hermes_s3a.py \
               scripts/run_bench2r_hermes_s3a_safe.py \
