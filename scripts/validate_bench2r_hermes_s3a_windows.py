@@ -34,6 +34,13 @@ def normalized_git_blob_sha(path: Path) -> str:
     return hashlib.sha1(f"blob {len(data)}\0".encode("ascii") + data).hexdigest()
 
 
+def normalized_powershell_text(text: str) -> str:
+    """Collapse PowerShell continuations without weakening command-token checks."""
+    normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+    normalized = normalized.replace("`\n", " ")
+    return " ".join(normalized.split())
+
+
 def _validate_live_workflow(*, required: bool) -> bool:
     present = WORKFLOW_PATH.is_file()
     if required and not present:
@@ -41,21 +48,23 @@ def _validate_live_workflow(*, required: bool) -> bool:
     if not present:
         return False
     workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
+    logical_workflow = normalized_powershell_text(workflow)
     required_tokens = {
         "paths:\n      - config/bench2r-hermes-s3a-marker.json",
         "runs-on: [self-hosted, Windows, X64, bluerev-bench]",
         "batch: [0, 1, 2, 3, 4]",
         "max-parallel: 1",
         "cancel-in-progress: true",
-        EXPECTED_VALIDATOR_COMMAND,
         "python -m scripts.run_bench2r_hermes_s3a_awake capture",
         "python -m scripts.run_bench2r_hermes_s3a_safe enforce",
         "Activate BENCH-2R Hermes S3A shadow soak",
     }
     missing = sorted(token for token in required_tokens if token not in workflow)
+    if EXPECTED_VALIDATOR_COMMAND not in logical_workflow:
+        missing.append(EXPECTED_VALIDATOR_COMMAND)
     if missing:
         raise HermesS3AWindowsValidationError(
-            f"S3A Windows workflow contract drifted: {missing}"
+            f"S3A Windows workflow contract drifted: {sorted(missing)}"
         )
     if "workflow_dispatch" in workflow:
         raise HermesS3AWindowsValidationError("S3A workflow exposes manual dispatch")
@@ -64,7 +73,9 @@ def _validate_live_workflow(*, required: bool) -> bool:
         "python -m scripts.run_bench2r_hermes_s3a capture",
         "python -m scripts.run_bench2r_hermes_s3a enforce",
     }
-    present_forbidden = sorted(token for token in forbidden if token in workflow)
+    present_forbidden = sorted(
+        token for token in forbidden if token in logical_workflow
+    )
     if present_forbidden:
         raise HermesS3AWindowsValidationError(
             f"S3A workflow bypasses the Windows/safe boundary: {present_forbidden}"
