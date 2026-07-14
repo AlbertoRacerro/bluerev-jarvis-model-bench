@@ -1,6 +1,6 @@
 {
   "schema_version": "bench.hermes-s3a-r1-repair-marker.v1",
-  "enabled": true,
+  "enabled": false,
   "candidate_id": "gemma4-12b-it-qat",
   "control_arm_id": "control_v1_1",
   "repair_arm_id": "repair_v1_2",
