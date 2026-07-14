@@ -21,9 +21,9 @@ jobs:
       - name: Publish observable S1 run state
         uses: actions/github-script@v7
         env:
-          TARGET_SHA: 402cb62bd03180f07fc85969ad6ca0ac61619c22
+          TARGET_SHA: c6960b3dc10cb5cbd3bcb2363ad7c83bc3939466
           WORKFLOW_NAME: BENCH-2R Hermes S1 observed preflight
-          ISSUE_TITLE: BENCH-2R S1 run observer — 402cb62
+          ISSUE_TITLE: BENCH-2R S1 run observer — c6960b3
         with:
           script: |
             const { owner, repo } = context.repo;
