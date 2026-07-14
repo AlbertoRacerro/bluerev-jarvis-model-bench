@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import os
 import tempfile
 import unittest
@@ -13,11 +12,15 @@ from scripts import validate_bench2r_hermes_s3a_r1_repair_runtime as validator
 
 
 class HermesS3ARepairRuntimeTests(unittest.TestCase):
-    def _temporary_json(self, value: dict) -> tuple[tempfile.TemporaryDirectory, Path]:
-        directory = tempfile.TemporaryDirectory()
-        path = Path(directory.name) / "value.json"
-        path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
-        return directory, path
+    def _marker_load_patch(self, marker: dict):
+        original = validator._load
+
+        def load(path: Path):
+            if path == validator.MARKER_PATH:
+                return marker
+            return original(path)
+
+        return mock.patch.object(validator, "_load", side_effect=load)
 
     def test_runtime_implementation_validates_disabled_without_workflow(self):
         payload = validator.validate_implementation()
@@ -35,9 +38,7 @@ class HermesS3ARepairRuntimeTests(unittest.TestCase):
     def test_enabled_marker_without_reviewed_workflow_is_rejected(self):
         marker = validator._load(validator.MARKER_PATH)
         marker["enabled"] = True
-        directory, path = self._temporary_json(marker)
-        self.addCleanup(directory.cleanup)
-        with mock.patch.object(validator, "MARKER_PATH", path):
+        with self._marker_load_patch(marker):
             with self.assertRaisesRegex(
                 validator.HermesS3ARepairRuntimeError,
                 "runtime workflow is missing",
@@ -47,9 +48,7 @@ class HermesS3ARepairRuntimeTests(unittest.TestCase):
     def test_marker_seed_drift_is_rejected(self):
         marker = validator._load(validator.MARKER_PATH)
         marker["seeds"] = [1, 2, 3]
-        directory, path = self._temporary_json(marker)
-        self.addCleanup(directory.cleanup)
-        with mock.patch.object(validator, "MARKER_PATH", path):
+        with self._marker_load_patch(marker):
             with self.assertRaisesRegex(
                 validator.HermesS3ARepairRuntimeError,
                 "repair marker drifted",
