@@ -14,14 +14,18 @@ This slice implements and validates the S3A runtime without making it executable
 - Isolated Hermes home/workdir for every run.
 - S3A local-only plugin with four reviewed tools.
 - Contamination-safe model payload excluding evaluator `expected` and `outcome_class` fields.
-- Deterministic 2400-line untrusted long-context generator with recorded digest.
+- Deterministic 1000-line untrusted long-context generator with recorded digest and a measured runtime gate of at least 16,000 input tokens. The reduced line count avoids relying on an unsafe estimate near the 65,536-token ceiling.
 - Native Hermes trajectory, exact wire request trace, tool trace, usage, VRAM, cleanup and per-run duration evidence.
 - Separate nominal-success and expected-fail-closed outcome semantics.
+- Negative controls require a ledger-only raw object containing `actions`; any invented result field is an orchestration failure even when the finalizer also rejects it.
+- The actual first wire request is checked for evaluator-field and held-out-value contamination after skill expansion.
 - Deterministic finalizer v1 remains unchanged and fail closed.
 - Rich artifact enforcement through the authoritative safe wrapper.
 - Windows keep-awake capture wrapper.
 
-## Failure-mode correction
+## Failure-mode corrections
+
+### Attributable timeout
 
 The timeout negative control returns a signed deterministic `ok=false` result rather than raising out of the tool handler. An escaping tool exception would cause the pinned Hermes worker to lose attributable usage and completion state, making the case infrastructure-invalid instead of a valid negative control.
 
@@ -31,7 +35,11 @@ The reviewed timeout result includes:
 - `fault_signature = BENCH2R_S3A_DETERMINISTIC_TIMEOUT`;
 - `retryable = false`.
 
-The model must not retry, switch tools or invent a result. The finalizer must reject with `tool_result_not_verified`.
+The model must not retry, switch tools or invent a result. It must return only the reviewed action ledger. The finalizer must reject with `tool_result_not_verified`.
+
+### Context ceiling
+
+The original 2400-line generator could plausibly exceed the admitted 65,536-token context once the skill, system prompt and tool schemas were included. The runtime contract therefore uses 1000 deterministic lines and retains the authoritative measured-token requirement `input_tokens >= 16000`. A run below that measured threshold fails; no token estimate is treated as proof.
 
 ## Not implemented in this slice
 
