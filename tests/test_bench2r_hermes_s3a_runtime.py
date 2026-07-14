@@ -13,21 +13,48 @@ from unittest import mock
 
 from scripts import run_bench2r_hermes_s3a as runtime
 from scripts import run_bench2r_hermes_s3a_safe as safe
+from scripts import validate_bench2r_hermes_s3a as historical_design
 from scripts import validate_bench2r_hermes_s3a_runtime as validator
 from scripts.bench2r_deterministic_finalizer import finalize
 
 
 class HermesS3ARuntimeTests(unittest.TestCase):
-    def test_runtime_implementation_validates_with_workflow_absent(self):
-        payload = validator.validate_implementation()
-        self.assertEqual(payload["status"], "implementation_ready_workflow_absent")
-        self.assertFalse(payload["execution_authorized"])
-        self.assertFalse(payload["marker_enabled"])
-        self.assertFalse(payload["runtime_workflow_present"])
-        self.assertEqual(payload["total_runs"], 50)
-        self.assertEqual(payload["long_context_line_count"], 1000)
-        self.assertEqual(payload["long_context_minimum_input_tokens"], 16000)
-        self.assertTrue(payload["negative_outputs_ledger_only"])
+    def _temporary_marker(self, enabled: bool) -> tuple[tempfile.TemporaryDirectory, Path]:
+        marker = validator._load(validator.MARKER_PATH)
+        marker["enabled"] = enabled
+        directory = tempfile.TemporaryDirectory()
+        path = Path(directory.name) / "marker.json"
+        path.write_text(json.dumps(marker, indent=2) + "\n", encoding="utf-8")
+        return directory, path
+
+    def test_runtime_workflow_validates_disabled(self):
+        plan, marker, candidate, cases = validator.validate_execution(require_enabled=False)
+        self.assertFalse(marker["enabled"])
+        self.assertEqual(candidate["candidate_id"], "gemma4-12b-it-qat")
+        self.assertEqual(len(cases), 5)
+        self.assertEqual(plan["counts"]["total_runs"], 50)
+        self.assertTrue(validator.RUNTIME_WORKFLOW_PATH.is_file())
+
+    def test_authorized_marker_path_validates_with_reviewed_workflow(self):
+        directory, path = self._temporary_marker(True)
+        self.addCleanup(directory.cleanup)
+        with mock.patch.object(validator, "MARKER_PATH", path):
+            plan, marker, candidate, cases = validator.validate_execution(require_enabled=True)
+        self.assertTrue(marker["enabled"])
+        self.assertEqual(plan["seeds"], validator.EXPECTED_SEEDS)
+        self.assertEqual(candidate["candidate_id"], "gemma4-12b-it-qat")
+        self.assertEqual(len(cases), 5)
+
+    def test_historical_design_boundary_restores_live_workflow_path(self):
+        original = historical_design.RUNTIME_WORKFLOW_PATH
+        with self.assertRaisesRegex(RuntimeError, "boom"):
+            with validator._historical_design_boundary():
+                self.assertEqual(
+                    historical_design.RUNTIME_WORKFLOW_PATH,
+                    validator.HISTORICAL_DESIGN_WORKFLOW_SENTINEL,
+                )
+                raise RuntimeError("boom")
+        self.assertEqual(historical_design.RUNTIME_WORKFLOW_PATH, original)
 
     def test_five_seed_batches_are_exact(self):
         plan = validator._load(validator.RUNTIME_PLAN_PATH)
