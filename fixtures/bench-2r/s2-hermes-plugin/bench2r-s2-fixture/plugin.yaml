@@ -1,0 +1,6 @@
+name: bench2r-s2-fixture
+version: 1.0.0
+description: Deterministic local-only held-out tools for BENCH-2R S2
+toolsets:
+  - bench2r_s2_fixture
+entrypoint: __init__.py

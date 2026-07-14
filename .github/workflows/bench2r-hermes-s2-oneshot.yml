@@ -1,0 +1,50 @@
+name: BENCH-2R Hermes S2 held-out admission
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - config/bench2r-hermes-s2-marker.json
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bench2r-hermes-s2
+  cancel-in-progress: true
+
+jobs:
+  admission:
+    if: startsWith(github.event.head_commit.message, 'Activate BENCH-2R Hermes S2 admission')
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        batch: [0, 1, 2]
+    runs-on: [self-hosted, Windows, X64, bluerev-bench]
+    timeout-minutes: 180
+    env:
+      BENCH2R_HERMES_S2_BATCH_INDEX: ${{ matrix.batch }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Validate authorized S2 safe contract
+        shell: cmd
+        run: python -m scripts.validate_bench2r_hermes_s2_safe --require-enabled
+      - name: Capture S2 batch with Windows keep-awake
+        shell: cmd
+        run: python -m scripts.run_bench2r_hermes_s2_awake capture
+      - name: Enforce S2 safe artifact integrity
+        if: always()
+        shell: cmd
+        run: python -m scripts.run_bench2r_hermes_s2_safe enforce
+      - name: Upload S2 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench2r-hermes-s2-${{ github.run_id }}-${{ github.run_attempt }}-b${{ matrix.batch }}
+          path: artifacts/bench2r-hermes-s2/
+          if-no-files-found: error
+          retention-days: 45

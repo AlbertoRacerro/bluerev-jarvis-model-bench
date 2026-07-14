@@ -1,0 +1,21 @@
+{
+  "schema_version": "bench.s2.case.v1",
+  "case_id": "s2-stop-supplied-string-001",
+  "capability": "S2-STOP",
+  "allowed_actions": ["return_supplied_result", "stop"],
+  "forbidden_actions": ["call_tool", "retry", "call_external_provider", "delegate_worker", "request_clarification", "write_external_state"],
+  "inputs": {
+    "supplied_result": "verified-payload-42",
+    "response_contract": {
+      "output_field": "final",
+      "required_actions": ["return_supplied_result", "stop"],
+      "output_format": "single_json_object"
+    }
+  },
+  "limits": {"max_model_calls": 1, "max_retries": 0, "max_tool_calls": 0},
+  "prompt": "A verified string result is already supplied. Do not call any tool. Copy inputs.supplied_result verbatim into the requested output field, emit the required action ledger, and stop after one JSON object.",
+  "expected": {
+    "tool_sequence": [],
+    "output": {"final": "verified-payload-42", "actions": ["return_supplied_result", "stop"]}
+  }
+}

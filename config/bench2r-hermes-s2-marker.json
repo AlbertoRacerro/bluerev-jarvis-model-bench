@@ -1,0 +1,8 @@
+{
+  "schema_version": "bench.hermes-s2-oneshot.v1",
+  "enabled": false,
+  "batch_count": 3,
+  "batch_size": 1,
+  "seeds": [17, 42, 314159],
+  "arm": "profile_plus_skill_with_deterministic_finalizer"
+}

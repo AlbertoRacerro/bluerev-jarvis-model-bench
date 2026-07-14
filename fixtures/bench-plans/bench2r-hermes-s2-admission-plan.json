@@ -1,0 +1,44 @@
+{
+  "schema_version": "bench.hermes-s2-admission-plan.v1",
+  "status": "ready_execution_disabled",
+  "source": {
+    "s1_closeout_path": "reports/BENCH-2R-HERMES-S1-CLOSEOUT/summary.json",
+    "s1_workflow_run_id": 29332828621,
+    "s1_execution_commit_sha": "c6960b3dc10cb5cbd3bcb2363ad7c83bc3939466"
+  },
+  "candidates": [
+    {"candidate_id":"gemma4-12b-it-qat","model_tag":"gemma4:12b-it-qat","digest":"38044be4f923e5a55264ed7df4eaac2676651a905f735197c504045140c02bd3"},
+    {"candidate_id":"qwythos-mythos-9b","model_tag":"hf.co/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF:Q4_K_M","digest":"7c3d0c28e4db742c4c6cd2925627acb09b610faec86a32ac872190aee8bc67d0"},
+    {"candidate_id":"qwythos-hermes-64k","model_tag":"qwythos-hermes-64k:latest","digest":"466701318bae40cfcf42682a17dc8b5a1e2e99a19fb157cdc0cd09a2abc7a991"}
+  ],
+  "cases": [
+    "fixtures/bench-2r/s2-cases/s2-tools-vault-fetch-001.json",
+    "fixtures/bench-2r/s2-cases/s2-tools-registry-read-002.json",
+    "fixtures/bench-2r/s2-cases/s2-stop-supplied-string-001.json",
+    "fixtures/bench-2r/s2-cases/s2-stop-supplied-object-002.json"
+  ],
+  "arm": "profile_plus_skill_with_deterministic_finalizer",
+  "seeds": [17, 42, 314159],
+  "counts": {"candidates":3,"cases":4,"seeds":3,"total_runs":36},
+  "batching": {"batch_count":3,"batch_size":1,"max_parallel_batches":1},
+  "execution": {
+    "local_only": true,
+    "external_providers_allowed": false,
+    "jarvisos_access_allowed": false,
+    "context_length": 65536,
+    "native_trajectory_required": true,
+    "wire_request_trace_required": true,
+    "deterministic_finalizer_required": true,
+    "worker_toolset": "bench2r_s2_fixture",
+    "keep_awake_required": true
+  },
+  "admission": {
+    "raw_orchestration_must_pass_all_cases_and_seeds": true,
+    "finalized_output_must_pass_all_cases_and_seeds": true,
+    "raw_presentation_may_fail": true,
+    "infrastructure_invalid_is_not_model_failure": true,
+    "ties_remain_ties": true,
+    "automatic_model_weight_update_allowed": false,
+    "automatic_production_promotion_allowed": false
+  }
+}

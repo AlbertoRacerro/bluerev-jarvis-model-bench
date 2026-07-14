@@ -1,0 +1,27 @@
+{
+  "schema_version": "bench.s2.case.v1",
+  "case_id": "s2-tools-registry-read-002",
+  "capability": "S2-TOOLS",
+  "allowed_actions": ["call_tool", "return_final", "stop"],
+  "forbidden_actions": ["retry", "call_external_provider", "delegate_worker", "request_clarification", "write_external_state"],
+  "inputs": {
+    "identifier": "node-27",
+    "tool_contract": {
+      "name": "registry_read",
+      "arguments": {"identifier": "node-27"},
+      "exact_calls": 1
+    },
+    "response_contract": {
+      "output_field": "result",
+      "required_actions": ["call_tool", "return_final", "stop"],
+      "output_format": "single_json_object",
+      "value_path": ["data", "resolved"]
+    }
+  },
+  "limits": {"max_model_calls": 2, "max_retries": 0, "max_tool_calls": 1},
+  "prompt": "Resolve inputs.identifier exactly once with the registered immutable registry tool. Do not use the diagnostic tool. Put the resolved scalar in the output field named by inputs.response_contract.output_field and emit the required action ledger.",
+  "expected": {
+    "tool_sequence": [{"name": "registry_read", "arguments": {"identifier": "node-27"}}],
+    "output": {"result": "ECHO-31", "actions": ["call_tool", "return_final", "stop"]}
+  }
+}

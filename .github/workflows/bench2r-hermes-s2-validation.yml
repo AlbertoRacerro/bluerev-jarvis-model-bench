@@ -1,0 +1,60 @@
+name: BENCH-2R Hermes S2 validation
+
+on:
+  pull_request:
+    paths:
+      - config/bench2r-hermes-s1-marker.json
+      - config/bench2r-hermes-s2-marker.json
+      - fixtures/bench-2r/s2-cases/**
+      - fixtures/bench-2r/s2-hermes-plugin/**
+      - fixtures/bench-plans/bench2r-hermes-s2-admission-plan.json
+      - reports/BENCH-2R-HERMES-S1-CLOSEOUT/**
+      - scripts/bench2r_deterministic_finalizer.py
+      - scripts/bench2r_loopback_wire_proxy.py
+      - scripts/run_bench2r_hermes_worker.py
+      - scripts/run_bench2r_hermes_s2.py
+      - scripts/run_bench2r_hermes_s2_safe.py
+      - scripts/run_bench2r_hermes_s2_awake.py
+      - scripts/validate_bench2r_hermes_s2.py
+      - scripts/validate_bench2r_hermes_s2_safe.py
+      - tests/test_bench2r_deterministic_finalizer.py
+      - tests/test_bench2r_hermes_s2.py
+      - .github/workflows/bench2r-hermes-s2-oneshot.yml
+      - .github/workflows/bench2r-hermes-s2-validation.yml
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate disabled S2 admission design
+        run: |
+          mkdir -p artifacts
+          python -m unittest -v tests.test_bench2r_deterministic_finalizer tests.test_bench2r_hermes_s2
+          python -m scripts.validate_bench2r_hermes_s2 --output artifacts/bench2r-s2-validation.json
+          python -m scripts.validate_bench2r_hermes_s2_safe > artifacts/bench2r-s2-safe-validation.json
+          python -m py_compile \
+            scripts/bench2r_deterministic_finalizer.py \
+            scripts/bench2r_loopback_wire_proxy.py \
+            scripts/run_bench2r_hermes_worker.py \
+            scripts/run_bench2r_hermes_s2.py \
+            scripts/run_bench2r_hermes_s2_safe.py \
+            scripts/run_bench2r_hermes_s2_awake.py \
+            scripts/validate_bench2r_hermes_s2.py \
+            scripts/validate_bench2r_hermes_s2_safe.py
+      - name: Upload validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench2r-hermes-s2-validation
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 21

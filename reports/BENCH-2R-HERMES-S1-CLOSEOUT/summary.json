@@ -1,0 +1,43 @@
+{
+  "artifacts": [
+    {"artifact_id": 8310789613, "batch": 0, "name": "bench2r-hermes-s1-29332828621-1-b0", "sha256": "873f9f67090c93cdd84eed081d0d1c43491202d11e1d8de63a4f9e21896707e5", "size_bytes": 159626},
+    {"artifact_id": 8310890677, "batch": 1, "name": "bench2r-hermes-s1-29332828621-1-b1", "sha256": "361eb55d5ccbef7e674eb140d64d25cbf2289ba964846ba871d4e5c6a8ff8b8e", "size_bytes": 141189},
+    {"artifact_id": 8311033854, "batch": 2, "name": "bench2r-hermes-s1-29332828621-1-b2", "sha256": "302f7c4d5cb850b3aeb132e18645a4a1c67ac5e5f6902ab9933b241fc1fd6b7b", "size_bytes": 145378},
+    {"artifact_id": 8311146400, "batch": 3, "name": "bench2r-hermes-s1-29332828621-1-b3", "sha256": "55cb0581ed76b136502f2b30e7a31fed04a5d8a04af16ea6c45bc63de0fc94f7", "size_bytes": 162563}
+  ],
+  "configuration_results": [
+    {"candidate_id":"gemma4-12b-it-qat","arm":"profile_only","semantic_passes":1,"infrastructure_valid_runs":2,"tool_trace_exact_runs":2,"final_exact_runs":2,"actions_exact_runs":1,"budget_valid_runs":2},
+    {"candidate_id":"gemma4-12b-it-qat","arm":"profile_plus_skill","semantic_passes":1,"infrastructure_valid_runs":2,"tool_trace_exact_runs":2,"final_exact_runs":2,"actions_exact_runs":1,"budget_valid_runs":2},
+    {"candidate_id":"gemma4-fable-agentic-12b","arm":"profile_only","semantic_passes":0,"infrastructure_valid_runs":1,"tool_trace_exact_runs":2,"final_exact_runs":0,"actions_exact_runs":0,"budget_valid_runs":0},
+    {"candidate_id":"gemma4-fable-agentic-12b","arm":"profile_plus_skill","semantic_passes":0,"infrastructure_valid_runs":0,"tool_trace_exact_runs":1,"final_exact_runs":0,"actions_exact_runs":0,"budget_valid_runs":0},
+    {"candidate_id":"gemma4-fable-coder-12b","arm":"profile_only","semantic_passes":1,"infrastructure_valid_runs":2,"tool_trace_exact_runs":1,"final_exact_runs":1,"actions_exact_runs":1,"budget_valid_runs":2},
+    {"candidate_id":"gemma4-fable-coder-12b","arm":"profile_plus_skill","semantic_passes":1,"infrastructure_valid_runs":2,"tool_trace_exact_runs":1,"final_exact_runs":1,"actions_exact_runs":1,"budget_valid_runs":2},
+    {"candidate_id":"minicpm5-fable-1b-control","arm":"profile_only","semantic_passes":0,"infrastructure_valid_runs":0,"tool_trace_exact_runs":1,"final_exact_runs":0,"actions_exact_runs":0,"budget_valid_runs":0},
+    {"candidate_id":"minicpm5-fable-1b-control","arm":"profile_plus_skill","semantic_passes":0,"infrastructure_valid_runs":0,"tool_trace_exact_runs":1,"final_exact_runs":0,"actions_exact_runs":0,"budget_valid_runs":0},
+    {"candidate_id":"qwable-9b-fable5","arm":"profile_only","semantic_passes":0,"infrastructure_valid_runs":2,"tool_trace_exact_runs":2,"final_exact_runs":1,"actions_exact_runs":0,"budget_valid_runs":2},
+    {"candidate_id":"qwable-9b-fable5","arm":"profile_plus_skill","semantic_passes":1,"infrastructure_valid_runs":2,"tool_trace_exact_runs":2,"final_exact_runs":1,"actions_exact_runs":1,"budget_valid_runs":2},
+    {"candidate_id":"qwythos-hermes-64k","arm":"profile_only","semantic_passes":0,"infrastructure_valid_runs":2,"tool_trace_exact_runs":2,"final_exact_runs":1,"actions_exact_runs":0,"budget_valid_runs":2},
+    {"candidate_id":"qwythos-hermes-64k","arm":"profile_plus_skill","semantic_passes":1,"infrastructure_valid_runs":2,"tool_trace_exact_runs":2,"final_exact_runs":2,"actions_exact_runs":1,"budget_valid_runs":2},
+    {"candidate_id":"qwythos-hermes-safe","arm":"profile_only","semantic_passes":0,"infrastructure_valid_runs":2,"tool_trace_exact_runs":2,"final_exact_runs":0,"actions_exact_runs":0,"budget_valid_runs":2},
+    {"candidate_id":"qwythos-hermes-safe","arm":"profile_plus_skill","semantic_passes":0,"infrastructure_valid_runs":2,"tool_trace_exact_runs":1,"final_exact_runs":0,"actions_exact_runs":2,"budget_valid_runs":1},
+    {"candidate_id":"qwythos-mythos-9b","arm":"profile_only","semantic_passes":1,"infrastructure_valid_runs":2,"tool_trace_exact_runs":1,"final_exact_runs":1,"actions_exact_runs":1,"budget_valid_runs":1},
+    {"candidate_id":"qwythos-mythos-9b","arm":"profile_plus_skill","semantic_passes":0,"infrastructure_valid_runs":2,"tool_trace_exact_runs":2,"final_exact_runs":1,"actions_exact_runs":1,"budget_valid_runs":2}
+  ],
+  "counts": {"failed": 18, "infrastructure_valid": 25, "invalid_infrastructure": 7, "passed": 7, "semantic_pass": 7},
+  "decision": {
+    "orchestrator_admitted": false,
+    "reason": "No fixed candidate/arm passed both diagnostic cases.",
+    "s2_arm": "profile_plus_skill_with_deterministic_finalizer",
+    "s2_candidates": ["gemma4-12b-it-qat", "qwythos-mythos-9b", "qwythos-hermes-64k"],
+    "excluded_from_s2": {
+      "gemma4-fable-agentic-12b": "unstable completion and budget failures",
+      "gemma4-fable-coder-12b": "does not call required tool",
+      "minicpm5-fable-1b-control": "Hermes/Ollama protocol invalid",
+      "qwable-9b-fable5": "hallucinates transformed tool value under skill",
+      "qwythos-hermes-safe": "unnecessary tools and budget violation on stop case"
+    }
+  },
+  "matrix": {"arms": 2, "candidates": 8, "captured_runs": 32, "cases": 2, "expected_runs": 32, "repetitions": 1},
+  "run": {"execution_commit_sha": "c6960b3dc10cb5cbd3bcb2363ad7c83bc3939466", "workflow_conclusion": "success", "workflow_run_id": 29332828621},
+  "schema_version": "bench.hermes-s1-closeout.v1"
+}
