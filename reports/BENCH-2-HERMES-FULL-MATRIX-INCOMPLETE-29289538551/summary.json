@@ -1,0 +1,66 @@
+{
+  "decision": {
+    "fresh_single_attempt_required": true,
+    "marker_reset_to_false": true,
+    "partial_run_preserved_as_noncomparative_observation": true,
+    "use_for_candidate_exclusion": false,
+    "use_for_full_matrix_comparison": false
+  },
+  "jobs": {
+    "batch_0": {
+      "artifact": null,
+      "conclusion": "failure",
+      "detail": "capture cancelled after runner disconnection",
+      "status": "completed"
+    },
+    "batch_1": {
+      "artifact_id": 8301338019,
+      "artifact_name": "bench2-hermes-29289538551-1-b1",
+      "artifact_sha256": "9c54a4ac3003d02b78d2b2bf484e12e3e6b20300933e5742da345ee4ecf46729",
+      "artifact_size_bytes": 8455,
+      "conclusion": "cancelled",
+      "status": "completed"
+    },
+    "batch_2": {
+      "conclusion": "cancelled",
+      "executed": false,
+      "status": "completed"
+    },
+    "batch_3": {
+      "conclusion": "cancelled",
+      "executed": false,
+      "status": "completed"
+    }
+  },
+  "partial_evidence": {
+    "archive_digest_verified": true,
+    "candidate_id": "qwythos-mythos-9b",
+    "case_id": "ho-tools-hermes-lookup-001",
+    "infrastructure_valid": true,
+    "internal_manifest_verified": true,
+    "observed": {
+      "api_calls": 2,
+      "output": {
+        "code": "BRAVO-08",
+        "final": "62915387",
+        "status": "complete"
+      },
+      "output_error": "output_fields_mismatch",
+      "residency_class": "full_vram",
+      "residency_ratio": 1.0,
+      "runtime_context_length": 65536,
+      "tool_trace_exact": true
+    },
+    "repetition": 1,
+    "run_count": 1,
+    "semantic_pass": false
+  },
+  "run": {
+    "activation_commit_sha": "0078c74a22bc1943c4188018923d14b4b8211b5e",
+    "status": "cancelled_incomplete",
+    "workflow": "BENCH-2 Hermes full matrix",
+    "workflow_run_attempt": 1,
+    "workflow_run_id": 29289538551
+  },
+  "schema_version": "bench.hermes-full-matrix-incomplete-closeout.v1"
+}
