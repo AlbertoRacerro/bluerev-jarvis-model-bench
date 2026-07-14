@@ -21,9 +21,9 @@ jobs:
       - name: Publish S2 run state
         uses: actions/github-script@v7
         env:
-          TARGET_SHA: e057c286109a486cc59b95ef4064a84f70bd19c3
+          TARGET_SHA: 8cb771cb140795198de0c38937b382a10054d867
           WORKFLOW_NAME: BENCH-2R Hermes S2 held-out admission
-          ISSUE_TITLE: BENCH-2R S2 run observer — e057c28
+          ISSUE_TITLE: BENCH-2R S2 run observer — 8cb771c
         with:
           script: |
             const { owner, repo } = context.repo;
