@@ -19,7 +19,9 @@ REGISTRY_PATH = ROOT / "candidates/bench2-h4-eligible.json"
 RUNTIME_WORKFLOW_PATH = ROOT / ".github/workflows/bench2r-hermes-s1-oneshot.yml"
 VALIDATION_WORKFLOW_PATH = ROOT / ".github/workflows/bench2r-hermes-s1-validation.yml"
 RUNNER_PATH = ROOT / "scripts/run_bench2r_hermes_s1.py"
+AWAKE_RUNNER_PATH = ROOT / "scripts/run_bench2r_hermes_s1_awake.py"
 WORKER_PATH = ROOT / "scripts/run_bench2r_hermes_worker.py"
+FAILED_KEEP_AWAKE_PATH = ROOT / "scripts/bench2r_windows_keep_awake.ps1"
 CASE_PATHS = (
     ROOT / "fixtures/bench-2/ho-tools-hermes-lookup-001.json",
     ROOT / "fixtures/bench-2/ho-stop-hermes-reuse-001.json",
@@ -146,9 +148,18 @@ def _validate_marker(require_enabled: bool | None) -> dict[str, Any]:
 
 
 def _validate_sources() -> None:
-    for path in (RUNNER_PATH, WORKER_PATH, RUNTIME_WORKFLOW_PATH, VALIDATION_WORKFLOW_PATH):
+    for path in (
+        RUNNER_PATH,
+        AWAKE_RUNNER_PATH,
+        WORKER_PATH,
+        RUNTIME_WORKFLOW_PATH,
+        VALIDATION_WORKFLOW_PATH,
+    ):
         if not path.is_file():
             raise HermesS1ValidationError(f"required S1 source is missing: {path.name}")
+    if FAILED_KEEP_AWAKE_PATH.exists():
+        raise HermesS1ValidationError("failed PowerShell keep-awake helper remains present")
+
     worker = WORKER_PATH.read_text(encoding="utf-8")
     required_worker = {
         "build_skill_invocation_message",
@@ -159,17 +170,36 @@ def _validate_sources() -> None:
     }
     if any(token not in worker for token in required_worker):
         raise HermesS1ValidationError("S1 worker observation contract is incomplete")
+
+    awake_runner = AWAKE_RUNNER_PATH.read_text(encoding="utf-8")
+    required_awake = {
+        'ctypes.WinDLL("kernel32", use_last_error=True)',
+        "SetThreadExecutionState",
+        "with keep_windows_awake():",
+        "return base.capture(args.artifact_dir)",
+        "_set_thread_execution_state(ES_CONTINUOUS)",
+    }
+    if any(token not in awake_runner for token in required_awake):
+        raise HermesS1ValidationError("S1 in-process keep-awake contract is incomplete")
+
     runtime = RUNTIME_WORKFLOW_PATH.read_text(encoding="utf-8")
     if "runs-on: [self-hosted, Windows, X64, bluerev-bench]" not in runtime:
         raise HermesS1ValidationError("S1 runner binding drifted")
     if "batch: [0, 1, 2, 3]" not in runtime or "max-parallel: 1" not in runtime:
         raise HermesS1ValidationError("S1 workflow serialization drifted")
+    if "cancel-in-progress: true" not in runtime:
+        raise HermesS1ValidationError("S1 stale-run cancellation boundary is missing")
     if "workflow_dispatch" in runtime:
         raise HermesS1ValidationError("S1 workflow exposes manual dispatch")
     if "startsWith(github.event.head_commit.message, 'Activate BENCH-2R Hermes S1 preflight')" not in runtime:
         raise HermesS1ValidationError("S1 activation guard is missing")
-    if "python -m scripts.run_bench2r_hermes_s1 capture" not in runtime:
-        raise HermesS1ValidationError("S1 capture command is missing")
+    if "python -m scripts.run_bench2r_hermes_s1_awake capture" not in runtime:
+        raise HermesS1ValidationError("S1 in-process keep-awake capture command is missing")
+    if "python -m scripts.run_bench2r_hermes_s1 enforce" not in runtime:
+        raise HermesS1ValidationError("S1 enforce command is missing")
+    if "bench2r_windows_keep_awake.ps1" in runtime:
+        raise HermesS1ValidationError("S1 workflow still invokes failed PowerShell helper")
+
     validation = VALIDATION_WORKFLOW_PATH.read_text(encoding="utf-8")
     if "runs-on: ubuntu-latest" not in validation:
         raise HermesS1ValidationError("S1 validation is not hosted-only")
