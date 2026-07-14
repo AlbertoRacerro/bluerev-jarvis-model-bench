@@ -31,7 +31,7 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
       - name: Validate authorized S3A runtime contract
-        run: python -m scripts.validate_bench2r_hermes_s3a_runtime --require-enabled
+        run: python -m scripts.validate_bench2r_hermes_s3a_windows --require-enabled
       - name: Capture S3A batch with Windows keep-awake
         run: python -m scripts.run_bench2r_hermes_s3a_awake capture
       - name: Enforce S3A safe artifact integrity
