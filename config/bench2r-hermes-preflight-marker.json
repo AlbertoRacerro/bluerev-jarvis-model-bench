@@ -1,0 +1,5 @@
+{
+  "enabled": false,
+  "plan_path": "fixtures/bench-plans/bench2r-hermes-optimization-plan.json",
+  "schema_version": "bench.hermes-optimization-preflight-marker.v1"
+}
