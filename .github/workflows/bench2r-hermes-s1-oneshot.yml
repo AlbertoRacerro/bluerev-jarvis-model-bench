@@ -28,15 +28,12 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Prevent Windows sleep during S1
-        shell: powershell
-        run: ./scripts/bench2r_windows_keep_awake.ps1 start
       - name: Validate authorized S1 contract
         shell: cmd
         run: python -m scripts.validate_bench2r_hermes_s1 --require-enabled
-      - name: Capture S1 batch
+      - name: Capture S1 batch with Windows keep-awake
         shell: cmd
-        run: python -m scripts.run_bench2r_hermes_s1 capture
+        run: python -m scripts.run_bench2r_hermes_s1_awake capture
       - name: Enforce S1 artifact integrity
         if: always()
         shell: cmd
@@ -49,7 +46,3 @@ jobs:
           path: artifacts/bench2r-hermes-s1/
           if-no-files-found: error
           retention-days: 30
-      - name: Restore Windows sleep policy
-        if: always()
-        shell: powershell
-        run: ./scripts/bench2r_windows_keep_awake.ps1 stop
