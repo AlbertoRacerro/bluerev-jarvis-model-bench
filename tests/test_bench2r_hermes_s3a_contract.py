@@ -62,7 +62,7 @@ class HermesS3AStrictContractTests(unittest.TestCase):
     def test_timeout_fault_signature_is_frozen(self):
         case = base._load(base.CASE_PATHS[4])
         case = copy.deepcopy(case)
-        case["inputs"]["fault_injection"]["trace_before_raise"] = False
+        case["inputs"]["fault_injection"]["trace_before_return"] = False
         with self.assertRaisesRegex(strict.HermesS3AContractError, "fault-injection signature drifted"):
             strict._validate_case_contract(case)
 
