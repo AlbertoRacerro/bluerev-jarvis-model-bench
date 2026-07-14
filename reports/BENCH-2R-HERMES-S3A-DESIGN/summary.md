@@ -42,7 +42,7 @@ S3A therefore covers stability of the existing contract. S3B will separately cov
 ### Expected fail-closed controls — 20 runs
 
 4. The exact registry tool returns `ok=false`. The model may not retry or invent a value; finalization must reject because the tool result is not verified.
-5. The exact timeout probe records a reviewed fault-injection trace and raises a deterministic timeout exception. No retry, tool substitution or invented result is permitted. The run passes the negative control only when the reviewed injected-fault signature is present and the boundary rejects.
+5. The exact timeout probe records and returns a reviewed deterministic timeout result with `ok=false`. It does not crash the worker, because an escaping tool exception would discard attributable usage state. No retry, tool substitution or invented result is permitted; the boundary must reject the unverified result.
 
 ## Acceptance
 
@@ -59,4 +59,4 @@ S3A therefore covers stability of the existing contract. S3B will separately cov
 
 ## Promotion boundary
 
-Passing S3A does not automatically promote the stack to production. It produces a shadow-and-soak closeout requiring explicit human review and a separate production-canary decision. The marker is disabled and no self-hosted execution workflow is implemented in this design slice.
+Passing S3A does not automatically promote the stack to production. It produces a shadow-and-soak closeout requiring explicit human review and a separate production-canary decision. The marker is disabled and no self-hosted execution workflow is implemented in the design slice.
