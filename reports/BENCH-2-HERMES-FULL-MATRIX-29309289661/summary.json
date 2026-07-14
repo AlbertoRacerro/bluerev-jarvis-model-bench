@@ -1,0 +1,148 @@
+{
+  "artifacts": [
+    {
+      "archive_sha256": "f547763904156b5659c1241514fb14908e67748687d4538474df77b20eddc1b9",
+      "artifact_id": 8301572350,
+      "batch_index": 0,
+      "name": "bench2-hermes-29309289661-1-b0",
+      "size_bytes": 106758
+    },
+    {
+      "archive_sha256": "229386535fa536926c992f6a58e3ac9bd647ebf2c775a725578cc740bdd3dc71",
+      "artifact_id": 8301655197,
+      "batch_index": 1,
+      "name": "bench2-hermes-29309289661-1-b1",
+      "size_bytes": 105055
+    },
+    {
+      "archive_sha256": "e29ecdbe213da72ebfc8ad9816550ea8582bfc49d25bafa21fb0783fc9cb3499",
+      "artifact_id": 8301775459,
+      "batch_index": 2,
+      "name": "bench2-hermes-29309289661-1-b2",
+      "size_bytes": 108220
+    },
+    {
+      "archive_sha256": "7a9fee2be27c92fa7ee327d93f8343c6feb8bd87aab9212319fd868e9dcf9572",
+      "artifact_id": 8301863238,
+      "batch_index": 3,
+      "name": "bench2-hermes-29309289661-1-b3",
+      "size_bytes": 106615
+    }
+  ],
+  "bindings": {
+    "canary_closeout_sha256": "010791bdea707e809dc52d2919b6d68b7ea50df086bf1187b8cd46039f590ba9",
+    "candidate_registry_sha256": "67a311b7e4e75135dae6e1c2ce3dd25767b4d41f8439ec6bee7701d0c90881d7",
+    "h4_summary_sha256": "fc81c95c51ea55e9b79e293feee5fb9762655ccb1d2831b31ac4257fa5968af5",
+    "hermes_commit_sha": "73b611ad19720d70308dad6b0fb64648aaadc216",
+    "hermes_version": "0.18.2",
+    "plan_sha256": "0ac1832f959ff3780ecd36f44bc5d24ba49594529974b863a2aebcadeb55d312"
+  },
+  "candidate_results": [
+    {
+      "HO-STOP": {"budget_violation": 2, "invalid_runtime": 0, "passed": 0, "semantic_failure": 1, "stable_2_of_3_pass": false},
+      "HO-TOOLS": {"budget_violation": 1, "invalid_runtime": 0, "passed": 2, "semantic_failure": 0, "stable_2_of_3_pass": true},
+      "candidate_id": "gemma4-12b-it-qat",
+      "orchestrator_admitted": false
+    },
+    {
+      "HO-STOP": {"budget_violation": 1, "invalid_runtime": 0, "passed": 0, "semantic_failure": 2, "stable_2_of_3_pass": false},
+      "HO-TOOLS": {"budget_violation": 1, "invalid_runtime": 0, "passed": 0, "semantic_failure": 2, "stable_2_of_3_pass": false},
+      "candidate_id": "qwable-9b-fable5",
+      "orchestrator_admitted": false
+    },
+    {
+      "HO-STOP": {"budget_violation": 0, "invalid_runtime": 0, "passed": 1, "semantic_failure": 2, "stable_2_of_3_pass": false},
+      "HO-TOOLS": {"budget_violation": 1, "invalid_runtime": 0, "passed": 1, "semantic_failure": 1, "stable_2_of_3_pass": false},
+      "candidate_id": "qwythos-mythos-9b",
+      "orchestrator_admitted": false
+    },
+    {
+      "HO-STOP": {"budget_violation": 0, "invalid_runtime": 3, "passed": 0, "semantic_failure": 0, "stable_2_of_3_pass": false},
+      "HO-TOOLS": {"budget_violation": 0, "invalid_runtime": 3, "passed": 0, "semantic_failure": 0, "stable_2_of_3_pass": false},
+      "candidate_id": "minicpm5-fable-1b-control",
+      "orchestrator_admitted": false
+    },
+    {
+      "HO-STOP": {"budget_violation": 0, "invalid_runtime": 2, "passed": 0, "semantic_failure": 1, "stable_2_of_3_pass": false},
+      "HO-TOOLS": {"budget_violation": 2, "invalid_runtime": 1, "passed": 0, "semantic_failure": 0, "stable_2_of_3_pass": false},
+      "candidate_id": "gemma4-fable-agentic-12b",
+      "orchestrator_admitted": false
+    },
+    {
+      "HO-STOP": {"budget_violation": 0, "invalid_runtime": 0, "passed": 1, "semantic_failure": 2, "stable_2_of_3_pass": false},
+      "HO-TOOLS": {"budget_violation": 0, "invalid_runtime": 0, "passed": 0, "semantic_failure": 3, "stable_2_of_3_pass": false},
+      "candidate_id": "gemma4-fable-coder-12b",
+      "orchestrator_admitted": false
+    },
+    {
+      "HO-STOP": {"budget_violation": 0, "invalid_runtime": 0, "passed": 1, "semantic_failure": 2, "stable_2_of_3_pass": false},
+      "HO-TOOLS": {"budget_violation": 0, "invalid_runtime": 0, "passed": 0, "semantic_failure": 3, "stable_2_of_3_pass": false},
+      "candidate_id": "qwythos-hermes-64k",
+      "orchestrator_admitted": false
+    },
+    {
+      "HO-STOP": {"budget_violation": 1, "invalid_runtime": 0, "passed": 0, "semantic_failure": 2, "stable_2_of_3_pass": false},
+      "HO-TOOLS": {"budget_violation": 0, "invalid_runtime": 0, "passed": 0, "semantic_failure": 3, "stable_2_of_3_pass": false},
+      "candidate_id": "qwythos-hermes-safe",
+      "orchestrator_admitted": false
+    }
+  ],
+  "capability_summary": {
+    "HO-STOP": {"budget_violation": 4, "invalid_runtime": 5, "passed": 3, "runs": 24, "semantic_failure": 12},
+    "HO-TOOLS": {"budget_violation": 5, "invalid_runtime": 4, "passed": 3, "runs": 24, "semantic_failure": 12}
+  },
+  "closeout_counts": {"budget_violation": 9, "invalid_runtime": 9, "passed": 6, "semantic_failure": 24, "total": 48},
+  "decision": {
+    "capability_specific_results_preserved": true,
+    "execution_marker_must_be_disabled": true,
+    "global_composite_score_allowed": false,
+    "next_step": "BENCH-2R diagnostic contract tests before any admission rerun",
+    "orchestrator_candidates_admitted": [],
+    "rerun_same_matrix_required": false
+  },
+  "integrity": {
+    "all_alias_cleanup_verified": true,
+    "all_archive_sha256_match_github": true,
+    "all_four_artifacts_present": true,
+    "all_internal_manifests_verified": true,
+    "all_reports_bound_to_activation_sha": true,
+    "all_run_cleanup_verified": true,
+    "all_runs_context_65536": true,
+    "all_runs_full_vram": true,
+    "external_provider_use_observed": false,
+    "jarvisos_access_observed": false
+  },
+  "inventory": {
+    "all_lane1_candidates_remain_recorded": true,
+    "bench1_direct_outcomes_used_as_admission_gate": false,
+    "captured_runs": 48,
+    "case_count": 2,
+    "executed_candidate_count": 8,
+    "h4_stock_hermes_eligible_count": 8,
+    "lane1_candidate_count": 10,
+    "repetitions_per_pair": 3
+  },
+  "raw_runner_counts": {"failed": 24, "invalid_infrastructure": 18, "passed": 6, "total": 48},
+  "run": {
+    "activation_commit_sha": "deb7ae4c6ccbd80b1c14f65d3722c6cc2268fa70",
+    "status": "complete_with_failures",
+    "workflow_run_attempt": 1,
+    "workflow_run_id": 29309289661
+  },
+  "runtime_failures": {
+    "gemma4-fable-agentic-12b": {
+      "count": 3,
+      "signatures": ["Model generated invalid tool call: hermes_skill", "Model generated invalid tool call: Bash", "Model generated invalid tool call: return_final"]
+    },
+    "minicpm5-fable-1b-control": {
+      "count": 6,
+      "signature": "HTTP 400: Cannot have 2 or more assistant messages at the end of the list"
+    }
+  },
+  "schema_version": "bench.hermes-full-matrix-closeout.v1",
+  "taxonomy_note": {
+    "closeout_rule": "preserve raw status and separately classify budget_violation; do not rewrite artifacts",
+    "effect": "nine model-behavior budget violations were emitted as invalid_infrastructure",
+    "issue": "usage_api_calls_bounded is currently included in infrastructure_names"
+  }
+}
