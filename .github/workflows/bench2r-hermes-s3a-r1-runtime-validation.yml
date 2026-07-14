@@ -31,6 +31,7 @@ on:
       - tests/test_bench2r_hermes_s3a_r1_repair.py
       - tests/test_bench2r_hermes_s3a_r1_repair_runtime.py
       - tests/test_bench2r_hermes_s3a_r1_repair_preflight.py
+      - .github/workflows/bench2r-hermes-s3a-r1-repair.yml
       - .github/workflows/bench2r-hermes-s3a-r1-runtime-validation.yml
 
 permissions:
@@ -46,7 +47,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Validate disabled S3A-R1 paired repair runtime
+      - name: Validate reviewed S3A-R1 workflow with marker disabled
         shell: bash
         run: |
           mkdir -p artifacts
