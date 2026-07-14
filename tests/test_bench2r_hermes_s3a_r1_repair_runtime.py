@@ -8,6 +8,7 @@ from unittest import mock
 
 from scripts import bench2r_hermes_runtime as optimization
 from scripts import run_bench2r_hermes_s3a_r1_repair as repair
+from scripts import validate_bench2r_hermes_s3a_r1_repair as design
 from scripts import validate_bench2r_hermes_s3a_r1_repair_runtime as validator
 
 
@@ -21,6 +22,26 @@ class HermesS3ARepairRuntimeTests(unittest.TestCase):
             return original(path)
 
         return mock.patch.object(validator, "_load", side_effect=load)
+
+    def test_lf_and_crlf_text_have_same_git_blob_sha(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            lf = root / "lf.txt"
+            crlf = root / "crlf.txt"
+            lf.write_bytes(b"alpha\nbeta\ngamma\n")
+            crlf.write_bytes(b"alpha\r\nbeta\r\ngamma\r\n")
+            self.assertEqual(
+                validator.git_blob_sha(lf),
+                validator.git_blob_sha(crlf),
+            )
+
+    def test_windows_text_blob_boundary_restores_design_hash_after_exception(self):
+        original = design._git_blob_sha
+        with self.assertRaisesRegex(RuntimeError, "boom"):
+            with validator.windows_text_blob_boundary():
+                self.assertIs(design._git_blob_sha, validator.git_blob_sha)
+                raise RuntimeError("boom")
+        self.assertIs(design._git_blob_sha, original)
 
     def test_reviewed_workflow_validates_while_marker_remains_disabled(self):
         plan, marker, candidate = validator.validate_execution(require_enabled=False)
