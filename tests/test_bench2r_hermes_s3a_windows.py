@@ -43,10 +43,11 @@ class HermesS3AWindowsBoundaryTests(unittest.TestCase):
         self.assertEqual(plan["counts"]["total_runs"], 50)
         self.assertEqual(len(cases), 5)
 
-    def test_durable_preflight_wrapper_is_authoritative(self):
+    def test_durable_preflight_wrapper_and_cmd_shell_are_authoritative(self):
         workflow = windows.WORKFLOW_PATH.read_text(encoding="utf-8")
         logical = windows.normalized_workflow_text(workflow)
         self.assertIn(windows.EXPECTED_VALIDATOR_COMMAND, logical)
+        self.assertEqual(workflow.count("shell: cmd"), 3)
         self.assertNotIn("shell: powershell", logical)
         self.assertNotIn(
             "python -m scripts.validate_bench2r_hermes_s3a_windows",
