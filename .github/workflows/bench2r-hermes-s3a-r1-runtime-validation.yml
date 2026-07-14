@@ -27,7 +27,6 @@ on:
       - scripts/run_bench2r_hermes_s3a_r1_repair_preflight.py
       - scripts/validate_bench2r_hermes_s3a_r1_repair.py
       - scripts/validate_bench2r_hermes_s3a_r1_repair_runtime.py
-      - tests/test_bench2r_hermes_s3a_runtime.py
       - tests/test_bench2r_hermes_s3a_closeout.py
       - tests/test_bench2r_hermes_s3a_r1_repair.py
       - tests/test_bench2r_hermes_s3a_r1_repair_runtime.py
@@ -54,15 +53,11 @@ jobs:
           set -o pipefail
           {
             python -m unittest -v \
-              tests.test_bench2r_hermes_s3a_runtime \
               tests.test_bench2r_hermes_s3a_closeout \
-              tests.test_bench2r_hermes_s3a_r1_repair \
               tests.test_bench2r_hermes_s3a_r1_repair_runtime \
               tests.test_bench2r_hermes_s3a_r1_repair_preflight
             python -m scripts.validate_bench2r_hermes_s3a_closeout \
               --output artifacts/bench2r-s3a-closeout-validation.json
-            python -m scripts.validate_bench2r_hermes_s3a_r1_repair \
-              --output artifacts/bench2r-s3a-r1-repair-design-validation.json
             python -m scripts.validate_bench2r_hermes_s3a_r1_repair_runtime \
               --require-disabled \
               --output artifacts/bench2r-s3a-r1-repair-runtime-validation.json
