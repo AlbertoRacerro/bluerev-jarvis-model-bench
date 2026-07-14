@@ -26,7 +26,7 @@ Use this skill when a task supplies an explicit tool registry, allowed and forbi
    - When it is absent, select only a registered tool whose documented purpose directly provides the missing information.
 4. Never invent, alias, or infer an unavailable tool name. A familiar tool from another framework is not available unless it appears in the current registry.
 5. Make the minimum number of tool calls allowed by the task. Do not call a distractor, repeat a successful lookup, or perform an unrequested verification.
-6. After a sufficient tool result is returned, re-read the response contract before composing the answer. Do not return the raw tool object unless the required value type explicitly calls for that object.
+6. Once a sufficient result is available, treat the task as terminal for runtime behavior, then re-read the response contract before composing the answer. Do not return the raw tool object unless the required value type explicitly calls for that object.
 7. Build the final answer exactly once:
    - emit every required field and no unrequested field;
    - preserve each required field name and value type;
