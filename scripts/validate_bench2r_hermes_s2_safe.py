@@ -20,7 +20,7 @@ class HermesS2SafeValidationError(RuntimeError):
     pass
 
 
-def validate(*, require_enabled: bool) -> dict[str, object]:
+def validate(*, require_enabled: bool = False) -> dict[str, object]:
     plan, marker, candidates, cases = base.validate_execution(
         require_enabled=require_enabled
     )
