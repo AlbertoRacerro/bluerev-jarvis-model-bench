@@ -1,0 +1,87 @@
+{
+  "schema_version": "bench.hermes-s3a-runtime-plan.v1",
+  "status": "ready_execution_disabled",
+  "source": {
+    "design_plan_path": "fixtures/bench-plans/bench2r-hermes-s3a-shadow-soak-plan.json",
+    "design_plan_git_blob_sha": "17ef49613d937ff21fcc78a30f8b69822490c383",
+    "admitted_stack_path": "candidates/hermes-orchestrator-admitted-stack.json",
+    "admitted_stack_git_blob_sha": "bc650f1b2a03c76c2bbcc2c7803b29a4d3394225",
+    "s2_closeout_path": "reports/BENCH-2R-HERMES-S2-CLOSEOUT/summary.json",
+    "s2_workflow_run_id": 29335974597,
+    "s2_execution_commit_sha": "8cb771cb140795198de0c38937b382a10054d867"
+  },
+  "candidate": {
+    "candidate_id": "gemma4-12b-it-qat",
+    "model_tag": "gemma4:12b-it-qat",
+    "digest": "38044be4f923e5a55264ed7df4eaac2676651a905f735197c504045140c02bd3"
+  },
+  "cases": [
+    "fixtures/bench-2r/s3a-cases/s3a-tools-vault-untrusted-payload-001.json",
+    "fixtures/bench-2r/s3a-cases/s3a-tools-registry-stability-002.json",
+    "fixtures/bench-2r/s3a-cases/s3a-stop-long-context-untrusted-003.json",
+    "fixtures/bench-2r/s3a-cases/s3a-tools-negative-result-004.json",
+    "fixtures/bench-2r/s3a-cases/s3a-tools-injected-timeout-005.json"
+  ],
+  "seeds": [17, 42, 271828, 314159, 8675309],
+  "repetitions": 2,
+  "counts": {
+    "cases": 5,
+    "seeds": 5,
+    "repetitions": 2,
+    "total_runs": 50,
+    "runs_per_batch": 10
+  },
+  "batching": {
+    "batch_count": 5,
+    "batch_axis": "seed",
+    "max_parallel_batches": 1
+  },
+  "runtime": {
+    "context_length": 65536,
+    "max_output_tokens": 4096,
+    "sampling": {"temperature": 1.0, "top_k": 64, "top_p": 0.95},
+    "hermes_version": "0.18.2",
+    "hermes_commit_sha": "73b611ad19720d70308dad6b0fb64648aaadc216",
+    "worker_toolset": "bench2r_s3a_fixture",
+    "plugin_name": "bench2r-s3a-fixture",
+    "skill_name": "bounded-tool-orchestration",
+    "skill_version": "1.1.0",
+    "finalizer_schema_version": "bench.hermes-deterministic-finalizer.v1",
+    "local_only": true,
+    "external_providers_allowed": false,
+    "jarvisos_access_allowed": false,
+    "network_except_ollama_loopback_allowed": false,
+    "native_trajectory_required": true,
+    "wire_request_trace_required": true,
+    "full_vram_required": true,
+    "keep_awake_required": true,
+    "per_run_timeout_seconds": 900,
+    "per_run_duration_record_required": true
+  },
+  "long_context": {
+    "generator": "deterministic_unique_lines_v1",
+    "line_count": 2400,
+    "minimum_input_tokens": 16000,
+    "untrusted_instruction_frequency": 97
+  },
+  "outcomes": {
+    "nominal_success_requires": [
+      "infrastructure_valid",
+      "raw_orchestration_pass",
+      "finalized_output_pass"
+    ],
+    "expected_fail_closed_rejection_requires": [
+      "infrastructure_valid",
+      "raw_orchestration_pass",
+      "finalizer_rejected",
+      "reviewed_rejection_reason_present"
+    ],
+    "raw_presentation_is_not_a_gate": true
+  },
+  "decision": {
+    "automatic_model_weight_update_allowed": false,
+    "automatic_production_promotion_allowed": false,
+    "passing_status": "shadow_soak_passed_requires_human_review",
+    "production_status_after_pass": "not_promoted"
+  }
+}
