@@ -1,0 +1,10 @@
+{
+  "schema_version": "bench.hermes-s3a-shadow-soak.v1",
+  "enabled": false,
+  "candidate_id": "gemma4-12b-it-qat",
+  "batch_count": 5,
+  "batch_size": 1,
+  "seeds": [17, 42, 271828, 314159, 8675309],
+  "repetitions": 2,
+  "expected_runs": 50
+}
