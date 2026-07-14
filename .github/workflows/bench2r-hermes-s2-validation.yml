@@ -19,6 +19,7 @@ on:
       - scripts/validate_bench2r_hermes_s2_safe.py
       - tests/test_bench2r_deterministic_finalizer.py
       - tests/test_bench2r_hermes_s2.py
+      - tests/test_bench2r_s2_enabled_validator.py
       - .github/workflows/bench2r-hermes-s2-oneshot.yml
       - .github/workflows/bench2r-hermes-s2-validation.yml
 
@@ -35,10 +36,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Validate disabled S2 admission design
+      - name: Validate disabled and authorized S2 admission design
         run: |
           mkdir -p artifacts
-          python -m unittest -v tests.test_bench2r_deterministic_finalizer tests.test_bench2r_hermes_s2
+          python -m unittest -v \
+            tests.test_bench2r_deterministic_finalizer \
+            tests.test_bench2r_hermes_s2 \
+            tests.test_bench2r_s2_enabled_validator
           python -m scripts.validate_bench2r_hermes_s2 --output artifacts/bench2r-s2-validation.json
           python -m scripts.validate_bench2r_hermes_s2_safe > artifacts/bench2r-s2-safe-validation.json
           python -m py_compile \
