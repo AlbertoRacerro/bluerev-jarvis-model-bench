@@ -42,7 +42,7 @@ jobs:
             let payload;
             if (!run) {
               payload = {
-                schema_version: 'bench.hermes-s3a-observer.v1',
+                schema_version: 'bench.hermes-s3a-observer.v2',
                 target_sha: process.env.TARGET_SHA,
                 run_found: false,
                 matching_run_count: matches.length,
@@ -56,20 +56,33 @@ jobs:
                 github.rest.actions.listWorkflowRunArtifacts,
                 { owner, repo, run_id: run.id, per_page: 100 }
               );
-              payload = {
-                schema_version: 'bench.hermes-s3a-observer.v1',
-                target_sha: process.env.TARGET_SHA,
-                run_found: true,
-                run: {
-                  id: run.id,
-                  attempt: run.run_attempt,
-                  status: run.status,
-                  conclusion: run.conclusion,
-                  created_at: run.created_at,
-                  updated_at: run.updated_at,
-                  html_url: run.html_url,
-                },
-                jobs: jobs.map(job => ({
+              const jobRecords = [];
+              for (const job of jobs) {
+                let log_tail = null;
+                let log_tail_error = null;
+                if (job.status === 'completed' && job.conclusion !== 'success') {
+                  try {
+                    const response = await github.request(
+                      'GET /repos/{owner}/{repo}/actions/jobs/{job_id}/logs',
+                      { owner, repo, job_id: job.id }
+                    );
+                    const data = response.data;
+                    let text;
+                    if (typeof data === 'string') {
+                      text = data;
+                    } else if (data instanceof ArrayBuffer) {
+                      text = Buffer.from(data).toString('utf8');
+                    } else if (ArrayBuffer.isView(data)) {
+                      text = Buffer.from(data.buffer, data.byteOffset, data.byteLength).toString('utf8');
+                    } else {
+                      text = JSON.stringify(data);
+                    }
+                    log_tail = text.split(/\r?\n/).slice(-100).join('\n');
+                  } catch (error) {
+                    log_tail_error = `${error.name || 'Error'}: ${error.message || String(error)}`;
+                  }
+                }
+                jobRecords.push({
                   id: job.id,
                   name: job.name,
                   status: job.status,
@@ -82,7 +95,24 @@ jobs:
                     status: step.status,
                     conclusion: step.conclusion,
                   })),
-                })),
+                  log_tail,
+                  log_tail_error,
+                });
+              }
+              payload = {
+                schema_version: 'bench.hermes-s3a-observer.v2',
+                target_sha: process.env.TARGET_SHA,
+                run_found: true,
+                run: {
+                  id: run.id,
+                  attempt: run.run_attempt,
+                  status: run.status,
+                  conclusion: run.conclusion,
+                  created_at: run.created_at,
+                  updated_at: run.updated_at,
+                  html_url: run.html_url,
+                },
+                jobs: jobRecords,
                 artifacts: artifacts.map(item => ({
                   id: item.id,
                   name: item.name,
