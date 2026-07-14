@@ -1,0 +1,58 @@
+name: BENCH-2R Hermes S3A-R1 repair design validation
+
+on:
+  pull_request:
+    paths:
+      - config/bench2r-hermes-s3a-marker.json
+      - fixtures/bench-2r/hermes-skills/bounded-tool-orchestration/SKILL.md
+      - fixtures/bench-2r/hermes-skills/bounded-tool-orchestration-v1.2-candidate/SKILL.md
+      - fixtures/bench-2r/s3a-cases/**
+      - fixtures/bench-plans/bench2r-hermes-s3a-r1-repair-plan.json
+      - reports/BENCH-2R-HERMES-S3A-CLOSEOUT/**
+      - reports/BENCH-2R-HERMES-S3A-R1-REPAIR-DESIGN/**
+      - scripts/validate_bench2r_hermes_s3a_closeout.py
+      - scripts/validate_bench2r_hermes_s3a_r1_repair.py
+      - tests/test_bench2r_hermes_s3a_closeout.py
+      - tests/test_bench2r_hermes_s3a_r1_repair.py
+      - .github/workflows/bench2r-hermes-s3a-r1-repair-validation.yml
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate bounded S3A-R1 repair design
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          set -o pipefail
+          {
+            python -m unittest -v \
+              tests.test_bench2r_hermes_s3a_closeout \
+              tests.test_bench2r_hermes_s3a_r1_repair
+            python -m scripts.validate_bench2r_hermes_s3a_closeout \
+              --output artifacts/bench2r-s3a-closeout-validation.json
+            python -m scripts.validate_bench2r_hermes_s3a_r1_repair \
+              --output artifacts/bench2r-s3a-r1-repair-validation.json
+            python -m py_compile \
+              scripts/validate_bench2r_hermes_s3a_closeout.py \
+              scripts/validate_bench2r_hermes_s3a_r1_repair.py \
+              tests/test_bench2r_hermes_s3a_closeout.py \
+              tests/test_bench2r_hermes_s3a_r1_repair.py
+          } 2>&1 | tee artifacts/validation.log
+      - name: Upload validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench2r-hermes-s3a-r1-repair-design-validation
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 21
