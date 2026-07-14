@@ -24,6 +24,7 @@ class HermesS3AStrictContractTests(unittest.TestCase):
         self.assertTrue(payload["governed_stack_exact"])
         self.assertTrue(payload["scope_split_enforced"])
         self.assertTrue(payload["case_tool_contracts_exact"])
+        self.assertTrue(payload["negative_outputs_ledger_only"])
 
     def test_governed_stack_drift_is_rejected(self):
         plan = base._load(base.PLAN_PATH)
@@ -59,10 +60,19 @@ class HermesS3AStrictContractTests(unittest.TestCase):
         with self.assertRaisesRegex(strict.HermesS3AContractError, "tool sequence no longer matches"):
             strict._validate_case_contract(case)
 
+    def test_negative_raw_output_cannot_contain_result_value(self):
+        case = copy.deepcopy(base._load(base.CASE_PATHS[3]))
+        case["expected"]["raw_output"] = {
+            "resolved": "INVENTED",
+            "actions": ["call_tool", "stop"],
+        }
+        with self.assertRaisesRegex(strict.HermesS3AContractError, "not ledger-only"):
+            strict._validate_case_contract(case)
+
     def test_timeout_fault_signature_is_frozen(self):
         case = base._load(base.CASE_PATHS[4])
         case = copy.deepcopy(case)
-        case["inputs"]["fault_injection"]["trace_before_raise"] = False
+        case["inputs"]["fault_injection"]["trace_before_return"] = False
         with self.assertRaisesRegex(strict.HermesS3AContractError, "fault-injection signature drifted"):
             strict._validate_case_contract(case)
 
