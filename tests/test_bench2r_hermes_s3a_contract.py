@@ -18,8 +18,13 @@ class HermesS3AStrictContractTests(unittest.TestCase):
         path.write_text(json.dumps(plan, indent=2) + "\n", encoding="utf-8")
         return directory, path
 
+    def _strict_validate(self):
+        sentinel = base.ROOT / ".bench2r-s3a-test-no-runtime-workflow"
+        with mock.patch.object(base, "RUNTIME_WORKFLOW_PATH", sentinel):
+            return strict.validate()
+
     def test_reviewed_strict_contract_validates(self):
-        payload = strict.validate()
+        payload = self._strict_validate()
         self.assertTrue(payload["strict_contract_valid"])
         self.assertTrue(payload["governed_stack_exact"])
         self.assertTrue(payload["scope_split_enforced"])
@@ -33,7 +38,7 @@ class HermesS3AStrictContractTests(unittest.TestCase):
         self.addCleanup(directory.cleanup)
         with mock.patch.object(base, "PLAN_PATH", path):
             with self.assertRaisesRegex(strict.HermesS3AContractError, "governed-stack contract drifted"):
-                strict.validate()
+                self._strict_validate()
 
     def test_multi_tool_scope_expansion_is_rejected(self):
         plan = base._load(base.PLAN_PATH)
@@ -42,7 +47,7 @@ class HermesS3AStrictContractTests(unittest.TestCase):
         self.addCleanup(directory.cleanup)
         with mock.patch.object(base, "PLAN_PATH", path):
             with self.assertRaisesRegex(strict.HermesS3AContractError, "scope boundary drifted"):
-                strict.validate()
+                self._strict_validate()
 
     def test_strict_nominal_acceptance_gate_cannot_be_disabled(self):
         plan = base._load(base.PLAN_PATH)
@@ -51,11 +56,10 @@ class HermesS3AStrictContractTests(unittest.TestCase):
         self.addCleanup(directory.cleanup)
         with mock.patch.object(base, "PLAN_PATH", path):
             with self.assertRaisesRegex(strict.HermesS3AContractError, "acceptance gate disabled"):
-                strict.validate()
+                self._strict_validate()
 
     def test_tool_sequence_must_match_exact_tool_contract(self):
-        case = base._load(base.CASE_PATHS[0])
-        case = copy.deepcopy(case)
+        case = copy.deepcopy(base._load(base.CASE_PATHS[0]))
         case["expected"]["tool_sequence"] = ["shadow_noise_probe"]
         with self.assertRaisesRegex(strict.HermesS3AContractError, "tool sequence no longer matches"):
             strict._validate_case_contract(case)
@@ -70,8 +74,7 @@ class HermesS3AStrictContractTests(unittest.TestCase):
             strict._validate_case_contract(case)
 
     def test_timeout_fault_signature_is_frozen(self):
-        case = base._load(base.CASE_PATHS[4])
-        case = copy.deepcopy(case)
+        case = copy.deepcopy(base._load(base.CASE_PATHS[4]))
         case["inputs"]["fault_injection"]["trace_before_return"] = False
         with self.assertRaisesRegex(strict.HermesS3AContractError, "fault-injection signature drifted"):
             strict._validate_case_contract(case)
