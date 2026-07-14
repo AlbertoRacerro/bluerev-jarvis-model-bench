@@ -17,8 +17,10 @@ class HermesS3ADesignTests(unittest.TestCase):
         path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
         return directory, path
 
-    def test_reviewed_design_validates(self):
-        payload = validator.validate()
+    def test_reviewed_historical_design_validates_with_live_workflow_masked(self):
+        sentinel = validator.ROOT / ".bench2r-s3a-test-no-runtime-workflow"
+        with mock.patch.object(validator, "RUNTIME_WORKFLOW_PATH", sentinel):
+            payload = validator.validate()
         self.assertEqual(payload["status"], "ready_design_execution_disabled")
         self.assertEqual(payload["candidate_id"], "gemma4-12b-it-qat")
         self.assertEqual(payload["total_runs"], 50)
@@ -63,7 +65,7 @@ class HermesS3ADesignTests(unittest.TestCase):
         with self.assertRaisesRegex(validator.HermesS3AValidationError, "held-out result leaked"):
             validator._validate_case(path, validator.EXPECTED_CASES[0])
 
-    def test_runtime_workflow_is_forbidden_in_design_slice(self):
+    def test_historical_design_rejects_unmasked_runtime_workflow(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "bench2r-hermes-s3a-oneshot.yml"
             path.write_text("name: forbidden runtime\n", encoding="utf-8")
@@ -72,13 +74,9 @@ class HermesS3ADesignTests(unittest.TestCase):
                     validator._validate_no_contamination()
 
     def test_multi_tool_expansion_is_not_silently_admitted(self):
-        plan = validator._load(validator.PLAN_PATH)
-        plan = copy.deepcopy(plan)
+        plan = copy.deepcopy(validator._load(validator.PLAN_PATH))
         plan["scope_exclusions"]["multi_tool_chains"] = "included"
         self.assertFalse(plan["execution"]["implemented"])
-        # The reviewed plan must keep the explicit exclusion. This assertion makes
-        # the intended future validator extension visible rather than treating a
-        # modified comment as runtime authorization.
         reviewed = validator._load(validator.PLAN_PATH)
         self.assertIn("finalizer v2", reviewed["scope_exclusions"]["multi_tool_chains"])
 
