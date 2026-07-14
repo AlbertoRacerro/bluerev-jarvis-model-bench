@@ -1,0 +1,145 @@
+{
+  "schema_version": "bench.hermes-s2-closeout.v1",
+  "run": {
+    "workflow_run_id": 29335974597,
+    "execution_commit_sha": "8cb771cb140795198de0c38937b382a10054d867",
+    "workflow_conclusion": "success",
+    "workflow_attempt": 1
+  },
+  "matrix": {
+    "candidates": 3,
+    "cases": 4,
+    "seeds": [17, 42, 314159],
+    "expected_runs": 36,
+    "captured_runs": 36,
+    "infrastructure_valid_runs": 36
+  },
+  "artifacts": [
+    {
+      "batch": 0,
+      "candidate_id": "gemma4-12b-it-qat",
+      "artifact_id": 8312150578,
+      "name": "bench2r-hermes-s2-29335974597-1-b0",
+      "size_bytes": 297149,
+      "sha256": "040783597136bb7c1211799db26d3421cfe4148201790c1449dbb17913d0dbc5"
+    },
+    {
+      "batch": 1,
+      "candidate_id": "qwythos-mythos-9b",
+      "artifact_id": 8312317137,
+      "name": "bench2r-hermes-s2-29335974597-1-b1",
+      "size_bytes": 291633,
+      "sha256": "9296595b5c9c68f47bc9381c3bf16b6582b373eae323262e831c5593f0c1086d"
+    },
+    {
+      "batch": 2,
+      "candidate_id": "qwythos-hermes-64k",
+      "artifact_id": 8312496822,
+      "name": "bench2r-hermes-s2-29335974597-1-b2",
+      "size_bytes": 295705,
+      "sha256": "42f8f1d6b25de60eb9f8eb06bc7497af7fd2e280a62e1c71005815245429fefa"
+    }
+  ],
+  "aggregate": {
+    "passed": 31,
+    "failed": 5,
+    "invalid_infrastructure": 0,
+    "raw_orchestration_pass": 31,
+    "raw_presentation_pass": 15,
+    "finalized_output_pass": 31,
+    "admission_pass": 31
+  },
+  "candidate_results": [
+    {
+      "candidate_id": "gemma4-12b-it-qat",
+      "model_tag": "gemma4:12b-it-qat",
+      "digest": "38044be4f923e5a55264ed7df4eaac2676651a905f735197c504045140c02bd3",
+      "runs": 12,
+      "infrastructure_valid": 12,
+      "raw_orchestration_pass": 12,
+      "raw_presentation_pass": 3,
+      "finalized_output_pass": 12,
+      "admission_pass": 12,
+      "candidate_admitted": true,
+      "failure_summary": []
+    },
+    {
+      "candidate_id": "qwythos-mythos-9b",
+      "model_tag": "hf.co/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF:Q4_K_M",
+      "digest": "7c3d0c28e4db742c4c6cd2925627acb09b610faec86a32ac872190aee8bc67d0",
+      "runs": 12,
+      "infrastructure_valid": 12,
+      "raw_orchestration_pass": 9,
+      "raw_presentation_pass": 6,
+      "finalized_output_pass": 9,
+      "admission_pass": 9,
+      "candidate_admitted": false,
+      "failure_summary": [
+        "seed 17: both held-out tool cases terminated without the required tool call",
+        "seed 314159: supplied-string case made an unexpected tool call and exceeded the one-call budget"
+      ]
+    },
+    {
+      "candidate_id": "qwythos-hermes-64k",
+      "model_tag": "qwythos-hermes-64k:latest",
+      "digest": "466701318bae40cfcf42682a17dc8b5a1e2e99a19fb157cdc0cd09a2abc7a991",
+      "runs": 12,
+      "infrastructure_valid": 12,
+      "raw_orchestration_pass": 10,
+      "raw_presentation_pass": 6,
+      "finalized_output_pass": 10,
+      "admission_pass": 10,
+      "candidate_admitted": false,
+      "failure_summary": [
+        "seed 17: vault case used an invalid tool chain and exceeded model/tool budgets",
+        "seed 314159: registry case used the wrong tool contract"
+      ]
+    }
+  ],
+  "admitted_stack": {
+    "status": "benchmark_admitted_governed_stack",
+    "candidate_id": "gemma4-12b-it-qat",
+    "model_tag": "gemma4:12b-it-qat",
+    "digest": "38044be4f923e5a55264ed7df4eaac2676651a905f735197c504045140c02bd3",
+    "context_length": 65536,
+    "sampling": {
+      "temperature": 1.0,
+      "top_k": 64,
+      "top_p": 0.95
+    },
+    "max_output_tokens": 4096,
+    "skill": {
+      "name": "bounded-tool-orchestration",
+      "version": "1.1.0",
+      "path": "fixtures/bench-2r/hermes-skills/bounded-tool-orchestration/SKILL.md",
+      "git_blob_sha": "8aa1700657452efe7b287a85ddca488b3d6ed719"
+    },
+    "finalizer": {
+      "schema_version": "bench.hermes-deterministic-finalizer.v1",
+      "path": "scripts/bench2r_deterministic_finalizer.py",
+      "git_blob_sha": "c322af14e322a68bc179ea3df19b44d1bfddec84"
+    },
+    "hermes": {
+      "version": "0.18.2",
+      "commit_sha": "73b611ad19720d70308dad6b0fb64648aaadc216"
+    },
+    "admission_evidence": {
+      "held_out_cases": 4,
+      "seeds": [17, 42, 314159],
+      "runs": 12,
+      "raw_orchestration_pass": 12,
+      "finalized_output_pass": 12,
+      "wire_trace_valid": 12,
+      "native_trajectory_valid": 12
+    }
+  },
+  "decision": {
+    "orchestrator_found": true,
+    "selected_candidate_id": "gemma4-12b-it-qat",
+    "standalone_checkpoint_admitted": false,
+    "governed_stack_admitted": true,
+    "automatic_production_promotion_allowed": false,
+    "production_status": "not_promoted_requires_shadow_and_soak_gate",
+    "reason": "Gemma 4 is the only candidate with 12/12 infrastructure-valid held-out admission passes across all cases and producer-profile seeds. Raw presentation passed only 3/12, so the deterministic finalizer is a required component of the admitted stack rather than an optional cosmetic layer."
+  }
+}
