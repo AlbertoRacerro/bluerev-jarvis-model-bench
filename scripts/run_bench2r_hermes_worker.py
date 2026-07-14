@@ -161,7 +161,7 @@ def main() -> int:
         "output_tokens": result.get("output_tokens"),
         "reasoning_tokens": result.get("reasoning_tokens"),
         "total_tokens": result.get("total_tokens"),
-        "schema_version": "bench.hermes-s1-worker-result.v2",
+        "schema_version": "bench.hermes-s1-worker-result.v1",
     }
     _write_json(args.result_file, payload)
     _write_json(args.usage_file, _usage_from_result(result, failure))
