@@ -1,0 +1,111 @@
+name: BENCH-2R Hermes S3A-R1 recovery observer
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/bench2r-hermes-s3a-r1-recovery-observer.yml
+  workflow_run:
+    workflows: ["Recover BENCH-2R Hermes S3A-R1 batch 0 evidence"]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish recovery state
+        uses: actions/github-script@v7
+        env:
+          TARGET_SHA: 8caff4e1c8ba9dbc3b8c93da849c387380d560bc
+          WORKFLOW_NAME: Recover BENCH-2R Hermes S3A-R1 batch 0 evidence
+          ISSUE_TITLE: BENCH-2R S3A-R1 batch 0 recovery
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const runs = await github.paginate(
+              github.rest.actions.listWorkflowRunsForRepo,
+              { owner, repo, event: 'push', head_sha: process.env.TARGET_SHA, per_page: 100 }
+            );
+            const matches = runs.filter(item => item.name === process.env.WORKFLOW_NAME);
+            const run = matches.length === 1 ? matches[0] : null;
+            let payload;
+            if (!run) {
+              payload = {
+                schema_version: 'bench.hermes-s3a-r1-recovery-observer.v1',
+                target_sha: process.env.TARGET_SHA,
+                run_found: false,
+                matching_run_count: matches.length,
+              };
+            } else {
+              const jobs = await github.paginate(
+                github.rest.actions.listJobsForWorkflowRun,
+                { owner, repo, run_id: run.id, filter: 'latest', per_page: 100 }
+              );
+              const artifacts = await github.paginate(
+                github.rest.actions.listWorkflowRunArtifacts,
+                { owner, repo, run_id: run.id, per_page: 100 }
+              );
+              payload = {
+                schema_version: 'bench.hermes-s3a-r1-recovery-observer.v1',
+                target_sha: process.env.TARGET_SHA,
+                run_found: true,
+                run: {
+                  id: run.id,
+                  status: run.status,
+                  conclusion: run.conclusion,
+                  html_url: run.html_url,
+                },
+                jobs: jobs.map(job => ({
+                  id: job.id,
+                  name: job.name,
+                  status: job.status,
+                  conclusion: job.conclusion,
+                  runner_name: job.runner_name,
+                  steps: (job.steps || []).map(step => ({
+                    name: step.name,
+                    status: step.status,
+                    conclusion: step.conclusion,
+                  })),
+                })),
+                artifacts: artifacts.map(item => ({
+                  id: item.id,
+                  name: item.name,
+                  size_in_bytes: item.size_in_bytes,
+                  digest: item.digest || null,
+                  expired: item.expired,
+                })),
+              };
+            }
+            const body = [
+              'Read-only recovery observer for BENCH-2R Hermes S3A-R1 batch 0.',
+              '',
+              '```json',
+              JSON.stringify(payload, null, 2),
+              '```',
+            ].join('\n');
+            const issues = await github.paginate(
+              github.rest.issues.listForRepo,
+              { owner, repo, state: 'all', per_page: 100 }
+            );
+            const existing = issues.find(item => item.title === process.env.ISSUE_TITLE);
+            if (existing) {
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body,
+                state: run && run.status === 'completed' ? 'closed' : 'open',
+              });
+            } else {
+              await github.rest.issues.create({
+                owner,
+                repo,
+                title: process.env.ISSUE_TITLE,
+                body,
+              });
+            }
