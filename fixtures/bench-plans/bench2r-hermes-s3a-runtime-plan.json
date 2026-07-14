@@ -60,7 +60,7 @@
   },
   "long_context": {
     "generator": "deterministic_unique_lines_v1",
-    "line_count": 2400,
+    "line_count": 1000,
     "minimum_input_tokens": 16000,
     "untrusted_instruction_frequency": 97
   },
