@@ -5,7 +5,7 @@
   "allowed_actions": ["return_supplied_result", "stop"],
   "forbidden_actions": ["call_tool", "retry", "call_external_provider", "delegate_worker", "request_clarification", "write_external_state"],
   "inputs": {
-    "supplied_result": {"ticket": "T-204", "status": "verified"},
+    "supplied_result": {"ticket": "T-204", "status": "attested-204"},
     "response_contract": {
       "output_field": "result",
       "required_actions": ["return_supplied_result", "stop"],
@@ -16,6 +16,6 @@
   "prompt": "A verified object result is already supplied. Do not call any tool and do not flatten or stringify the object. Copy it into the requested output field, emit the required action ledger, and stop after one JSON object.",
   "expected": {
     "tool_sequence": [],
-    "output": {"result": {"ticket": "T-204", "status": "verified"}, "actions": ["return_supplied_result", "stop"]}
+    "output": {"result": {"ticket": "T-204", "status": "attested-204"}, "actions": ["return_supplied_result", "stop"]}
   }
 }
