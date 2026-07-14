@@ -1,0 +1,60 @@
+{
+  "schema_version": "bench.hermes-admitted-stack.v1",
+  "status": "benchmark_admitted_not_production_promoted",
+  "candidate": {
+    "candidate_id": "gemma4-12b-it-qat",
+    "model_tag": "gemma4:12b-it-qat",
+    "digest": "38044be4f923e5a55264ed7df4eaac2676651a905f735197c504045140c02bd3"
+  },
+  "runtime": {
+    "hermes_version": "0.18.2",
+    "hermes_commit_sha": "73b611ad19720d70308dad6b0fb64648aaadc216",
+    "context_length": 65536,
+    "max_output_tokens": 4096,
+    "sampling": {
+      "temperature": 1.0,
+      "top_k": 64,
+      "top_p": 0.95
+    },
+    "thinking_mode": "enabled",
+    "tool_protocol": "openai_compatible"
+  },
+  "required_controls": {
+    "skill": {
+      "name": "bounded-tool-orchestration",
+      "version": "1.1.0",
+      "path": "fixtures/bench-2r/hermes-skills/bounded-tool-orchestration/SKILL.md",
+      "git_blob_sha": "8aa1700657452efe7b287a85ddca488b3d6ed719"
+    },
+    "deterministic_finalizer": {
+      "schema_version": "bench.hermes-deterministic-finalizer.v1",
+      "path": "scripts/bench2r_deterministic_finalizer.py",
+      "git_blob_sha": "c322af14e322a68bc179ea3df19b44d1bfddec84",
+      "fail_closed": true
+    },
+    "wire_trace_required": true,
+    "native_trajectory_required": true,
+    "tool_registry_allowlist_required": true,
+    "model_and_tool_call_budget_required": true
+  },
+  "admission": {
+    "workflow_run_id": 29335974597,
+    "execution_commit_sha": "8cb771cb140795198de0c38937b382a10054d867",
+    "artifact_id": 8312150578,
+    "artifact_sha256": "040783597136bb7c1211799db26d3421cfe4148201790c1449dbb17913d0dbc5",
+    "held_out_cases": 4,
+    "seeds": [17, 42, 314159],
+    "total_runs": 12,
+    "infrastructure_valid_runs": 12,
+    "raw_orchestration_passes": 12,
+    "raw_presentation_passes": 3,
+    "finalized_output_passes": 12,
+    "admission_passes": 12
+  },
+  "promotion": {
+    "production_promoted": false,
+    "automatic_promotion_allowed": false,
+    "required_next_gate": "shadow_and_soak",
+    "rollback_required": true
+  }
+}
