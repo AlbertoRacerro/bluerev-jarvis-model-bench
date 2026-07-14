@@ -20,8 +20,10 @@ class HermesS2SafeValidationError(RuntimeError):
     pass
 
 
-def validate() -> dict[str, object]:
-    plan, marker, candidates, cases = base.validate_execution(require_enabled=False)
+def validate(*, require_enabled: bool = False) -> dict[str, object]:
+    plan, marker, candidates, cases = base.validate_execution(
+        require_enabled=require_enabled
+    )
     for path in (SAFE_RUNNER_PATH, AWAKE_RUNNER_PATH):
         if not path.is_file():
             raise HermesS2SafeValidationError(f"required safe S2 source is missing: {path.name}")
@@ -84,11 +86,7 @@ def validate() -> dict[str, object]:
 def main() -> int:
     require_enabled = "--require-enabled" in sys.argv[1:]
     try:
-        if require_enabled:
-            base.validate_execution(require_enabled=True)
-        payload = validate()
-        if require_enabled:
-            payload["execution_authorized"] = True
+        payload = validate(require_enabled=require_enabled)
         code = 0
     except (
         HermesS2SafeValidationError,
