@@ -39,29 +39,33 @@ jobs:
         with:
           python-version: "3.11"
       - name: Validate S3A design and runtime implementation boundary
+        shell: bash
         run: |
           mkdir -p artifacts
-          python -m unittest -v \
-            tests.test_bench2r_hermes_s3a \
-            tests.test_bench2r_hermes_s3a_contract \
-            tests.test_bench2r_hermes_s3a_runtime
-          python -m scripts.validate_bench2r_hermes_s3a \
-            --output artifacts/bench2r-s3a-design-validation.json
-          python -m scripts.validate_bench2r_hermes_s3a_contract \
-            --output artifacts/bench2r-s3a-strict-contract-validation.json
-          python -m scripts.validate_bench2r_hermes_s3a_runtime \
-            --implementation-only \
-            --output artifacts/bench2r-s3a-runtime-implementation-validation.json
-          python -m py_compile \
-            scripts/run_bench2r_hermes_s3a.py \
-            scripts/run_bench2r_hermes_s3a_safe.py \
-            scripts/run_bench2r_hermes_s3a_awake.py \
-            scripts/validate_bench2r_hermes_s3a.py \
-            scripts/validate_bench2r_hermes_s3a_contract.py \
-            scripts/validate_bench2r_hermes_s3a_runtime.py \
-            tests/test_bench2r_hermes_s3a.py \
-            tests/test_bench2r_hermes_s3a_contract.py \
-            tests/test_bench2r_hermes_s3a_runtime.py
+          set -o pipefail
+          {
+            python -m unittest -v \
+              tests.test_bench2r_hermes_s3a \
+              tests.test_bench2r_hermes_s3a_contract \
+              tests.test_bench2r_hermes_s3a_runtime
+            python -m scripts.validate_bench2r_hermes_s3a \
+              --output artifacts/bench2r-s3a-design-validation.json
+            python -m scripts.validate_bench2r_hermes_s3a_contract \
+              --output artifacts/bench2r-s3a-strict-contract-validation.json
+            python -m scripts.validate_bench2r_hermes_s3a_runtime \
+              --implementation-only \
+              --output artifacts/bench2r-s3a-runtime-implementation-validation.json
+            python -m py_compile \
+              scripts/run_bench2r_hermes_s3a.py \
+              scripts/run_bench2r_hermes_s3a_safe.py \
+              scripts/run_bench2r_hermes_s3a_awake.py \
+              scripts/validate_bench2r_hermes_s3a.py \
+              scripts/validate_bench2r_hermes_s3a_contract.py \
+              scripts/validate_bench2r_hermes_s3a_runtime.py \
+              tests/test_bench2r_hermes_s3a.py \
+              tests/test_bench2r_hermes_s3a_contract.py \
+              tests/test_bench2r_hermes_s3a_runtime.py
+          } 2>&1 | tee artifacts/validation.log
       - name: Upload validation evidence
         if: always()
         uses: actions/upload-artifact@v4
