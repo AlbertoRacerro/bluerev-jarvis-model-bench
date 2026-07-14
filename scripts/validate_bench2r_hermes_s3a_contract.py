@@ -79,8 +79,16 @@ def _validate_case_contract(case: dict[str, Any]) -> None:
         if expected.get("finalizer_accepted") is False:
             raise HermesS3AContractError(f"{case_id} nominal case requests rejection")
     elif outcome == "expected_fail_closed_rejection":
+        response = _object(inputs.get("response_contract"), f"{case_id}.response_contract")
+        required_actions = response.get("required_actions")
+        expected_raw = expected.get("raw_output")
         if expected.get("finalizer_accepted") is not False:
             raise HermesS3AContractError(f"{case_id} negative control no longer requires rejection")
+        if expected_raw != {"actions": required_actions}:
+            raise HermesS3AContractError(f"{case_id} negative raw output is not ledger-only")
+        output_field = response.get("output_field")
+        if not isinstance(output_field, str) or output_field in expected_raw:
+            raise HermesS3AContractError(f"{case_id} negative raw output contains result field")
     else:
         raise HermesS3AContractError(f"{case_id} has an unknown outcome class")
     if case_id == "s3a-tools-negative-result-004":
@@ -128,6 +136,7 @@ def validate() -> dict[str, Any]:
         "governed_stack_exact": True,
         "scope_split_enforced": True,
         "case_tool_contracts_exact": True,
+        "negative_outputs_ledger_only": True,
     }
 
 
