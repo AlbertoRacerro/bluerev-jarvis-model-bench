@@ -4,8 +4,9 @@ import argparse
 import ast
 import hashlib
 import json
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 from scripts import bench2r_hermes_runtime as optimization
 from scripts import validate_bench2r_hermes_s3a_r1_repair as design
@@ -75,16 +76,33 @@ def _load(path: Path) -> dict[str, Any]:
 
 
 def git_blob_sha(path: Path) -> str:
-    data = path.read_bytes()
+    raw = path.read_bytes()
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        data = raw
+    else:
+        data = text.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")
     return hashlib.sha1(f"blob {len(data)}\0".encode("ascii") + data).hexdigest()
 
 
+@contextmanager
+def windows_text_blob_boundary() -> Iterator[None]:
+    original = design._git_blob_sha
+    design._git_blob_sha = git_blob_sha
+    try:
+        yield
+    finally:
+        design._git_blob_sha = original
+
+
 def _validate_design_core() -> dict[str, Any]:
-    closeout = design._validate_closeout()
-    design._validate_marker()
-    design._validate_case_bindings()
-    design._validate_skills()
-    return design._validate_plan(closeout)
+    with windows_text_blob_boundary():
+        closeout = design._validate_closeout()
+        design._validate_marker()
+        design._validate_case_bindings()
+        design._validate_skills()
+        return design._validate_plan(closeout)
 
 
 def _validate_sources() -> None:
