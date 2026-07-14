@@ -5,6 +5,7 @@ on:
     paths:
       - config/bench2r-hermes-s1-marker.json
       - fixtures/bench-plans/bench2r-hermes-s1-plan.json
+      - fixtures/bench-2r/hermes-skills/bounded-tool-orchestration/SKILL.md
       - scripts/run_bench2r_hermes_worker.py
       - scripts/run_bench2r_hermes_s1.py
       - scripts/run_bench2r_hermes_s1_awake.py
@@ -12,6 +13,7 @@ on:
       - scripts/validate_bench2r_s1_keep_awake.py
       - tests/test_bench2r_hermes_s1.py
       - tests/test_bench2r_s1_keep_awake.py
+      - tests/test_bench2r_s1r_trajectory_skill.py
       - .github/workflows/bench2r-hermes-s1-oneshot.yml
       - .github/workflows/bench2r-hermes-s1-validation.yml
       - reports/BENCH-2R-HERMES-S1-DESIGN/**
@@ -32,7 +34,7 @@ jobs:
       - name: Validate disabled S1 design
         run: |
           mkdir -p artifacts
-          python -m unittest -v tests.test_bench2r_hermes_s1 tests.test_bench2r_s1_keep_awake
+          python -m unittest -v tests.test_bench2r_hermes_s1 tests.test_bench2r_s1_keep_awake tests.test_bench2r_s1r_trajectory_skill
           python -m scripts.validate_bench2r_hermes_s1 --output artifacts/bench2r-s1-validation.json
           python -m scripts.validate_bench2r_s1_keep_awake > artifacts/bench2r-s1-keep-awake-validation.json
           python -m py_compile scripts/run_bench2r_hermes_worker.py scripts/run_bench2r_hermes_s1.py scripts/run_bench2r_hermes_s1_awake.py scripts/validate_bench2r_hermes_s1.py scripts/validate_bench2r_s1_keep_awake.py

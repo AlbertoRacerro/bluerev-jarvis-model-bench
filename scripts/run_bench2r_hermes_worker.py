@@ -5,9 +5,9 @@ import io
 import json
 import os
 import sys
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 
 def _json_safe(value: Any) -> Any:
@@ -54,6 +54,30 @@ def _usage_from_result(result: dict[str, Any], failure: str | None) -> dict[str,
     return usage
 
 
+@contextmanager
+def _force_native_trajectory_capture() -> Iterator[None]:
+    """Force the pinned oneshot-created AIAgent to save its native trajectory.
+
+    Hermes 0.18.2 exposes ``save_trajectories`` as an AIAgent constructor
+    argument defaulting to False. The oneshot helper does not propagate the
+    similarly named config key, so the isolated benchmark worker must bind the
+    constructor explicitly. This process runs one conversation and is discarded.
+    """
+    from run_agent import AIAgent
+
+    original_init = AIAgent.__init__
+
+    def trajectory_init(self, *args, **kwargs):
+        kwargs["save_trajectories"] = True
+        return original_init(self, *args, **kwargs)
+
+    AIAgent.__init__ = trajectory_init
+    try:
+        yield
+    finally:
+        AIAgent.__init__ = original_init
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Run one observed Hermes conversation for BENCH-2R S1."
@@ -71,6 +95,7 @@ def main() -> int:
 
     prompt = args.prompt_file.read_text(encoding="utf-8")
     skill_expanded = False
+    trajectory_capture_forced = False
     failure: str | None = None
     result: dict[str, Any] = {}
     response = ""
@@ -96,14 +121,16 @@ def main() -> int:
 
         from hermes_cli.oneshot import _run_agent
 
-        with redirect_stdout(debug_stdout), redirect_stderr(debug_stderr):
-            response, result = _run_agent(
-                prompt,
-                model=args.model,
-                provider="custom",
-                toolsets=["bench2_fixture"],
-                use_config_toolsets=False,
-            )
+        with _force_native_trajectory_capture():
+            trajectory_capture_forced = True
+            with redirect_stdout(debug_stdout), redirect_stderr(debug_stderr):
+                response, result = _run_agent(
+                    prompt,
+                    model=args.model,
+                    provider="custom",
+                    toolsets=["bench2_fixture"],
+                    use_config_toolsets=False,
+                )
     except BaseException as exc:  # noqa: BLE001 - worker must persist evidence
         failure = f"{type(exc).__name__}: {exc}"
 
@@ -129,6 +156,7 @@ def main() -> int:
         "provider": result.get("provider"),
         "base_url": result.get("base_url"),
         "skill_expanded": skill_expanded,
+        "trajectory_capture_forced": trajectory_capture_forced,
         "input_tokens": result.get("input_tokens"),
         "output_tokens": result.get("output_tokens"),
         "reasoning_tokens": result.get("reasoning_tokens"),
