@@ -22,63 +22,73 @@ jobs:
             const path = 'scripts/validate_bench2r_hermes_s3a_r1_repair_runtime.py';
             const response = await github.rest.repos.getContent({ owner, repo, path, ref: branch });
             const current = Buffer.from(response.data.content, 'base64').toString('utf8');
-            const importBefore = `from pathlib import Path
-            from typing import Any
-            `;
-            const importAfter = `from contextlib import contextmanager
-            from pathlib import Path
-            from typing import Any, Iterator
-            `;
-            const bodyBefore = `def git_blob_sha(path: Path) -> str:
-                data = path.read_bytes()
-                return hashlib.sha1(f"blob {len(data)}\\0".encode("ascii") + data).hexdigest()
-
-
-            def _validate_design_core() -> dict[str, Any]:
-                closeout = design._validate_closeout()
-                design._validate_marker()
-                design._validate_case_bindings()
-                design._validate_skills()
-                return design._validate_plan(closeout)
-            `;
-            const bodyAfter = `def git_blob_sha(path: Path) -> str:
-                raw = path.read_bytes()
-                try:
-                    text = raw.decode("utf-8")
-                except UnicodeDecodeError:
-                    data = raw
-                else:
-                    data = text.replace("\\r\\n", "\\n").replace("\\r", "\\n").encode("utf-8")
-                return hashlib.sha1(f"blob {len(data)}\\0".encode("ascii") + data).hexdigest()
-
-
-            @contextmanager
-            def windows_text_blob_boundary() -> Iterator[None]:
-                original = design._git_blob_sha
-                design._git_blob_sha = git_blob_sha
-                try:
-                    yield
-                finally:
-                    design._git_blob_sha = original
-
-
-            def _validate_design_core() -> dict[str, Any]:
-                with windows_text_blob_boundary():
-                    closeout = design._validate_closeout()
-                    design._validate_marker()
-                    design._validate_case_bindings()
-                    design._validate_skills()
-                    return design._validate_plan(closeout)
-            `;
+            const importBefore = [
+              'from pathlib import Path',
+              'from typing import Any',
+              '',
+            ].join('\n');
+            const importAfter = [
+              'from contextlib import contextmanager',
+              'from pathlib import Path',
+              'from typing import Any, Iterator',
+              '',
+            ].join('\n');
+            const bodyBefore = [
+              'def git_blob_sha(path: Path) -> str:',
+              '    data = path.read_bytes()',
+              '    return hashlib.sha1(f"blob {len(data)}\\0".encode("ascii") + data).hexdigest()',
+              '',
+              '',
+              'def _validate_design_core() -> dict[str, Any]:',
+              '    closeout = design._validate_closeout()',
+              '    design._validate_marker()',
+              '    design._validate_case_bindings()',
+              '    design._validate_skills()',
+              '    return design._validate_plan(closeout)',
+              '',
+            ].join('\n');
+            const bodyAfter = [
+              'def git_blob_sha(path: Path) -> str:',
+              '    raw = path.read_bytes()',
+              '    try:',
+              '        text = raw.decode("utf-8")',
+              '    except UnicodeDecodeError:',
+              '        data = raw',
+              '    else:',
+              '        data = text.replace("\\r\\n", "\\n").replace("\\r", "\\n").encode("utf-8")',
+              '    return hashlib.sha1(f"blob {len(data)}\\0".encode("ascii") + data).hexdigest()',
+              '',
+              '',
+              '@contextmanager',
+              'def windows_text_blob_boundary() -> Iterator[None]:',
+              '    original = design._git_blob_sha',
+              '    design._git_blob_sha = git_blob_sha',
+              '    try:',
+              '        yield',
+              '    finally:',
+              '        design._git_blob_sha = original',
+              '',
+              '',
+              'def _validate_design_core() -> dict[str, Any]:',
+              '    with windows_text_blob_boundary():',
+              '        closeout = design._validate_closeout()',
+              '        design._validate_marker()',
+              '        design._validate_case_bindings()',
+              '        design._validate_skills()',
+              '        return design._validate_plan(closeout)',
+              '',
+            ].join('\n');
             function count(text, token) {
               return text.split(token).length - 1;
             }
-            if (count(current, importBefore) !== 1) {
-              core.setFailed(`import patch expected once, observed ${count(current, importBefore)}`);
+            const importCount = count(current, importBefore);
+            const bodyCount = count(current, bodyBefore);
+            if (importCount !== 1) {
+              core.setFailed(`import patch expected once, observed ${importCount}`);
               return;
             }
-            if (count(current, bodyBefore) !== 1) {
-              core.setFailed(`body patch expected once, observed ${count(current, bodyBefore)}`);
+            if (bodyCount !== 1) {
+              core.setFailed(`body patch expected once, observed ${bodyCount}`);
               return;
             }
             const updated = current
