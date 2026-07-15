@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   recover:
@@ -100,6 +101,28 @@ jobs:
               copy_errors: copyErrors,
             };
             fs.writeFileSync(path.join(target, 'inventory.json'), JSON.stringify(inventory, null, 2) + '\n', 'utf8');
+
+            const { owner, repo } = context.repo;
+            const summary = {
+              schema_version: inventory.schema_version,
+              run_id: context.runId,
+              run_attempt: process.env.GITHUB_RUN_ATTEMPT,
+              artifact_directory_count: artifactDirs.length,
+              temporary_directory_count: tempDirs.length,
+              diagnostic_file_count: diagnosticFiles.length,
+              copied_directory_count: copied.length,
+              traversal_error_count: errors.length,
+              copy_error_count: copyErrors.length,
+              artifact_directories: artifactDirs.slice(0, 20),
+              temporary_directories: tempDirs.slice(0, 20),
+              diagnostic_files: diagnosticFiles.slice(0, 50),
+            };
+            await github.rest.issues.create({
+              owner,
+              repo,
+              title: `BENCH-2R S3A-R1 recovery v2 — ${context.runId}`,
+              body: `Read-only full runner-workspace recovery.\n\n\`\`\`json\n${JSON.stringify(summary, null, 2)}\n\`\`\``,
+            });
             core.notice(`Recovered ${copied.length} directories and ${diagnosticFiles.length} diagnostic files.`);
       - name: Upload recovered residual evidence
         if: always()
