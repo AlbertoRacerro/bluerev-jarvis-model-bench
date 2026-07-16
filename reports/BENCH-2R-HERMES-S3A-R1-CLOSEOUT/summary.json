@@ -1,0 +1,121 @@
+{
+  "schema_version": "bench.hermes-s3a-r1-closeout.v1",
+  "status": "early_stopped_failed",
+  "passed": false,
+  "production_status": "not_promoted",
+  "automatic_skill_replacement_allowed": false,
+  "automatic_model_weight_update_allowed": false,
+  "automatic_production_promotion_allowed": false,
+  "source": {
+    "workflow_run_id": 29364133435,
+    "run_attempt": 2,
+    "execution_commit_sha": "414c5ac259d3ac892f5ca2046c23d9074ae86a27",
+    "job_id": 87278458894,
+    "job_name": "paired-repair (0)",
+    "runner_name": "bluerev-bench-win",
+    "runner_machine": "PC_DI_ALBERTO",
+    "job_conclusion": "failure",
+    "preflight_conclusion": "success",
+    "capture_conclusion": "success",
+    "enforce_conclusion": "failure",
+    "artifact_upload_conclusion": "success",
+    "marker_close_commit_sha": "bc72bfa719d74a257f447d091f388cdcbd0c8f4d"
+  },
+  "selection": {
+    "planned_batches": 3,
+    "planned_runs": 27,
+    "executed_batches": 1,
+    "executed_runs": 9,
+    "batch_index": 0,
+    "seed": 371872,
+    "control_arm_id": "control_v1_1",
+    "repair_arm_id": "repair_v1_2",
+    "remaining_batches_executed": false
+  },
+  "aggregate": {
+    "runs": 9,
+    "infrastructure_valid": 9,
+    "control_runs": 4,
+    "repair_runs": 5,
+    "control_shadow_pass": 0,
+    "repair_shadow_pass": 1,
+    "repair_negative_runs": 4,
+    "repair_negative_tool_sequence_exact": 4,
+    "repair_negative_fail_closed_pass": 4,
+    "repair_negative_ledger_only_exact": 0,
+    "repair_timeout_runs": 2,
+    "repair_timeout_tool_invocation": 2,
+    "repair_nominal_sentinel_runs": 1,
+    "repair_nominal_sentinel_shadow_pass": 1
+  },
+  "paired_observations": {
+    "control_negative_outputs": {
+      "runs": 4,
+      "required_actions_field_used": 4,
+      "strict_actions_ledger_used": 0
+    },
+    "repair_negative_outputs": {
+      "runs": 4,
+      "actions_field_semantically_correct": 4,
+      "markdown_fence_present": 4,
+      "strict_raw_json": 0,
+      "negative_output_ledger_only": 0
+    },
+    "timeout_tool_invocation": {
+      "control": "2/2",
+      "repair": "2/2"
+    },
+    "nominal_sentinel": {
+      "repair": "1/1"
+    }
+  },
+  "acceptance": {
+    "artifact_inventory_exact": true,
+    "artifact_zip_digest_verified": true,
+    "internal_manifest_verified": true,
+    "all_executed_runs_infrastructure_valid": true,
+    "runner_available_during_authoritative_attempt": true,
+    "failure_caused_by_runner_unavailability": false,
+    "all_repair_negative_tool_sequences_exact": true,
+    "all_repair_negative_fail_closed": true,
+    "all_repair_negative_ledgers_exact": false,
+    "repair_batch_pass": false,
+    "remaining_batches_can_restore_acceptance": false,
+    "marker_closed": true
+  },
+  "artifact": {
+    "id": 8335243161,
+    "name": "bench2r-hermes-s3a-r1-29364133435-2-b0",
+    "size_in_bytes": 269166,
+    "digest": "sha256:4f9d5ecad31d8e422e804a64f270137551a6381b01753358288c99179c6b942c",
+    "expired": false,
+    "zip_digest_verified": true,
+    "internal_manifest_entries": 145,
+    "internal_manifest_missing": 0,
+    "internal_manifest_mismatches": 0
+  },
+  "preflight_artifact": {
+    "id": 8335117891,
+    "name": "bench2r-hermes-s3a-r1-preflight-29364133435-2-b0",
+    "size_in_bytes": 949,
+    "digest": "sha256:1ad6e8c4b5322794f40fae6cc00be6c10dfee320f702ab71427c04780d73c109",
+    "expired": false
+  },
+  "failure_inventory": {
+    "blocking_gate": "negative_output_ledger_only",
+    "repair_failures": 4,
+    "repair_expected": 4,
+    "failure_mechanism": "repair v1.2 emitted the correct actions object inside Markdown JSON fences instead of strict raw JSON",
+    "mathematical_early_stop": "R1 requires 12/12 negative ledger passes; after batch 0 the maximum possible result was 8/12",
+    "batch_1_status": "not_run_after_early_stop",
+    "batch_2_status": "not_run_after_early_stop"
+  },
+  "decision": {
+    "classification": "candidate_skill_v1_2_failed_r1_first_batch",
+    "skill_v1_2_adopted": false,
+    "rerun_same_configuration_allowed": false,
+    "remaining_batches_required": false,
+    "next_allowed_work": "design a new skill candidate that forbids Markdown fences and validate it with fresh seeds",
+    "production_status": "not_promoted"
+  }
+}
