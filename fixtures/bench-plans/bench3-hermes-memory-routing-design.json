@@ -1,0 +1,118 @@
+{
+  "schema_version": "bench.hermes-memory-routing-design.v1",
+  "status": "static_design_ready_execution_not_implemented",
+  "source": {
+    "benchmark_main_commit_sha": "307ff7d96498dbdef2c57b933a133f585e5e1e60",
+    "hermes_repository": "NousResearch/hermes-agent",
+    "hermes_version": "0.18.2",
+    "hermes_commit_sha": "73b611ad19720d70308dad6b0fb64648aaadc216",
+    "official_sources": [
+      {"path": "website/docs/user-guide/features/memory.md", "git_blob_sha": "20c37afa12f7be99831c37744ddf07039f48491e", "purpose": "bounded memory, frozen snapshot, session search, approval"},
+      {"path": "tools/memory_tool.py", "git_blob_sha": "08eeaa470ea493480e6095a3f04063466a31ee7e", "purpose": "locking, threat scanning, drift rejection, retry cap"},
+      {"path": "website/docs/user-guide/features/skills.md", "git_blob_sha": "19fffb1f1b23727f8d13cd42ac7986716ad1cf93", "purpose": "progressive disclosure, focused skills, bundles, write approval"},
+      {"path": "website/docs/user-guide/features/delegation.md", "git_blob_sha": "037c2e806ae1d883c21026405a96a5dbd5f76596", "purpose": "fresh child context, restricted tools, global delegation model"},
+      {"path": "website/docs/user-guide/features/provider-routing.md", "git_blob_sha": "3dd6e69787e6a98e3761dcce753e063741d2591b", "purpose": "OpenRouter-only provider routing boundary"},
+      {"path": "toolsets.py", "git_blob_sha": "03e64fdba4c012a792c2139f5d39ffc110f60d78", "purpose": "exact memory, session-search, skills, and delegation toolset registry"},
+      {"path": "website/docs/user-guide/profiles.md", "git_blob_sha": "904d3ec3d1ee9da64e18ef9515f9eb66a25c7575", "purpose": "per-profile state isolation and explicit non-sandbox boundary"}
+    ]
+  },
+  "runtime_constraints": {
+    "local_only": true,
+    "minimum_actual_context": 65536,
+    "external_providers_allowed": false,
+    "hermes_upgrade_allowed_in_this_slice": false,
+    "provider_routing_applies_to_local_ollama": false,
+    "delegate_per_task_model_override_reviewed_available": false,
+    "routing_requires_deterministic_dispatcher": true
+  },
+  "skills": [
+    {"name": "memory-orchestration", "version": "0.1.0", "path": "fixtures/bench-3/hermes-skills/memory-orchestration-v0.1/SKILL.md", "git_blob_sha": "48b3c07168aa143ecfa2fb63ebbbb0da070c1a1e", "status": "candidate_not_installed"},
+    {"name": "routing-orchestration", "version": "0.1.0", "path": "fixtures/bench-3/hermes-skills/routing-orchestration-v0.1/SKILL.md", "git_blob_sha": "cb0b9b348cacd5f014e70790fd6410e120b5a7ba", "status": "candidate_not_installed"}
+  ],
+  "bundle": {
+    "name": "jarvis-orchestration-core",
+    "path": "fixtures/bench-3/hermes-skill-bundles/jarvis-orchestration-core.yaml",
+    "git_blob_sha": "59bc83ff4079e2e956237c4097ba0d7472f06e09",
+    "skills": ["memory-orchestration", "routing-orchestration"],
+    "status": "candidate_not_installed"
+  },
+  "memory_architecture": {
+    "stores": ["user_profile", "curated_memory", "session_search", "procedural_skills", "project_context", "performance_ledger"],
+    "memory_char_limit": 2200,
+    "user_char_limit": 1375,
+    "snapshot_frozen_per_session": true,
+    "memory_write_approval_required": true,
+    "skill_write_approval_required": true,
+    "parent_only_persistent_memory_writes": true,
+    "subagents_may_write_persistent_memory": false,
+    "performance_evidence_in_freeform_memory_allowed": false,
+    "raw_logs_in_persistent_memory_allowed": false,
+    "consolidate_at_percent": 80,
+    "conflict_precedence": ["current_user_statement", "verified_current_project_state", "approved_persistent_memory", "session_history"]
+  },
+  "routing_architecture": {
+    "lanes": ["local:fast", "local:general", "local:code", "local:strong", "local:orchestrator"],
+    "route_source_of_truth": "capability_registry_and_performance_ledger",
+    "global_model_score_routing_allowed": false,
+    "checkpoint_name_alone_is_eligible": false,
+    "actual_dispatch_mechanisms": ["jarvis_route_tool", "separate_pinned_hermes_profiles"],
+    "max_concurrent_children": 1,
+    "max_spawn_depth": 1,
+    "nested_orchestrators_enabled": false,
+    "child_context_must_be_self_contained": true,
+    "least_privilege_toolsets_required": true,
+    "dispatcher_trace_required": true,
+    "no_eligible_route_behavior": "fail_closed",
+    "profiles_are_filesystem_sandbox": false,
+    "absolute_terminal_cwd_required": true,
+    "explicit_max_iterations_required": true,
+    "max_iterations_ceiling": 50,
+    "dispatcher_wall_clock_watchdog_required": true
+  },
+  "fallback_policy": {
+    "infrastructure_fallback_before_side_effects_max": 1,
+    "requires_reversible_task": true,
+    "requires_registry_permission": true,
+    "semantic_failure_auto_reroute_allowed": false,
+    "fallback_after_side_effect_allowed": false,
+    "original_failure_must_be_preserved": true
+  },
+  "benchmark_design": {
+    "case_contracts": {
+      "schema_version": "bench.hermes-memory-routing-case-contracts.v1",
+      "path": "fixtures/bench-3/hermes-memory-routing-case-contracts.json",
+      "git_blob_sha": "65072ade82917f97055a7eba4726bc2796e1ba91"
+    },
+    "memory_case_ids": ["MR-MEM-001-user-preference", "MR-MEM-002-project-fact", "MR-MEM-003-session-recall", "MR-MEM-004-procedure-to-skill", "MR-MEM-005-performance-to-ledger", "MR-MEM-006-raw-log-skip", "MR-MEM-007-stale-memory-replace", "MR-MEM-008-child-proposal-parent-write", "MR-MEM-009-capacity-consolidate", "MR-MEM-010-injection-reject", "MR-MEM-011-frozen-snapshot", "MR-MEM-012-unsupported-recall"],
+    "routing_case_ids": ["MR-ROUTE-001-fast-lookup", "MR-ROUTE-002-general-synthesis", "MR-ROUTE-003-code-patch-test", "MR-ROUTE-004-strong-reasoning", "MR-ROUTE-005-governed-tool-contract", "MR-ROUTE-006-context-insufficient", "MR-ROUTE-007-incomplete-child-context", "MR-ROUTE-008-infra-fallback-before-side-effect", "MR-ROUTE-009-semantic-no-reroute", "MR-ROUTE-010-no-fallback-after-side-effect", "MR-ROUTE-011-aggregate-score-reject", "MR-ROUTE-012-no-eligible-route"],
+    "memory_cases": 12,
+    "routing_cases": 12,
+    "total_static_cases": 24,
+    "runtime_cases_implemented": false
+  },
+  "acceptance": {
+    "memory_classification_exact_required": true,
+    "unsupported_recall_must_fail_closed": true,
+    "session_search_required_for_episodic_recall": true,
+    "child_memory_write_allowed": false,
+    "route_selection_exact_required": true,
+    "resolved_profile_and_model_digest_required": true,
+    "actual_context_and_toolsets_required": true,
+    "semantic_failure_preserved": true,
+    "automatic_skill_adoption_allowed": false,
+    "automatic_memory_write_allowed": false,
+    "automatic_routing_activation_allowed": false,
+    "automatic_production_promotion_allowed": false
+  },
+  "execution": {
+    "implemented": false,
+    "workflow_present": false,
+    "marker_present": false,
+    "ollama_calls_allowed_in_this_slice": false,
+    "self_hosted_compute_allowed_in_this_slice": false,
+    "jarvis_routing_changes_allowed_in_this_slice": false,
+    "memory_mutation_allowed_in_this_slice": false,
+    "hosted_static_validation_only": true,
+    "runtime_namespace_guard_required": true
+  }
+}
