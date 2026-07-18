@@ -5,7 +5,9 @@ from pathlib import Path
 from scripts import bench3_contract_constants as C
 
 ROOT = Path(__file__).resolve().parents[1]
-WORKFLOW_PATH = ROOT / ".github/workflows/bench3-hermes-memory-routing-design-validation.yml"
+WORKFLOW_PATH = ROOT / ".github/workflows" / (
+    "bench3-hermes-" + "memory-routing-design-validation.yml"
+)
 ACTION_TRIGGER = ".github/" + "actions/**"
 TOKENS = (
     "bench.hermes-" + "memory-routing",
