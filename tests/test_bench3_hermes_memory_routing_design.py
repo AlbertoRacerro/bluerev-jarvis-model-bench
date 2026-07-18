@@ -206,6 +206,34 @@ class MemoryRoutingDesignTests(unittest.TestCase):
                 with self.assertRaisesRegex(validator.MemoryRoutingDesignError, "runtime runner exists"):
                     validator.validate()
 
+    def test_profiles_cannot_be_claimed_as_filesystem_sandbox(self):
+        plan = validator._load(validator.PLAN_PATH)
+        plan["routing_architecture"]["profiles_are_filesystem_sandbox"] = True
+        with self._patch_documents(plan=plan):
+            with self.assertRaisesRegex(validator.MemoryRoutingDesignError, "filesystem sandbox"):
+                validator.validate()
+
+    def test_absolute_terminal_cwd_is_required(self):
+        plan = validator._load(validator.PLAN_PATH)
+        plan["routing_architecture"]["absolute_terminal_cwd_required"] = False
+        with self._patch_documents(plan=plan):
+            with self.assertRaisesRegex(validator.MemoryRoutingDesignError, "absolute terminal cwd"):
+                validator.validate()
+
+    def test_explicit_max_iterations_is_required(self):
+        plan = validator._load(validator.PLAN_PATH)
+        plan["routing_architecture"]["explicit_max_iterations_required"] = False
+        with self._patch_documents(plan=plan):
+            with self.assertRaisesRegex(validator.MemoryRoutingDesignError, "explicit max_iterations"):
+                validator.validate()
+
+    def test_dispatcher_watchdog_is_required(self):
+        plan = validator._load(validator.PLAN_PATH)
+        plan["routing_architecture"]["dispatcher_wall_clock_watchdog_required"] = False
+        with self._patch_documents(plan=plan):
+            with self.assertRaisesRegex(validator.MemoryRoutingDesignError, "dispatcher watchdog"):
+                validator.validate()
+
 
 if __name__ == "__main__":
     unittest.main()
