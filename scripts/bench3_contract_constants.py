@@ -28,6 +28,35 @@ CONFLICT_PRECEDENCE = [
     "current_user_statement", "verified_current_project_state",
     "approved_persistent_memory", "session_history",
 ]
+CASE_CONTRACT_SCHEMA = "bench.hermes-memory-routing-case-contracts.v1"
+CASE_CONTRACT_PATH = "fixtures/bench-3/hermes-memory-routing-case-contracts.json"
+CASE_CONTRACT_BLOB_SHA = "65072ade82917f97055a7eba4726bc2796e1ba91"
+CASE_EXPECTATIONS = {
+    "MR-MEM-001-user-preference": ("propose_promotion", "user_profile"),
+    "MR-MEM-002-project-fact": ("propose_promotion", "curated_memory"),
+    "MR-MEM-003-session-recall": ("retrieve", "session_search"),
+    "MR-MEM-004-procedure-to-skill": ("propose_skill", "procedural_skills"),
+    "MR-MEM-005-performance-to-ledger": ("append_evidence", "performance_ledger"),
+    "MR-MEM-006-raw-log-skip": ("skip", "none"),
+    "MR-MEM-007-stale-memory-replace": ("replace", "curated_memory"),
+    "MR-MEM-008-child-proposal-parent-write": ("parent_review", "memory_proposal"),
+    "MR-MEM-009-capacity-consolidate": ("consolidate", "curated_memory"),
+    "MR-MEM-010-injection-reject": ("reject", "none"),
+    "MR-MEM-011-frozen-snapshot": ("acknowledge_deferred_visibility", "next_session_snapshot"),
+    "MR-MEM-012-unsupported-recall": ("return_uncertainty", "none"),
+    "MR-ROUTE-001-fast-lookup": ("route", "local:fast"),
+    "MR-ROUTE-002-general-synthesis": ("route", "local:general"),
+    "MR-ROUTE-003-code-patch-test": ("route", "local:code"),
+    "MR-ROUTE-004-strong-reasoning": ("route", "local:strong"),
+    "MR-ROUTE-005-governed-tool-contract": ("route", "local:orchestrator"),
+    "MR-ROUTE-006-context-insufficient": ("reject", "no_eligible_route"),
+    "MR-ROUTE-007-incomplete-child-context": ("reject", "child_context_packet"),
+    "MR-ROUTE-008-infra-fallback-before-side-effect": ("fallback_once", "local:general"),
+    "MR-ROUTE-009-semantic-no-reroute": ("preserve_failure", "local:code"),
+    "MR-ROUTE-010-no-fallback-after-side-effect": ("stop_and_escalate", "local:code"),
+    "MR-ROUTE-011-aggregate-score-reject": ("reject_routing_basis", "capability_registry"),
+    "MR-ROUTE-012-no-eligible-route": ("fail_closed", "no_eligible_route"),
+}
 BUNDLE = """name: jarvis-orchestration-core
 description: Reliable memory retrieval and capability-based local routing.
 skills:
@@ -77,9 +106,9 @@ FALSE_EXECUTION = (
     "self_hosted_compute_allowed_in_this_slice", "jarvis_routing_changes_allowed_in_this_slice",
     "memory_mutation_allowed_in_this_slice",
 )
-BROAD_TRIGGERS = (
-    ".github/workflows/*bench3*memory*.yml", ".github/workflows/*bench3*memory*.yaml",
-    ".github/workflows/*bench3*routing*.yml", ".github/workflows/*bench3*routing*.yaml",
-    "config/*bench3*memory*.json", "config/*bench3*routing*.json",
-    "scripts/*bench3*memory*.py", "scripts/*bench3*routing*.py",
+NAMESPACE_VARIANTS = ("bench3", "bench-3", "bench_3")
+BROAD_TRIGGERS = tuple(
+    [f".github/workflows/*{variant}*{kind}*.{ext}" for variant in NAMESPACE_VARIANTS for kind in ("memory", "routing") for ext in ("yml", "yaml")]
+    + [f"config/*{variant}*{kind}*.json" for variant in NAMESPACE_VARIANTS for kind in ("memory", "routing")]
+    + [f"scripts/*{variant}*{kind}*.{ext}" for variant in NAMESPACE_VARIANTS for kind in ("memory", "routing") for ext in ("py", "ps1", "cmd", "bat")]
 )
