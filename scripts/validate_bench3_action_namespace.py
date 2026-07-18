@@ -5,6 +5,8 @@ from pathlib import Path
 from scripts import bench3_contract_constants as C
 
 ROOT = Path(__file__).resolve().parents[1]
+WORKFLOW_PATH = ROOT / ".github/workflows/bench3-hermes-memory-routing-design-validation.yml"
+ACTION_TRIGGER = ".github/" + "actions/**"
 TOKENS = (
     "bench.hermes-" + "memory-routing",
     "bench3-hermes-" + "memory-routing",
@@ -44,6 +46,16 @@ def unexpected_files() -> list[str]:
 
 
 def validate() -> dict[str, object]:
+    try:
+        workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        raise Bench3ActionNamespaceError(
+            f"cannot read action-guard workflow: {type(exc).__name__}: {exc}"
+        ) from exc
+    if workflow.count(ACTION_TRIGGER) != 2:
+        raise Bench3ActionNamespaceError(
+            "composite-action workflow trigger missing or duplicated"
+        )
     found = unexpected_files()
     if found:
         raise Bench3ActionNamespaceError(
