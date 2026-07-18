@@ -25,6 +25,8 @@ All normative claims below are tied to files at the pinned commit.
 | [`website/docs/user-guide/features/skills.md`](https://github.com/NousResearch/hermes-agent/blob/73b611ad19720d70308dad6b0fb64648aaadc216/website/docs/user-guide/features/skills.md) | `19fffb1f1b23727f8d13cd42ac7986716ad1cf93` | Skills are procedural memory loaded through progressive disclosure; bundles combine focused skills; writes can be approval-gated. |
 | [`website/docs/user-guide/features/delegation.md`](https://github.com/NousResearch/hermes-agent/blob/73b611ad19720d70308dad6b0fb64648aaadc216/website/docs/user-guide/features/delegation.md) | `037c2e806ae1d883c21026405a96a5dbd5f76596` | Children start with no parent context, have restricted toolsets, cannot write memory, and use one globally configured delegation model. |
 | [`website/docs/user-guide/features/provider-routing.md`](https://github.com/NousResearch/hermes-agent/blob/73b611ad19720d70308dad6b0fb64648aaadc216/website/docs/user-guide/features/provider-routing.md) | `3dd6e69787e6a98e3761dcce753e063741d2591b` | Provider routing controls OpenRouter sub-providers; it is not local task routing for Ollama. |
+| [`toolsets.py`](https://github.com/NousResearch/hermes-agent/blob/73b611ad19720d70308dad6b0fb64648aaadc216/toolsets.py) | `03e64fdba4c012a792c2139f5d39ffc110f60d78` | Pins the exact `memory`, `session_search`, `skills`, and `delegation` toolset names used by the candidate skills. |
+| [`website/docs/user-guide/profiles.md`](https://github.com/NousResearch/hermes-agent/blob/73b611ad19720d70308dad6b0fb64648aaadc216/website/docs/user-guide/profiles.md) | `904d3ec3d1ee9da64e18ef9515f9eb66a25c7575` | Profiles isolate Hermes config and state, but do not sandbox filesystem access. |
 
 ## Findings that constrain the design
 
@@ -110,7 +112,7 @@ The recommended implementation is a JarvisOS `route_task` boundary that:
 6. captures provider/model/context/tool/usage evidence;
 7. returns a structured result without rewriting failures.
 
-Separate Hermes profiles are an acceptable first implementation because the pinned Hermes runtime supports isolated config, memory, skills, and a globally configured delegation model per profile.
+Separate Hermes profiles are an acceptable first implementation because the pinned Hermes runtime supports isolated config, memory, skills, and a globally configured delegation model per profile. Profiles are not filesystem sandboxes: each routed profile must pin an absolute `terminal.cwd` and remain behind an independently enforced filesystem/tool boundary.
 
 A future Hermes upgrade may expose better per-call routing. It must first pass compatibility tests for context, tool calls, memory isolation, finalization, and evidence capture.
 
@@ -128,6 +130,7 @@ skills:
   write_approval: true
 
 delegation:
+  max_iterations: 50
   max_concurrent_children: 1
   max_spawn_depth: 1
   orchestrator_enabled: false
@@ -139,7 +142,8 @@ Rationale:
 - approval gates prevent a small local model from poisoning future sessions or rewriting procedures without review;
 - one child at a time avoids uncontrolled VRAM contention on a single consumer GPU;
 - flat delegation prevents recursive fan-out before routing itself is qualified;
-- no hard child timeout avoids killing slow but progressing local inference; iteration and completion contracts remain bounded separately.
+- no hard child timeout avoids killing slow but progressing local inference; every dispatch still carries an explicit `max_iterations` value and the external JarvisOS dispatcher supplies a wall-clock watchdog with durable timeout evidence.
+- profile separation prevents state mixing but does not sandbox files; use an absolute `terminal.cwd` plus explicit tool/filesystem policy.
 
 Provider fallback should remain disabled during qualification. Later, one infrastructure-only fallback may be allowed before side effects for reversible work. Semantic failure must never trigger an invisible stronger-model retry.
 
