@@ -7,13 +7,13 @@ from scripts import bench3_contract_constants as C
 ROOT = Path(__file__).resolve().parents[1]
 CANONICAL_SHELL_RUNNER = ROOT / "scripts/run_bench3_hermes_memory_routing.sh"
 SENTINELS = (
-    "bench.hermes-memory-routing",
-    "bench3-hermes-memory-routing",
-    "bench-3-hermes-memory-routing",
-    "memory-orchestration",
-    "routing-orchestration",
-    "MR-MEM-",
-    "MR-ROUTE-",
+    "bench.hermes-" + "memory-routing",
+    "bench3-hermes-" + "memory-routing",
+    "bench-3-hermes-" + "memory-routing",
+    "memory-" + "orchestration",
+    "routing-" + "orchestration",
+    "MR-" + "MEM-",
+    "MR-" + "ROUTE-",
 )
 
 
