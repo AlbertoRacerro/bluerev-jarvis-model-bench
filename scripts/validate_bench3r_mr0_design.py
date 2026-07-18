@@ -5,13 +5,14 @@ import json
 from pathlib import Path
 
 from scripts import bench3r_mr0_contract as K
-from scripts.bench3r_mr0_io import MR0DesignError, read_text
+from scripts.bench3r_mr0_io import MR0DesignError, read_text, require
 from scripts.bench3r_mr0_validate_design import validate_plan
 from scripts.bench3r_mr0_validate_policy import WORKFLOW, validate_policy
 
 
 def validate() -> dict[str, object]:
     plan, source = validate_plan()
+    require(plan.get("runtime_model") == K.RUNTIME, "exact runtime contract drifted")
     validate_policy(plan, read_text(WORKFLOW))
     return {
         "schema_version": K.VALIDATION_SCHEMA,
