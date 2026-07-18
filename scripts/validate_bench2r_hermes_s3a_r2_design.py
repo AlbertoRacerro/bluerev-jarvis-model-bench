@@ -112,14 +112,14 @@ def validate() -> dict[str, Any]:
     )
 
     _require("version: 1.3.0" in candidate, "v1.3 version missing")
-    _require("```" not in candidate, "v1.3 contains a Markdown fence")
+    _require("`" not in candidate, "v1.3 contains a backtick or Markdown fence")
     _require(candidate.count(NORMATIVE_OBJECT) == 1, "v1.3 normative object drifted")
     for phrase in (
-        "Character 1 of the response MUST be `{`.",
-        "The final character of the response MUST be `}`.",
-        "Do not emit backticks.",
-        "A written label such as `call_tool` is data, not a tool invocation.",
-        "The terminal `stop` action must remain",
+        "Character 1 of the response MUST be the opening brace {.",
+        "The final character of the response MUST be the closing brace }.",
+        "Do not emit any backtick character.",
+        "A written label such as call_tool is data, not a tool invocation.",
+        "The terminal stop action must remain",
     ):
         _require(phrase in candidate, f"v1.3 required rule missing: {phrase}")
 
