@@ -10,10 +10,13 @@ on:
       - config/bench2r-hermes-s3a-r1-repair-marker.json
       - fixtures/bench-2r/hermes-skills/dialogic-orchestrator-v0.1-candidate/SKILL.md
       - fixtures/bench-plans/bench2r-hermes-dialogic-orchestrator-design.json
+      - fixtures/bench-plans/bench2r-hermes-dialogic-research-recommendations.json
       - fixtures/bench-plans/bench2r-hermes-s3a-r2-design.json
       - reports/BENCH-2R-HERMES-DIALOGIC-ORCHESTRATOR-DESIGN/**
       - scripts/validate_bench2r_hermes_dialogic_orchestrator_design.py
+      - scripts/validate_bench2r_hermes_dialogic_research.py
       - tests/test_bench2r_hermes_dialogic_orchestrator_design.py
+      - tests/test_bench2r_hermes_dialogic_research.py
   push:
     branches: [main]
     paths:
@@ -24,10 +27,13 @@ on:
       - config/bench2r-hermes-s3a-r1-repair-marker.json
       - fixtures/bench-2r/hermes-skills/dialogic-orchestrator-v0.1-candidate/SKILL.md
       - fixtures/bench-plans/bench2r-hermes-dialogic-orchestrator-design.json
+      - fixtures/bench-plans/bench2r-hermes-dialogic-research-recommendations.json
       - fixtures/bench-plans/bench2r-hermes-s3a-r2-design.json
       - reports/BENCH-2R-HERMES-DIALOGIC-ORCHESTRATOR-DESIGN/**
       - scripts/validate_bench2r_hermes_dialogic_orchestrator_design.py
+      - scripts/validate_bench2r_hermes_dialogic_research.py
       - tests/test_bench2r_hermes_dialogic_orchestrator_design.py
+      - tests/test_bench2r_hermes_dialogic_research.py
 
 permissions:
   contents: read
@@ -49,6 +55,11 @@ jobs:
           python -m scripts.validate_bench2r_hermes_dialogic_orchestrator_design --output artifacts/validation/dialogic-orchestrator-design.json
           python -m unittest -v tests.test_bench2r_hermes_dialogic_orchestrator_design
           python -m py_compile scripts/validate_bench2r_hermes_dialogic_orchestrator_design.py
+      - name: Validate research-derived recommendations
+        run: |
+          python -m scripts.validate_bench2r_hermes_dialogic_research --output artifacts/validation/dialogic-research.json
+          python -m unittest -v tests.test_bench2r_hermes_dialogic_research
+          python -m py_compile scripts/validate_bench2r_hermes_dialogic_research.py
       - name: Assert runtime remains absent
         run: |
           test ! -e .github/workflows/bench2r-hermes-dialogic-orchestrator-runtime.yml
