@@ -125,9 +125,24 @@ def validate() -> dict[str, Any]:
     _require(isinstance(skills, list) and len(skills) == 2, "candidate skill inventory drifted")
     by_name = {x.get("name"): x for x in skills if isinstance(x, dict)}
     _require(set(by_name) == {"memory-orchestration", "routing-orchestration"}, "candidate skill names drifted")
-    _eq(by_name["memory-orchestration"], "git_blob_sha", _git_blob_sha(memory_skill), "memory skill blob drifted")
-    _eq(by_name["routing-orchestration"], "git_blob_sha", _git_blob_sha(routing_skill), "routing skill blob drifted")
-    _require(all(x.get("status") == "candidate_not_installed" for x in skills), "candidate skill was marked installed")
+    skill_specs = {
+        "memory-orchestration": (
+            "0.1.0",
+            "fixtures/bench-3/hermes-skills/memory-orchestration-v0.1/SKILL.md",
+            _git_blob_sha(memory_skill),
+        ),
+        "routing-orchestration": (
+            "0.1.0",
+            "fixtures/bench-3/hermes-skills/routing-orchestration-v0.1/SKILL.md",
+            _git_blob_sha(routing_skill),
+        ),
+    }
+    for name, (version, path, blob_sha) in skill_specs.items():
+        entry = by_name[name]
+        _eq(entry, "version", version, f"{name} version drifted")
+        _eq(entry, "path", path, f"{name} fixture path drifted")
+        _eq(entry, "git_blob_sha", blob_sha, f"{name} skill blob drifted")
+        _eq(entry, "status", "candidate_not_installed", f"{name} was marked installed")
     for phrase in C.MEMORY_PHRASES:
         _require(phrase in memory_skill, f"memory skill rule missing: {phrase}")
     for phrase in C.ROUTING_PHRASES:
@@ -136,6 +151,8 @@ def validate() -> dict[str, Any]:
     bundle_entry = plan.get("bundle")
     _require(isinstance(bundle_entry, dict), "bundle binding missing")
     _require(bundle == C.BUNDLE, "bundle content drifted")
+    _eq(bundle_entry, "name", "jarvis-orchestration-core", "bundle name drifted")
+    _eq(bundle_entry, "path", "fixtures/bench-3/hermes-skill-bundles/jarvis-orchestration-core.yaml", "bundle fixture path drifted")
     _eq(bundle_entry, "git_blob_sha", _git_blob_sha(bundle), "bundle blob drifted")
     _eq(bundle_entry, "skills", ["memory-orchestration", "routing-orchestration"], "bundle skill order drifted")
     _eq(bundle_entry, "status", "candidate_not_installed", "bundle marked installed")

@@ -74,6 +74,23 @@ class MemoryRoutingDesignTests(unittest.TestCase):
                 with self.patch_plan(plan), self.assertRaises(core.MemoryRoutingDesignError):
                     core.validate()
 
+    def test_candidate_skill_and_bundle_fixture_bindings_are_enforced(self):
+        mutations = [
+            ("skills", 0, "version", "9.9.9"),
+            ("skills", 0, "path", "skills/memory-orchestration/SKILL.md"),
+            ("skills", 1, "version", "9.9.9"),
+            ("skills", 1, "path", "skills/routing-orchestration/SKILL.md"),
+            ("bundle", None, "name", "installed-bundle"),
+            ("bundle", None, "path", "skills/bundles/jarvis.yaml"),
+        ]
+        for section, index, key, value in mutations:
+            with self.subTest(section=section, index=index, key=key):
+                plan = core._load(core.PLAN_PATH)
+                target = plan[section] if index is None else plan[section][index]
+                target[key] = value
+                with self.patch_plan(plan), self.assertRaises(core.MemoryRoutingDesignError):
+                    core.validate()
+
     def test_renamed_and_opaque_runtime_artifacts_are_detected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
