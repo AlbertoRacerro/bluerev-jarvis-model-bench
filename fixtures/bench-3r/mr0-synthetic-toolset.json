@@ -1,0 +1,12 @@
+{
+  "schema_version": "bench3r.mr0-synthetic-toolset.v1",
+  "toolset_id": "bench3r_mr0_synthetic",
+  "scope": "case_local_simulation",
+  "tools": [
+    {"name": "mr0_session_search", "terminal": false},
+    {"name": "mr0_memory_proposal", "terminal": false},
+    {"name": "mr0_route_request", "terminal": false},
+    {"name": "mr0_profile_resolve", "terminal": false},
+    {"name": "mr0_finish", "terminal": true}
+  ]
+}
