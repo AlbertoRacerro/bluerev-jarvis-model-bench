@@ -1,0 +1,375 @@
+{
+  "schema_version": "bench.hermes-dialogic-orchestrator-design.v1",
+  "status": "static_design_ready_runtime_not_implemented",
+  "source": {
+    "benchmark_main_sha": "307ff7d96498dbdef2c57b933a133f585e5e1e60",
+    "hermes_version": "0.18.2",
+    "hermes_commit_sha": "73b611ad19720d70308dad6b0fb64648aaadc216",
+    "official_docs": [
+      {
+        "capability": "persistent_memory",
+        "path": "website/docs/user-guide/features/memory.md",
+        "git_blob_sha": "20c37afa12f7be99831c37744ddf07039f48491e"
+      },
+      {
+        "capability": "skills",
+        "path": "website/docs/user-guide/features/skills.md",
+        "git_blob_sha": "19fffb1f1b23727f8d13cd42ac7986716ad1cf93"
+      },
+      {
+        "capability": "cron",
+        "path": "website/docs/user-guide/features/cron.md",
+        "git_blob_sha": "a65a4bca1e7849267e8c89e4b54d90446df1663c"
+      },
+      {
+        "capability": "delegation",
+        "path": "website/docs/user-guide/features/delegation.md",
+        "git_blob_sha": "037c2e806ae1d883c21026405a96a5dbd5f76596"
+      },
+      {
+        "capability": "context_files",
+        "path": "website/docs/user-guide/features/context-files.md",
+        "git_blob_sha": "195201439f2cf2a2ac344586b9b4ec5ce99d993a"
+      },
+      {
+        "capability": "features_overview",
+        "path": "website/docs/user-guide/features/overview.md",
+        "git_blob_sha": "5f6c04f5ca8b5ca9461215802d334395d2c78b76"
+      }
+    ],
+    "protocol_side_gate_path": "fixtures/bench-plans/bench2r-hermes-s3a-r2-design.json"
+  },
+  "decision": {
+    "primary_objective": "memory_context_routing_orchestrator",
+    "hermes_role": "conversational_control_plane",
+    "protocol_side_gate": "S3A-R2 remains a bounded regression test and is not the primary architecture",
+    "interaction_mode": "native_dialogic_trajectory",
+    "deterministic_enforcement": "irreversible_side_effect_boundaries_and_post_episode_adjudication",
+    "byte_exact_output_during_normal_dialogue": false,
+    "production_status": "not_promoted"
+  },
+  "candidate_skill": {
+    "name": "dialogic-orchestrator",
+    "version": "0.1.0",
+    "path": "fixtures/bench-2r/hermes-skills/dialogic-orchestrator-v0.1-candidate/SKILL.md",
+    "git_blob_sha": "b8de6967fae199fdddd360669f7b96170834450d",
+    "role": "training_profile_candidate_only"
+  },
+  "native_surfaces": {
+    "persistent_memory": {
+      "enabled_in_training_profile": true,
+      "writes_staged_for_promotion": true
+    },
+    "session_search": {
+      "required": true,
+      "purpose": "targeted historical recall without permanent prompt bloat"
+    },
+    "project_context_files": {
+      "required": true,
+      "progressive_subdirectory_discovery": true
+    },
+    "skills": {
+      "progressive_disclosure": true,
+      "agent_created_or_patched": true,
+      "fresh_task_validation_before_promotion": true
+    },
+    "task_graph": {
+      "required_for_multi_step_episodes": true,
+      "dialogue_updates_state": true
+    },
+    "clarification": {
+      "allowed": true,
+      "only_when_material": true,
+      "retrieve_before_asking": true
+    },
+    "delegation": {
+      "allowed": true,
+      "context_pack_required": true,
+      "parent_synthesis_required": true
+    },
+    "code_execution": {
+      "allowed_for_mechanical_pipelines": true
+    },
+    "cron_routines": {
+      "allowed_after_dialogic_consent": true,
+      "recursive_creation_forbidden": true,
+      "provider_model_binding_recorded": true
+    },
+    "trajectory_capture": {
+      "required": true,
+      "native_hermes_trace_preserved": true
+    }
+  },
+  "context_policy": {
+    "selection_order": [
+      "current_request_and_constraints",
+      "project_context_files",
+      "persistent_memory_and_user_profile",
+      "targeted_session_search",
+      "relevant_skills_only",
+      "focused_files_diffs_logs_or_documents",
+      "delegation_context_pack",
+      "compression_or_context_engine"
+    ],
+    "memory_for": [
+      "compact_durable_facts",
+      "preferences",
+      "corrections",
+      "environment_conventions",
+      "high_value_lessons"
+    ],
+    "session_search_for": [
+      "specific_prior_decisions",
+      "past_corrections",
+      "detailed_historical_context"
+    ],
+    "skills_for": [
+      "reusable_procedures",
+      "recovered_workflows",
+      "domain_playbooks"
+    ],
+    "forbidden_memory_content": [
+      "raw_logs",
+      "large_code_blocks",
+      "transient_paths",
+      "unverified_claims",
+      "full_session_transcripts"
+    ],
+    "compression_must_preserve": [
+      "goal",
+      "decisions",
+      "open_blockers",
+      "evidence_pointers",
+      "task_state",
+      "user_corrections"
+    ]
+  },
+  "routing_policy": {
+    "parent_stack_initially_fixed": {
+      "candidate_id": "gemma4-12b-it-qat",
+      "model_tag": "gemma4:12b-it-qat",
+      "model_digest": "38044be4f923e5a55264ed7df4eaac2676651a905f735197c504045140c02bd3",
+      "context_length": 65536,
+      "hermes_commit_sha": "73b611ad19720d70308dad6b0fb64648aaadc216"
+    },
+    "route_targets": [
+      "parent_agent",
+      "delegated_leaf",
+      "delegated_orchestrator",
+      "execute_code",
+      "cron_agent_session",
+      "cron_no_agent_script"
+    ],
+    "decision_features": [
+      "task_capability",
+      "required_context_length",
+      "tool_requirements",
+      "reliability_evidence",
+      "latency",
+      "compute_residency",
+      "estimated_cost",
+      "side_effect_risk"
+    ],
+    "decision_log_required": true,
+    "alternatives_rejected_required": true,
+    "adaptive_model_routing_scope": "training_children_and_auxiliary_tasks_only",
+    "production_router_change_allowed": false
+  },
+  "delegation_context_pack": {
+    "required_fields": [
+      "goal",
+      "acceptance_condition",
+      "relevant_facts",
+      "evidence",
+      "paths_or_identifiers",
+      "allowed_toolsets",
+      "prohibited_actions",
+      "known_failures",
+      "expected_return"
+    ],
+    "subagent_shared_memory_assumed": false,
+    "child_memory_writes_allowed": false,
+    "child_user_clarification_allowed": false
+  },
+  "curriculum": [
+    {
+      "id": "D0",
+      "name": "recall_and_correction",
+      "focus": [
+        "memory_vs_session_search",
+        "stale_memory_update",
+        "avoid_repeat_question"
+      ]
+    },
+    {
+      "id": "D1",
+      "name": "context_selection",
+      "focus": [
+        "progressive_context",
+        "relevance",
+        "compression_state_preservation"
+      ]
+    },
+    {
+      "id": "D2",
+      "name": "task_graph_dialogue",
+      "focus": [
+        "multi_step_planning",
+        "material_clarification",
+        "correction_incorporation"
+      ]
+    },
+    {
+      "id": "D3",
+      "name": "delegation_context_packing",
+      "focus": [
+        "isolated_child_context",
+        "toolset_selection",
+        "parent_synthesis"
+      ]
+    },
+    {
+      "id": "D4",
+      "name": "procedural_learning",
+      "focus": [
+        "learn_from_success",
+        "learn_from_dead_end",
+        "skill_patch",
+        "fresh_task_validation"
+      ]
+    },
+    {
+      "id": "D5",
+      "name": "routine_creation",
+      "focus": [
+        "natural_language_schedule",
+        "workdir",
+        "skills",
+        "pause_edit_remove",
+        "no_recursive_cron"
+      ]
+    },
+    {
+      "id": "D6",
+      "name": "adaptive_routing",
+      "focus": [
+        "route_selection",
+        "model_override",
+        "mechanical_vs_reasoning",
+        "cost_reliability_tradeoff"
+      ]
+    },
+    {
+      "id": "D7",
+      "name": "multi_session_continuity",
+      "focus": [
+        "session_search",
+        "memory_snapshot",
+        "resume_task_state"
+      ]
+    },
+    {
+      "id": "D8",
+      "name": "failure_recovery",
+      "focus": [
+        "tool_failure",
+        "route_revision",
+        "memory_correction",
+        "skill_revision_proposal"
+      ]
+    }
+  ],
+  "episode_protocol": {
+    "conversation_turns": {
+      "minimum": 4,
+      "maximum": 24
+    },
+    "user_simulator_may_correct_or_add_constraints": true,
+    "free_form_intermediate_reasoning_and_answers": true,
+    "exact_json_intermediate_output_required": false,
+    "task_or_routine_creation_may_occur": true,
+    "all_side_effects_sandboxed": true,
+    "final_user_answer_required": true,
+    "post_episode_artifact_required": true
+  },
+  "post_episode_artifact": {
+    "schema_version": "bench.hermes-dialogic-episode.v1",
+    "derived_from_actual_trace": true,
+    "required_sections": [
+      "task_outcome",
+      "context_sources",
+      "memory_diff",
+      "skill_diff",
+      "routine_diff",
+      "task_graph_transitions",
+      "routing_decisions",
+      "delegation_context_packs",
+      "tool_trace",
+      "token_and_cost_usage",
+      "user_corrections",
+      "unresolved_risks"
+    ],
+    "must_not_replace_native_trajectory": true
+  },
+  "scoring": {
+    "primary_metrics": [
+      "semantic_task_success",
+      "context_relevance",
+      "memory_precision",
+      "historical_recall",
+      "task_graph_quality",
+      "correction_incorporation",
+      "routing_utility",
+      "routine_correctness",
+      "skill_generalization",
+      "multi_session_continuity"
+    ],
+    "efficiency_metrics": [
+      "input_tokens",
+      "tool_calls",
+      "delegated_calls",
+      "latency",
+      "estimated_cost",
+      "context_redundancy"
+    ],
+    "safety_metrics": [
+      "unauthorized_side_effects",
+      "secret_exposure",
+      "external_calls",
+      "recursive_routines",
+      "production_mutations"
+    ],
+    "exact_protocol_conformance_role": "separate_terminal_regression_gate",
+    "global_composite_winner_allowed": false
+  },
+  "hard_boundaries": {
+    "isolated_hermes_home_required": true,
+    "isolated_memory_store_required": true,
+    "isolated_skills_directory_required": true,
+    "isolated_cron_store_required": true,
+    "local_models_only": true,
+    "external_providers_allowed": false,
+    "real_user_messages_or_publication_allowed": false,
+    "production_memory_or_skill_writes_allowed": false,
+    "production_routing_changes_allowed": false,
+    "irreversible_actions_require_approval": true,
+    "automatic_promotion_allowed": false
+  },
+  "execution": {
+    "implemented": false,
+    "self_hosted_workflow_present": false,
+    "activation_marker_present": false,
+    "ollama_calls_allowed_in_this_slice": false,
+    "training_weight_updates_allowed_in_this_slice": false,
+    "hosted_static_validation_required": true
+  },
+  "next_runtime_slice": {
+    "name": "dialogic_orchestrator_sandbox_runtime",
+    "minimum_episodes_per_curriculum_case": 2,
+    "fresh_scenarios_required": true,
+    "paired_baseline": "stock_governed_stack_without_dialogic_orchestrator_skill",
+    "candidate": "same_stack_with_dialogic_orchestrator_skill",
+    "only_allowed_arm_difference": "dialogic_orchestrator_skill_and_episode_policy",
+    "no_production_promotion_after_pass": true
+  }
+}
