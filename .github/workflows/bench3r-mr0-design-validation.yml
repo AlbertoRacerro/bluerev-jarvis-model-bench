@@ -22,6 +22,9 @@ on:
       - scripts/run_bench3r_mr0.bat
       - scripts/run_bench3r_mr0.sh
       - tests/test_bench3r_mr0_design.py
+      - tests/test_bench3r_mr0_cases.py
+      - tests/test_bench3r_mr0_policy.py
+      - tests/test_bench3r_mr0_workflow.py
   push:
     branches: [main]
     paths:
@@ -44,6 +47,9 @@ on:
       - scripts/run_bench3r_mr0.bat
       - scripts/run_bench3r_mr0.sh
       - tests/test_bench3r_mr0_design.py
+      - tests/test_bench3r_mr0_cases.py
+      - tests/test_bench3r_mr0_policy.py
+      - tests/test_bench3r_mr0_workflow.py
 
 permissions:
   contents: read
@@ -62,7 +68,7 @@ jobs:
       - name: Validate MR0 design
         run: python -m scripts.validate_bench3r_mr0_design --output artifacts/validation/bench3r-mr0-design.json
       - name: Run MR0 regression tests
-        run: python -m unittest tests/test_bench3r_mr0_design.py -v
+        run: python -m unittest tests/test_bench3r_mr0_design.py tests/test_bench3r_mr0_cases.py tests/test_bench3r_mr0_policy.py tests/test_bench3r_mr0_workflow.py -v
       - name: Assert runtime artifacts absent
         shell: bash
         run: |
