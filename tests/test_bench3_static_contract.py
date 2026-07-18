@@ -21,6 +21,8 @@ class Bench3StaticContractTests(unittest.TestCase):
             "runtime_namespace_guard_validated",
             "candidate_fixture_bindings_validated",
             "case_contracts_validated",
+            "shell_runtime_guard_validated",
+            "action_namespace_guard_validated",
         ):
             self.assertIs(payload[key], True)
 
