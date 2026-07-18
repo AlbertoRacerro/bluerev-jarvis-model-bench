@@ -14,12 +14,13 @@ class Bench3ActionNamespaceTests(unittest.TestCase):
         self.assertTrue(result["action_namespace_guard_validated"])
         self.assertEqual(result["action_namespace_files"], 0)
 
-    def test_named_and_opaque_composite_actions_are_rejected(self):
+    def test_any_composite_action_file_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             samples = {
                 ".github/actions/bench-3-memory-routing/action.yml": "name: runtime\n",
                 ".github/actions/opaque/action.yml": "name: x\ndescription: bench.hermes-memory-routing-design.v1\n",
+                ".github/actions/generic/action.yml": "name: generic\nruns:\n  using: composite\n  steps: []\n",
             }
             for relative, text in samples.items():
                 path = root / relative
