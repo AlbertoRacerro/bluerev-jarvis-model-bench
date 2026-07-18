@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from scripts import bench3_contract_constants as C
+
 ROOT = Path(__file__).resolve().parents[1]
 PLAN_PATH = ROOT / "fixtures/bench-plans/bench3-hermes-memory-routing-design.json"
 RESEARCH_PATH = ROOT / "docs/research/HERMES_LOCAL_RELIABILITY_MEMORY_ROUTING.md"
@@ -16,426 +18,220 @@ DESIGN_WORKFLOW_PATH = ROOT / ".github/workflows/bench3-hermes-memory-routing-de
 FORBIDDEN_WORKFLOW_PATH = ROOT / ".github/workflows/bench3-hermes-memory-routing-canary.yml"
 FORBIDDEN_MARKER_PATH = ROOT / "config/bench3-hermes-memory-routing-marker.json"
 FORBIDDEN_RUNNER_PATH = ROOT / "scripts/run_bench3_hermes_memory_routing.py"
+FORBIDDEN_WORKFLOW_LITERAL = FORBIDDEN_WORKFLOW_PATH.relative_to(ROOT).as_posix()
+FORBIDDEN_MARKER_LITERAL = FORBIDDEN_MARKER_PATH.relative_to(ROOT).as_posix()
+FORBIDDEN_RUNNER_LITERAL = FORBIDDEN_RUNNER_PATH.relative_to(ROOT).as_posix()
+HERMES_COMMIT = C.HERMES_COMMIT
+EXPECTED_OFFICIAL_SOURCES = C.OFFICIAL_SOURCES
+EXPECTED_MEMORY_CASES = C.MEMORY_CASES
+EXPECTED_ROUTING_CASES = C.ROUTING_CASES
+EXPECTED_LANES = C.LANES
+EXPECTED_BUNDLE = C.BUNDLE
+BROAD_TRIGGER_LITERALS = C.BROAD_TRIGGERS
 
-HERMES_COMMIT = "73b611ad19720d70308dad6b0fb64648aaadc216"
-EXPECTED_OFFICIAL_SOURCES = [
-    {
-        "path": "website/docs/user-guide/features/memory.md",
-        "git_blob_sha": "20c37afa12f7be99831c37744ddf07039f48491e",
-        "purpose": "bounded memory, frozen snapshot, session search, approval",
-    },
-    {
-        "path": "tools/memory_tool.py",
-        "git_blob_sha": "08eeaa470ea493480e6095a3f04063466a31ee7e",
-        "purpose": "locking, threat scanning, drift rejection, retry cap",
-    },
-    {
-        "path": "website/docs/user-guide/features/skills.md",
-        "git_blob_sha": "19fffb1f1b23727f8d13cd42ac7986716ad1cf93",
-        "purpose": "progressive disclosure, focused skills, bundles, write approval",
-    },
-    {
-        "path": "website/docs/user-guide/features/delegation.md",
-        "git_blob_sha": "037c2e806ae1d883c21026405a96a5dbd5f76596",
-        "purpose": "fresh child context, restricted tools, global delegation model",
-    },
-    {
-        "path": "website/docs/user-guide/features/provider-routing.md",
-        "git_blob_sha": "3dd6e69787e6a98e3761dcce753e063741d2591b",
-        "purpose": "OpenRouter-only provider routing boundary",
-    },
-    {
-        "path": "toolsets.py",
-        "git_blob_sha": "03e64fdba4c012a792c2139f5d39ffc110f60d78",
-        "purpose": "exact memory, session-search, skills, and delegation toolset registry",
-    },
-    {
-        "path": "website/docs/user-guide/profiles.md",
-        "git_blob_sha": "904d3ec3d1ee9da64e18ef9515f9eb66a25c7575",
-        "purpose": "per-profile state isolation and explicit non-sandbox boundary",
-    },
-]
-EXPECTED_MEMORY_CASES = [
-    "MR-MEM-001-user-preference",
-    "MR-MEM-002-project-fact",
-    "MR-MEM-003-session-recall",
-    "MR-MEM-004-procedure-to-skill",
-    "MR-MEM-005-performance-to-ledger",
-    "MR-MEM-006-raw-log-skip",
-    "MR-MEM-007-stale-memory-replace",
-    "MR-MEM-008-child-proposal-parent-write",
-    "MR-MEM-009-capacity-consolidate",
-    "MR-MEM-010-injection-reject",
-    "MR-MEM-011-frozen-snapshot",
-    "MR-MEM-012-unsupported-recall",
-]
-EXPECTED_ROUTING_CASES = [
-    "MR-ROUTE-001-fast-lookup",
-    "MR-ROUTE-002-general-synthesis",
-    "MR-ROUTE-003-code-patch-test",
-    "MR-ROUTE-004-strong-reasoning",
-    "MR-ROUTE-005-governed-tool-contract",
-    "MR-ROUTE-006-context-insufficient",
-    "MR-ROUTE-007-incomplete-child-context",
-    "MR-ROUTE-008-infra-fallback-before-side-effect",
-    "MR-ROUTE-009-semantic-no-reroute",
-    "MR-ROUTE-010-no-fallback-after-side-effect",
-    "MR-ROUTE-011-aggregate-score-reject",
-    "MR-ROUTE-012-no-eligible-route",
-]
-EXPECTED_LANES = [
-    "local:fast",
-    "local:general",
-    "local:code",
-    "local:strong",
-    "local:orchestrator",
-]
-EXPECTED_BUNDLE = """name: jarvis-orchestration-core
-description: Reliable memory retrieval and capability-based local routing.
-skills:
-  - memory-orchestration
-  - routing-orchestration
-instruction: |
-  Retrieve only the context the task actually needs.
-  Route from the governed capability registry, not from model reputation.
-  Keep memory promotion parent-only and evidence-backed.
-  A route decision is not execution until a dispatcher trace confirms it.
-"""
-FORBIDDEN_WORKFLOW_LITERAL = ".github/workflows/bench3-hermes-memory-routing-canary.yml"
-FORBIDDEN_MARKER_LITERAL = "config/bench3-hermes-memory-routing-marker.json"
-FORBIDDEN_RUNNER_LITERAL = "scripts/run_bench3_hermes_memory_routing.py"
-
-ALLOWED_STATIC_RUNTIME_NAMESPACE_PATHS = {
-    ".github/workflows/bench3-hermes-memory-routing-design-validation.yml",
+_ALLOWED_STATIC = {
+    DESIGN_WORKFLOW_PATH.relative_to(ROOT).as_posix(),
     "scripts/validate_bench3_hermes_memory_routing_design.py",
+    "scripts/validate_bench3_static_contract.py",
+    "scripts/bench3_contract_constants.py",
 }
-RUNTIME_NAMESPACE_SENTINELS = (
-    "bench.hermes-memory-routing",
-    "bench3-hermes-memory-routing",
-    "memory-orchestration",
-    "routing-orchestration",
-    "jarvis-orchestration-core",
-    "MR-MEM-",
-    "MR-ROUTE-",
+_SENTINELS = (
+    "bench.hermes-memory-routing", "bench3-hermes-memory-routing",
+    "memory-orchestration", "routing-orchestration", "jarvis-orchestration-core",
+    "MR-MEM-", "MR-ROUTE-",
 )
-BROAD_TRIGGGER_LITERALS:
-    ".github/workflows/*bench3*memory*.yml",
-    ".github/workflows/*bench3*memory*.yaml",
-    ".github/workflows/*bench3*routing*.yml",
-    ".github/workflows/*bench3*routing*.yaml",
-    "config/*bench3*memory*.json",
-    "config/*bench3*routing*.json",
-    "scripts/*bench3*memory*.py",
-    "scripts/*bench3*routing*.py",
-)
-
 
 class MemoryRoutingDesignError(RuntimeError):
     pass
 
-
 def _reject_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-    result: dict[str, Any] = {}
+    out: dict[str, Any] = {}
     for key, value in pairs:
-        if key in result:
+        if key in out:
             raise ValueError(f"duplicate JSON key: {key}")
-        result[key] = value
-    return result
-
+        out[key] = value
+    return out
 
 def _load(path: Path) -> dict[str, Any]:
     try:
-        value = json.loads(
-            path.read_text(encoding="utf-8"),
-            object_pairs_hook=_reject_duplicates,
-        )
+        value = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=_reject_duplicates)
     except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
-        raise MemoryRoutingDesignError(
-            f"cannot read {path}: {type(exc).__name__}: {exc}"
-        ) from exc
+        raise MemoryRoutingDesignError(f"cannot read {path}: {type(exc).__name__}: {exc}") from exc
     if not isinstance(value, dict):
         raise MemoryRoutingDesignError(f"{path} must contain an object")
     return value
-
 
 def _read(path: Path) -> str:
     try:
         return path.read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
-        raise MemoryRoutingDesignError(
-            f"cannot read {path}: {type(exc).__name__}: {exc}"
-        ) from exc
-
+        raise MemoryRoutingDesignError(f"cannot read {path}: {type(exc).__name__}: {exc}") from exc
 
 def _require(condition: bool, message: str) -> None:
     if not condition:
         raise MemoryRoutingDesignError(message)
 
-
 def _git_blob_sha(text: str) -> str:
-    payload = text.encode("utf-8")
-    header = f"blob {len(payload)}\0".encode("ascii")
-    return hashlib.sha1(header + payload).hexdigest()
+    raw = text.encode("utf-8")
+    return hashlib.sha1(f"blob {len(raw)}\0".encode("ascii") + raw).hexdigest()
 
-
-def _find_unexpected_runtime_artifacts() -> list[str]:
-    unexpected: list[str] = []
-    for directory, suffixes in (
-        (ROOT / ".github/workflows", {".yml", ".yaml"}),
-        (ROOT / "config", {".json"}),
-        (ROOT / "scripts", {".py"}),
-    ):
+def _unexpected_runtime_artifacts() -> list[str]:
+    bad: list[str] = []
+    for directory, suffixes in ((ROOT/".github/workflows", {".yml", ".yaml"}), (ROOT/"config", {".json"}), (ROOT/"scripts", {".py"})):
         if not directory.exists():
             continue
         for path in directory.rglob("*"):
             if not path.is_file() or path.suffix.lower() not in suffixes:
                 continue
-            relative = path.relative_to(ROOT).as_posix()
-            if relative in ALLOWED_STATIC_RUNTIME_NAMESPACE_PATHS:
+            rel = path.relative_to(ROOT).as_posix()
+            if rel in _ALLOWED_STATIC:
                 continue
-            lowered = relative.lower()
-            path_matches = "bench3" in lowered and ("memory" in lowered or "routing" in lowered)
+            lowered = rel.lower()
+            path_match = "bench3" in lowered and ("memory" in lowered or "routing" in lowered)
             try:
                 text = path.read_text(encoding="utf-8")
             except (OSError, UnicodeError):
                 text = ""
-            content_matches = any(sentinel in text for sentinel in RUNTIME_NAMESPACE_SENTINELS)
-            if path_matches or content_matches:
-                unexpected.append(relative)
-    return sorted(unexpected)
+            if path_match or any(token in text for token in _SENTINELS):
+                bad.append(rel)
+    return sorted(bad)
+
+def _eq(obj: dict[str, Any], key: str, expected: Any, message: str) -> None:
+    _require(obj.get(key) == expected, message)
 
 def validate() -> dict[str, Any]:
     plan = _load(PLAN_PATH)
-    research = _read(RESEARCH_PATH)
-    memory_skill = _read(MEMORY_SKILL_PATH)
-    routing_skill = _read(ROUTING_SKILL_PATH)
-    bundle = _read(BUNDLE_PATH)
-    workflow = _read(DESIGN_WORKFLOW_PATH)
+    research, memory_skill, routing_skill, bundle, workflow = map(_read, (RESEARCH_PATH, MEMORY_SKILL_PATH, ROUTING_SKILL_PATH, BUNDLE_PATH, DESIGN_WORKFLOW_PATH))
 
-    _require(
-        plan.get("schema_version") == "bench.hermes-memory-routing-design.v1",
-        "memory-routing schema drifted",
-    )
-    _require(
-        plan.get("status") == "static_design_ready_execution_not_implemented",
-        "memory-routing status drifted",
-    )
+    _eq(plan, "schema_version", "bench.hermes-memory-routing-design.v1", "memory-routing schema drifted")
+    _eq(plan, "status", "static_design_ready_execution_not_implemented", "memory-routing status drifted")
 
     source = plan.get("source")
     _require(isinstance(source, dict), "source binding missing")
-    _require(source.get("hermes_repository") == "NousResearch/hermes-agent", "Hermes repository drifted")
-    _require(source.get("hermes_version") == "0.18.2", "Hermes version drifted")
-    _require(source.get("hermes_commit_sha") == HERMES_COMMIT, "Hermes commit drifted")
-    _require(source.get("official_sources") == EXPECTED_OFFICIAL_SOURCES, "official Hermes source bindings drifted")
+    _eq(source, "hermes_repository", "NousResearch/hermes-agent", "Hermes repository drifted")
+    _eq(source, "hermes_version", "0.18.2", "Hermes version drifted")
+    _eq(source, "hermes_commit_sha", C.HERMES_COMMIT, "Hermes commit drifted")
+    _eq(source, "official_sources", C.OFFICIAL_SOURCES, "official Hermes source bindings drifted")
 
     runtime = plan.get("runtime_constraints")
     _require(isinstance(runtime, dict), "runtime constraints missing")
-    _require(runtime.get("local_only") is True, "design is not local-only")
-    _require(runtime.get("minimum_actual_context") == 65536, "minimum context drifted")
-    _require(runtime.get("external_providers_allowed") is False, "external providers enabled")
-    _require(runtime.get("hermes_upgrade_allowed_in_this_slice") is False, "Hermes upgrade enabled")
-    _require(runtime.get("provider_routing_applies_to_local_ollama") is False, "OpenRouter routing misclassified as local routing")
-    _require(runtime.get("delegate_per_task_model_override_reviewed_available") is False, "unsupported per-task delegate model override enabled")
-    _require(runtime.get("routing_requires_deterministic_dispatcher") is True, "routing dispatcher boundary missing")
+    for key in ("local_only", "routing_requires_deterministic_dispatcher"):
+        _require(runtime.get(key) is True, f"runtime constraint disabled: {key}")
+    _eq(runtime, "minimum_actual_context", 65536, "minimum context drifted")
+    for key in ("external_providers_allowed", "hermes_upgrade_allowed_in_this_slice", "provider_routing_applies_to_local_ollama", "delegate_per_task_model_override_reviewed_available"):
+        _require(runtime.get(key) is False, f"unsafe runtime constraint: {key}")
 
     skills = plan.get("skills")
     _require(isinstance(skills, list) and len(skills) == 2, "candidate skill inventory drifted")
-    skill_by_name = {entry.get("name"): entry for entry in skills if isinstance(entry, dict)}
-    _require(set(skill_by_name) == {"memory-orchestration", "routing-orchestration"}, "candidate skill names drifted")
-    _require(skill_by_name["memory-orchestration"].get("git_blob_sha") == _git_blob_sha(memory_skill), "memory skill blob drifted")
-    _require(skill_by_name["routing-orchestration"].get("git_blob_sha") == _git_blob_sha(routing_skill), "routing skill blob drifted")
-    _require(all(entry.get("status") == "candidate_not_installed" for entry in skills), "candidate skill was marked installed")
-
-    expected_memory_phrases = (
-        "session_search before asking the user to repeat",
-        "Performance evidence does not belong in free-form memory",
-        "Subagents must never write shared persistent memory",
-        "Enable memory.write_approval",
-        "does not change the system-prompt snapshot for the current session",
-        "At or above 80 percent capacity",
-        "Promote only verified conclusions",
-    )
-    for phrase in expected_memory_phrases:
+    by_name = {x.get("name"): x for x in skills if isinstance(x, dict)}
+    _require(set(by_name) == {"memory-orchestration", "routing-orchestration"}, "candidate skill names drifted")
+    _eq(by_name["memory-orchestration"], "git_blob_sha", _git_blob_sha(memory_skill), "memory skill blob drifted")
+    _eq(by_name["routing-orchestration"], "git_blob_sha", _git_blob_sha(routing_skill), "routing skill blob drifted")
+    _require(all(x.get("status") == "candidate_not_installed" for x in skills), "candidate skill was marked installed")
+    for phrase in C.MEMORY_PHRASES:
         _require(phrase in memory_skill, f"memory skill rule missing: {phrase}")
-
-    expected_routing_phrases = (
-        "A routing decision is not execution",
-        "Never route from a global model score",
-        "Stock delegate_task does not provide a reviewed per-task local-model switch",
-        "OpenRouter provider_routing is not a local Ollama router",
-        "Hermes subagents know nothing about the parent conversation",
-        "max_concurrent_children to 1",
-        "Profiles isolate Hermes state but are not filesystem sandboxes",
-        "Every dispatch must set an explicit max_iterations",
-        "dispatcher must provide a separate wall-clock watchdog",
-        "A malformed answer, wrong tool, failed completion contract, or low-quality result is a semantic failure",
-        "When no eligible route exists, fail closed",
-    )
-    for phrase in expected_routing_phrases:
+    for phrase in C.ROUTING_PHRASES:
         _require(phrase in routing_skill, f"routing skill rule missing: {phrase}")
 
     bundle_entry = plan.get("bundle")
     _require(isinstance(bundle_entry, dict), "bundle binding missing")
-    _require(bundle == EXPECTED_BUNDLE, "bundle content drifted")
-    _require(bundle_entry.get("git_blob_sha") == _git_blob_sha(bundle), "bundle blob drifted")
-    _require(bundle_entry.get("skills") == ["memory-orchestration", "routing-orchestration"], "bundle skill order drifted")
-    _require(bundle_entry.get("status") == "candidate_not_installed", "bundle marked installed")
+    _require(bundle == C.BUNDLE, "bundle content drifted")
+    _eq(bundle_entry, "git_blob_sha", _git_blob_sha(bundle), "bundle blob drifted")
+    _eq(bundle_entry, "skills", ["memory-orchestration", "routing-orchestration"], "bundle skill order drifted")
+    _eq(bundle_entry, "status", "candidate_not_installed", "bundle marked installed")
 
     memory = plan.get("memory_architecture")
     _require(isinstance(memory, dict), "memory architecture missing")
-    _require(memory.get("stores") == [
-        "user_profile",
-        "curated_memory",
-        "session_search",
-        "procedural_skills",
-        "project_context",
-        "performance_ledger",
-    ], "memory store separation drifted")
-    _require(memory.get("memory_char_limit") == 2200, "MEMORY limit drifted")
-    _require(memory.get("user_char_limit") == 1375, "USER limit drifted")
-    _require(memory.get("snapshot_frozen_per_session") is True, "frozen snapshot invariant missing")
-    _require(memory.get("memory_write_approval_required") is True, "memory write approval disabled")
-    _require(memory.get("skill_write_approval_required") is True, "skill write approval disabled")
-    _require(memory.get("parent_only_persistent_memory_writes") is True, "parent-only memory boundary disabled")
-    _require(memory.get("subagents_may_write_persistent_memory") is False, "subagent memory writes enabled")
-    _require(memory.get("performance_evidence_in_freeform_memory_allowed") is False, "performance evidence allowed in free-form memory")
-    _require(memory.get("raw_logs_in_persistent_memory_allowed") is False, "raw logs allowed in persistent memory")
-    _require(memory.get("consolidate_at_percent") == 80, "memory consolidation threshold drifted")
+    _eq(memory, "stores", ["user_profile", "curated_memory", "session_search", "procedural_skills", "project_context", "performance_ledger"], "memory store separation drifted")
+    _eq(memory, "memory_char_limit", 2200, "MEMORY limit drifted")
+    _eq(memory, "user_char_limit", 1375, "USER limit drifted")
+    for key in ("snapshot_frozen_per_session", "memory_write_approval_required", "skill_write_approval_required", "parent_only_persistent_memory_writes"):
+        _require(memory.get(key) is True, f"memory invariant disabled: {key}")
+    for key in ("subagents_may_write_persistent_memory", "performance_evidence_in_freeform_memory_allowed", "raw_logs_in_persistent_memory_allowed"):
+        _require(memory.get(key) is False, f"unsafe memory invariant: {key}")
+    _eq(memory, "consolidate_at_percent", 80, "memory consolidation threshold drifted")
+    _eq(memory, "conflict_precedence", C.CONFLICT_PRECEDENCE, "memory conflict precedence drifted")
 
     routing = plan.get("routing_architecture")
     _require(isinstance(routing, dict), "routing architecture missing")
-    _require(routing.get("lanes") == EXPECTED_LANES, "local lane inventory drifted")
-    _require(routing.get("route_source_of_truth") == "capability_registry_and_performance_ledger", "routing source of truth drifted")
-    _require(routing.get("global_model_score_routing_allowed") is False, "aggregate-score routing enabled")
-    _require(routing.get("checkpoint_name_alone_is_eligible") is False, "checkpoint-only eligibility enabled")
-    _require(routing.get("actual_dispatch_mechanisms") == ["jarvis_route_tool", "separate_pinned_hermes_profiles"], "dispatch mechanism drifted")
-    _require(routing.get("max_concurrent_children") == 1, "single-GPU concurrency boundary drifted")
-    _require(routing.get("max_spawn_depth") == 1, "delegation depth drifted")
-    _require(routing.get("nested_orchestrators_enabled") is False, "nested orchestration enabled")
-    _require(routing.get("child_context_must_be_self_contained") is True, "self-contained child context disabled")
-    _require(routing.get("least_privilege_toolsets_required") is True, "least privilege disabled")
-    _require(routing.get("dispatcher_trace_required") is True, "dispatcher trace disabled")
-    _require(routing.get("profiles_are_filesystem_sandbox") is False, "profiles misclassified as filesystem sandbox")
-    _require(routing.get("absolute_terminal_cwd_required") is True, "absolute terminal cwd boundary disabled")
-    _require(routing.get("explicit_max_iterations_required") is True, "explicit max_iterations boundary disabled")
-    _require(routing.get("max_iterations_ceiling") == 50, "max_iterations ceiling drifted")
-    _require(routing.get("dispatcher_wall_clock_watchdog_required") is True, "dispatcher watchdog boundary disabled")
-    _require(routing.get("no_eligible_route_behavior") == "fail_closed", "no-route behavior is not fail-closed")
+    expected = {
+        "lanes": C.LANES, "route_source_of_truth": "capability_registry_and_performance_ledger",
+        "actual_dispatch_mechanisms": ["jarvis_route_tool", "separate_pinned_hermes_profiles"],
+        "max_concurrent_children": 1, "max_spawn_depth": 1, "no_eligible_route_behavior": "fail_closed",
+        "max_iterations_ceiling": 50,
+    }
+    for key, value in expected.items():
+        _eq(routing, key, value, f"routing invariant drifted: {key}")
+    for key in ("global_model_score_routing_allowed", "checkpoint_name_alone_is_eligible", "nested_orchestrators_enabled", "profiles_are_filesystem_sandbox"):
+        _require(routing.get(key) is False, f"unsafe routing invariant: {key}")
+    for key in ("child_context_must_be_self_contained", "least_privilege_toolsets_required", "dispatcher_trace_required", "absolute_terminal_cwd_required", "explicit_max_iterations_required", "dispatcher_wall_clock_watchdog_required"):
+        _require(routing.get(key) is True, f"routing invariant disabled: {key}")
 
     fallback = plan.get("fallback_policy")
     _require(isinstance(fallback, dict), "fallback policy missing")
-    _require(fallback.get("infrastructure_fallback_before_side_effects_max") == 1, "infrastructure fallback budget drifted")
-    _require(fallback.get("requires_reversible_task") is True, "fallback reversibility gate disabled")
-    _require(fallback.get("requires_registry_permission") is True, "fallback registry gate disabled")
-    _require(fallback.get("semantic_failure_auto_reroute_allowed") is False, "semantic auto-reroute enabled")
-    _require(fallback.get("fallback_after_side_effect_allowed") is False, "post-side-effect fallback enabled")
-    _require(fallback.get("original_failure_must_be_preserved") is True, "fallback erases original failure")
+    _eq(fallback, "infrastructure_fallback_before_side_effects_max", 1, "infrastructure fallback budget drifted")
+    for key in ("requires_reversible_task", "requires_registry_permission", "original_failure_must_be_preserved"):
+        _require(fallback.get(key) is True, f"fallback invariant disabled: {key}")
+    for key in ("semantic_failure_auto_reroute_allowed", "fallback_after_side_effect_allowed"):
+        _require(fallback.get(key) is False, f"unsafe fallback invariant: {key}")
 
     benchmark = plan.get("benchmark_design")
     _require(isinstance(benchmark, dict), "benchmark design missing")
-    _require(benchmark.get("memory_case_ids") == EXPECTED_MEMORY_CASES, "memory case inventory drifted")
-    _require(benchmark.get("routing_case_ids") == EXPECTED_ROUTING_CASES, "routing case inventory drifted")
-    _require(benchmark.get("memory_cases") == len(EXPECTED_MEMORY_CASES), "memory case count drifted")
-    _require(benchmark.get("routing_cases") == len(EXPECTED_ROUTING_CASES), "routing case count drifted")
-    _require(benchmark.get("total_static_cases") == len(EXPECTED_MEMORY_CASES) + len(EXPECTED_ROUTING_CASES), "total case count drifted")
+    _eq(benchmark, "memory_case_ids", C.MEMORY_CASES, "memory case inventory drifted")
+    _eq(benchmark, "routing_case_ids", C.ROUTING_CASES, "routing case inventory drifted")
+    _eq(benchmark, "memory_cases", len(C.MEMORY_CASES), "memory case count drifted")
+    _eq(benchmark, "routing_cases", len(C.ROUTING_CASES), "routing case count drifted")
+    _eq(benchmark, "total_static_cases", len(C.MEMORY_CASES)+len(C.ROUTING_CASES), "total case count drifted")
     _require(benchmark.get("runtime_cases_implemented") is False, "runtime cases unexpectedly implemented")
 
     acceptance = plan.get("acceptance")
     execution = plan.get("execution")
-    _require(isinstance(acceptance, dict), "acceptance boundary missing")
-    _require(isinstance(execution, dict), "execution boundary missing")
-    required_true_acceptance = (
-        "memory_classification_exact_required",
-        "unsupported_recall_must_fail_closed",
-        "session_search_required_for_episodic_recall",
-        "route_selection_exact_required",
-        "resolved_profile_and_model_digest_required",
-        "actual_context_and_toolsets_required",
-        "semantic_failure_preserved",
-    )
-    for key in required_true_acceptance:
+    _require(isinstance(acceptance, dict) and isinstance(execution, dict), "acceptance or execution boundary missing")
+    for key in C.TRUE_ACCEPTANCE:
         _require(acceptance.get(key) is True, f"required acceptance gate disabled: {key}")
-    _require(acceptance.get("child_memory_write_allowed") is False, "child memory write acceptance enabled")
-    for key in (
-        "automatic_skill_adoption_allowed",
-        "automatic_memory_write_allowed",
-        "automatic_routing_activation_allowed",
-        "automatic_production_promotion_allowed",
-    ):
+    for key in C.FALSE_ACCEPTANCE:
         _require(acceptance.get(key) is False, f"unsafe acceptance flag: {key}")
-    for key in (
-        "implemented",
-        "workflow_present",
-        "marker_present",
-        "ollama_calls_allowed_in_this_slice",
-        "self_hosted_compute_allowed_in_this_slice",
-        "jarvis_routing_changes_allowed_in_this_slice",
-        "memory_mutation_allowed_in_this_slice",
-    ):
+    for key in C.FALSE_EXECUTION:
         _require(execution.get(key) is False, f"unsafe execution flag: {key}")
-    _require(execution.get("hosted_static_validation_only") is True, "hosted-only static boundary missing")
-    _require(execution.get("runtime_namespace_guard_required") is True, "runtime namespace guard disabled")
+    for key in ("hosted_static_validation_only", "runtime_namespace_guard_required"):
+        _require(execution.get(key) is True, f"execution guard disabled: {key}")
 
-    _require(HERMES_COMMIT in research, "research note is not pinned to Hermes commit")
-    for source in EXPECTED_OFFICIAL_SOURCES:
-        _require(source["path"] in research and source["git_blob_sha"] in research, f"research source missing: {source['path']}")
-    _require("Provider routing controls OpenRouter sub-providers" in research, "research misstates provider routing")
-    _require("A routing skill can classify and request a route, but a deterministic dispatcher must enforce" in research, "research dispatcher boundary missing")
-    _require("Profiles are not filesystem sandboxes" in research, "research profile sandbox boundary missing")
-    _require("wall-clock watchdog" in research, "research dispatcher watchdog boundary missing")
+    _require(C.HERMES_COMMIT in research, "research note is not pinned to Hermes commit")
+    for item in C.OFFICIAL_SOURCES:
+        _require(item["path"] in research and item["git_blob_sha"] in research, f"research source missing: {item['path']}")
+    for phrase in ("Provider routing controls OpenRouter sub-providers", "A routing skill can classify and request a route, but a deterministic dispatcher must enforce", "Profiles are not filesystem sandboxes", "wall-clock watchdog"):
+        _require(phrase in research, f"research boundary missing: {phrase}")
 
-    _require(workflow.count(FORBIDDEN_WORKFLOW_LITERAL) == 3, "design workflow does not guard forbidden runtime workflow on PR and push")
-    _require(workflow.count(FORBIDDEN_MARKER_LITERAL) == 3, "design workflow does not guard forbidden marker on PR and push")
-    _require(workflow.count(FORBIDDEN_RUNNER_LITERAL) == 3, "design workflow does not guard forbidden runner on PR and push")
-    for trigger in BROAD_TRIGGER_LITERALS:
+    for literal in (FORBIDDEN_WORKFLOW_LITERAL, FORBIDDEN_MARKER_LITERAL, FORBIDDEN_RUNNER_LITERAL):
+        _require(workflow.count(literal) == 3, f"literal runtime guard drifted: {literal}")
+    for trigger in C.BROAD_TRIGGERS:
         _require(workflow.count(trigger) == 2, f"design workflow broad trigger missing: {trigger}")
-    _require("runs-on: ubuntu-latest" in workflow, "design validation is not hosted-only")
-    _require("self-hosted" not in workflow, "design validation references self-hosted compute")
-    _require("workflow_dispatch:" not in workflow, "design validation exposes manual dispatch")
-
-    _require(not FORBIDDEN_WORKFLOW_PATH.exists(), "runtime workflow exists")
-    _require(not FORBIDDEN_MARKER_PATH.exists(), "runtime marker exists")
-    _require(not FORBIDDEN_RUNNER_PATH.exists(), "runtime runner exists")
-    unexpected_runtime_artifacts = _find_unexpected_runtime_artifacts()
-    _require(not unexpected_runtime_artifacts, f"unexpected memory-routing runtime artifacts: {unexpected_runtime_artifacts}")
+    _require("runs-on: ubuntu-latest" in workflow and "self-hosted" not in workflow and "workflow_dispatch:" not in workflow, "hosted-only workflow boundary drifted")
+    for path, label in ((FORBIDDEN_WORKFLOW_PATH, "workflow"), (FORBIDDEN_MARKER_PATH, "marker"), (FORBIDDEN_RUNNER_PATH, "runner")):
+        _require(not path.exists(), f"runtime {label} exists")
+    bad = _unexpected_runtime_artifacts()
+    _require(not bad, f"unexpected memory-routing runtime artifacts: {bad}")
 
     return {
         "schema_version": "bench.hermes-memory-routing-design-validation.v1",
-        "status": "valid_static_design",
-        "hermes_commit_sha": HERMES_COMMIT,
-        "memory_skill_blob_sha": _git_blob_sha(memory_skill),
-        "routing_skill_blob_sha": _git_blob_sha(routing_skill),
-        "bundle_blob_sha": _git_blob_sha(bundle),
-        "memory_cases": len(EXPECTED_MEMORY_CASES),
-        "routing_cases": len(EXPECTED_ROUTING_CASES),
-        "total_static_cases": len(EXPECTED_MEMORY_CASES) + len(EXPECTED_ROUTING_CASES),
-        "execution_implemented": False,
-        "production_status": "not_promoted",
+        "status": "valid_static_design", "hermes_commit_sha": C.HERMES_COMMIT,
+        "memory_skill_blob_sha": _git_blob_sha(memory_skill), "routing_skill_blob_sha": _git_blob_sha(routing_skill),
+        "bundle_blob_sha": _git_blob_sha(bundle), "memory_cases": len(C.MEMORY_CASES),
+        "routing_cases": len(C.ROUTING_CASES), "total_static_cases": len(C.MEMORY_CASES)+len(C.ROUTING_CASES),
+        "execution_implemented": False, "production_status": "not_promoted",
     }
 
-
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate the non-executive Hermes memory-routing design.")
+    parser = argparse.ArgumentParser(description="Validate the non-executive BENCH-3 memory-routing design.")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     try:
-        payload = validate()
-        code = 0
+        payload, code = validate(), 0
     except (MemoryRoutingDesignError, OSError, ValueError, TypeError) as exc:
-        payload = {
-            "schema_version": "bench.hermes-memory-routing-design-validation.v1",
-            "status": "invalid",
-            "error_type": type(exc).__name__,
-            "error": str(exc),
-        }
-        code = 2
+        payload, code = {"schema_version": "bench.hermes-memory-routing-design-validation.v1", "status": "invalid", "error_type": type(exc).__name__, "error": str(exc)}, 2
     text = json.dumps(payload, indent=2, sort_keys=True) + "\n"
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(text, encoding="utf-8")
     print(text, end="")
     return code
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

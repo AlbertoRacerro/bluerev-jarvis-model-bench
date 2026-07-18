@@ -20,6 +20,7 @@ on:
       - scripts/run_bench3_hermes_memory_routing.py
       - scripts/*bench3*memory*.py
       - scripts/*bench3*routing*.py
+      - scripts/bench3_contract_constants.py
       - scripts/validate_bench3_hermes_memory_routing_design.py
       - scripts/validate_bench3_static_contract.py
       - tests/test_bench3_hermes_memory_routing_design.py
@@ -44,6 +45,7 @@ on:
       - scripts/run_bench3_hermes_memory_routing.py
       - scripts/*bench3*memory*.py
       - scripts/*bench3*routing*.py
+      - scripts/bench3_contract_constants.py
       - scripts/validate_bench3_hermes_memory_routing_design.py
       - scripts/validate_bench3_static_contract.py
       - tests/test_bench3_hermes_memory_routing_design.py
