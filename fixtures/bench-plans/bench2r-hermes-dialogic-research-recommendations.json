@@ -1,0 +1,169 @@
+{
+  "schema_version": "bench.hermes-dialogic-research-recommendations.v1",
+  "status": "research_grounded_static_recommendations",
+  "scope": {
+    "primary_objective": "memory_context_routing_orchestrator",
+    "protocol_conformance_role": "terminal_regression_side_gate",
+    "runtime_implemented": false,
+    "production_status": "not_promoted"
+  },
+  "primary_research": [
+    {
+      "id": "ace-2510.04618",
+      "title": "Agentic Context Engineering: Evolving Contexts for Self-Improving Language Models",
+      "source_type": "arxiv_preprint",
+      "published": "2025-10-06",
+      "identifier": "arXiv:2510.04618",
+      "transferable_recommendations": [
+        "maintain an evolving context playbook rather than repeatedly rewriting one short summary",
+        "apply incremental generation reflection and curation updates",
+        "preserve detailed knowledge and provenance to prevent context collapse",
+        "learn from natural execution feedback without requiring weight updates"
+      ]
+    },
+    {
+      "id": "boundaryrouter-2605.07180",
+      "title": "Learning Agent Routing From Early Experience",
+      "source_type": "arxiv_preprint",
+      "published": "2026-05-08",
+      "identifier": "arXiv:2605.07180",
+      "transferable_recommendations": [
+        "build a compact route-experience memory from paired executions on a seed set",
+        "retrieve similar prior cases before deciding direct inference versus full agent execution",
+        "include rubric-guided task-boundary reasoning in the route decision",
+        "measure route regret latency and semantic utility instead of ranking models globally"
+      ]
+    },
+    {
+      "id": "graph-memory-2511.07800",
+      "title": "From Experience to Strategy: Empowering LLM Agents with Trainable Graph Memory",
+      "source_type": "arxiv_preprint",
+      "published": "2025-11-11",
+      "identifier": "arXiv:2511.07800",
+      "transferable_recommendations": [
+        "abstract raw trajectories into structured decision paths",
+        "distill reusable strategies separately from case-specific facts",
+        "attach empirical utility and failure evidence to learned strategies",
+        "retrieve strategies dynamically by task state rather than injecting all experience"
+      ]
+    },
+    {
+      "id": "graphplanner-2604.23626",
+      "title": "GraphPlanner: Graph Memory-Augmented Agentic Routing for Multi-Agent LLMs",
+      "source_type": "arxiv_preprint",
+      "published": "2026-04-26",
+      "identifier": "arXiv:2604.23626",
+      "transferable_recommendations": [
+        "represent queries agents roles and outcomes in a heterogeneous route graph",
+        "choose both execution model and agent role at each workflow step",
+        "use historical workflow memory for unseen-task routing",
+        "optimize task performance and compute cost jointly"
+      ]
+    }
+  ],
+  "hermes_community_risk_signals": [
+    {
+      "id": "hermes-issue-29902",
+      "topic": "session retrieval backend split",
+      "status": "community_feature_request_not_authoritative_runtime_evidence",
+      "risk": "built-in keyword FTS5 search and semantic memory-provider retrieval may remain separate",
+      "design_response": "record retrieval backend and support future hybrid keyword plus semantic search"
+    },
+    {
+      "id": "hermes-issue-16671",
+      "topic": "long-session retrieval latency",
+      "status": "community_issue_report_not_authoritative_runtime_evidence",
+      "risk": "retrieval may become slow when a matching long session is expanded too broadly",
+      "design_response": "use bounded discovery then local scroll around hits and never load a whole long session by default"
+    },
+    {
+      "id": "hermes-issue-11508",
+      "topic": "synchronous delegation blocks coordinator",
+      "status": "community_feature_request_consistent_with_official_delegation_docs",
+      "risk": "delegate_task cannot act as a durable asynchronous work queue",
+      "design_response": "reserve delegation for bounded current-turn work and use cron or durable process execution for independent work"
+    },
+    {
+      "id": "hermes-issue-6320",
+      "topic": "cross-profile session and memory contamination",
+      "status": "community_bug_report_not_authoritative_runtime_evidence",
+      "risk": "shared profile or home directories can leak sessions memory and routine state",
+      "design_response": "assign a unique profile identity and isolated HERMES_HOME state database memory skills and cron stores per experiment"
+    },
+    {
+      "id": "hermes-issue-9763",
+      "topic": "cron memory availability",
+      "status": "community_bug_report_not_authoritative_runtime_evidence",
+      "risk": "cron sessions may skip memory or external memory providers depending on runtime version and configuration",
+      "design_response": "routine prompts must carry an explicit context capsule and may not assume interactive-session memory availability"
+    },
+    {
+      "id": "hermes-issue-33167",
+      "topic": "cron sessions start fresh",
+      "status": "community_feature_request_consistent_with_official_cron_docs",
+      "risk": "a scheduled routine may not resume the originating interactive conversation",
+      "design_response": "persist routine purpose state pointers workdir skills provider model and delivery target explicitly"
+    }
+  ],
+  "required_design_invariants": {
+    "context_playbook": {
+      "incremental_updates": true,
+      "provenance_required": true,
+      "append_refine_deprecate_operations": true,
+      "monolithic_summary_rewrite_forbidden": true
+    },
+    "historical_retrieval": {
+      "discovery_limit_required": true,
+      "scroll_around_match_required": true,
+      "whole_session_load_by_default": false,
+      "retrieval_backend_recorded": true,
+      "future_hybrid_keyword_semantic_search": true
+    },
+    "route_experience_memory": {
+      "paired_seed_executions_required": true,
+      "similar_case_retrieval_required": true,
+      "task_boundary_rubric_required": true,
+      "route_regret_recorded": true,
+      "global_model_ranking_forbidden": true
+    },
+    "workflow_graph": {
+      "task_state_nodes": true,
+      "agent_role_nodes": true,
+      "model_route_nodes": true,
+      "tool_and_outcome_edges": true,
+      "strategy_utility_evidence": true
+    },
+    "routine_context_capsule": {
+      "purpose": true,
+      "state_pointers": true,
+      "workdir": true,
+      "skills": true,
+      "provider_and_model": true,
+      "delivery_target": true,
+      "memory_availability_assumed": false,
+      "origin_session_resume_assumed": false
+    },
+    "experiment_isolation": {
+      "unique_profile_id": true,
+      "unique_hermes_home": true,
+      "isolated_state_db": true,
+      "isolated_memory": true,
+      "isolated_skills": true,
+      "isolated_cron": true
+    },
+    "durability": {
+      "delegate_task_as_background_queue_allowed": false,
+      "cron_or_background_process_required_for_independent_work": true
+    }
+  },
+  "evaluation_additions": [
+    "retrieval_precision_at_k",
+    "retrieval_latency",
+    "context_playbook_growth",
+    "stale_strategy_rate",
+    "route_regret",
+    "route_escalation_precision",
+    "routine_context_completeness",
+    "cross_profile_leakage_count"
+  ]
+}
