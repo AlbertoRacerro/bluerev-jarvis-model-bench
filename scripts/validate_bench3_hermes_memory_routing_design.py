@@ -44,6 +44,16 @@ EXPECTED_OFFICIAL_SOURCES = [
         "git_blob_sha": "3dd6e69787e6a98e3761dcce753e063741d2591b",
         "purpose": "OpenRouter-only provider routing boundary",
     },
+    {
+        "path": "toolsets.py",
+        "git_blob_sha": "03e64fdba4c012a792c2139f5d39ffc110f60d78",
+        "purpose": "exact memory, session-search, skills, and delegation toolset registry",
+    },
+    {
+        "path": "website/docs/user-guide/profiles.md",
+        "git_blob_sha": "904d3ec3d1ee9da64e18ef9515f9eb66a25c7575",
+        "purpose": "per-profile state isolation and explicit non-sandbox boundary",
+    },
 ]
 EXPECTED_MEMORY_CASES = [
     "MR-MEM-001-user-preference",
@@ -205,7 +215,10 @@ def validate() -> dict[str, Any]:
         "OpenRouter provider_routing is not a local Ollama router",
         "Hermes subagents know nothing about the parent conversation",
         "max_concurrent_children to 1",
-        "Semantic failure auto reroute" if False else "A malformed answer, wrong tool, failed completion contract, or low-quality result is a semantic failure",
+        "Profiles isolate Hermes state but are not filesystem sandboxes",
+        "Every dispatch must set an explicit max_iterations",
+        "dispatcher must provide a separate wall-clock watchdog",
+        "A malformed answer, wrong tool, failed completion contract, or low-quality result is a semantic failure",
         "When no eligible route exists, fail closed",
     )
     for phrase in expected_routing_phrases:
@@ -252,6 +265,11 @@ def validate() -> dict[str, Any]:
     _require(routing.get("child_context_must_be_self_contained") is True, "self-contained child context disabled")
     _require(routing.get("least_privilege_toolsets_required") is True, "least privilege disabled")
     _require(routing.get("dispatcher_trace_required") is True, "dispatcher trace disabled")
+    _require(routing.get("profiles_are_filesystem_sandbox") is False, "profiles misclassified as filesystem sandbox")
+    _require(routing.get("absolute_terminal_cwd_required") is True, "absolute terminal cwd boundary disabled")
+    _require(routing.get("explicit_max_iterations_required") is True, "explicit max_iterations boundary disabled")
+    _require(routing.get("max_iterations_ceiling") == 50, "max_iterations ceiling drifted")
+    _require(routing.get("dispatcher_wall_clock_watchdog_required") is True, "dispatcher watchdog boundary disabled")
     _require(routing.get("no_eligible_route_behavior") == "fail_closed", "no-route behavior is not fail-closed")
 
     fallback = plan.get("fallback_policy")
@@ -300,6 +318,8 @@ def validate() -> dict[str, Any]:
         _require(source["path"] in research and source["git_blob_sha"] in research, f"research source missing: {source['path']}")
     _require("Provider routing controls OpenRouter sub-providers" in research, "research misstates provider routing")
     _require("A routing skill can classify and request a route, but a deterministic dispatcher must enforce" in research, "research dispatcher boundary missing")
+    _require("Profiles are not filesystem sandboxes" in research, "research profile sandbox boundary missing")
+    _require("wall-clock watchdog" in research, "research dispatcher watchdog boundary missing")
 
     _require(workflow.count(FORBIDDEN_WORKFLOW_LITERAL) == 3, "design workflow does not guard forbidden runtime workflow on PR and push")
     _require(workflow.count(FORBIDDEN_MARKER_LITERAL) == 3, "design workflow does not guard forbidden marker on PR and push")
