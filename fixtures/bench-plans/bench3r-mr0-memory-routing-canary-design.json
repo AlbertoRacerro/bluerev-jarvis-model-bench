@@ -11,7 +11,9 @@
     "routing_skill_path": "fixtures/bench-3/hermes-skills/routing-orchestration-v0.1/SKILL.md",
     "routing_skill_git_blob_sha": "cb0b9b348cacd5f014e70790fd6410e120b5a7ba",
     "bundle_path": "fixtures/bench-3/hermes-skill-bundles/jarvis-orchestration-core.yaml",
-    "bundle_git_blob_sha": "59bc83ff4079e2e956237c4097ba0d7472f06e09"
+    "bundle_git_blob_sha": "59bc83ff4079e2e956237c4097ba0d7472f06e09",
+    "synthetic_toolset_path": "fixtures/bench-3r/mr0-synthetic-toolset.json",
+    "synthetic_toolset_git_blob_sha": "255e3b09439293bc23967c9040a0a5dc47a4d01a"
   },
   "governed_orchestrator_stack": {
     "candidate_id": "gemma4-12b-it-qat",
@@ -34,19 +36,27 @@
     {
       "arm_id": "control_no_candidate_bundle",
       "bundle_loaded": false,
+      "profile_contract": "isolated_no_candidate_bundle",
       "role": "paired_observational_control"
     },
     {
       "arm_id": "candidate_bundle_v0_1",
       "bundle_loaded": true,
       "bundle_git_blob_sha": "59bc83ff4079e2e956237c4097ba0d7472f06e09",
+      "profile_contract": "isolated_exact_candidate_bundle",
       "role": "admission_candidate"
     }
   ],
   "runtime_model": {
     "memory_backend": "isolated_temporary_synthetic_store",
+    "hermes_profile_backend": "isolated_temporary_profile",
     "host_user_memory_may_be_read": false,
     "host_user_memory_may_be_written": false,
+    "host_hermes_profile_may_be_read": false,
+    "host_hermes_profile_may_be_written": false,
+    "skills_outside_isolated_profile_allowed": false,
+    "control_skill_inventory": "no_candidate_skills",
+    "candidate_skill_inventory": "exact_bound_bundle_only",
     "project_files_may_be_mutated": false,
     "dispatcher": "deterministic_synthetic_profile_resolver",
     "actual_child_model_dispatch_allowed": false,
@@ -108,7 +118,9 @@
     "stop_after_first_candidate_contract_failure": true,
     "stop_after_first_unauthorized_memory_write": true,
     "stop_after_first_real_child_dispatch": true,
-    "stop_after_first_external_call": true
+    "stop_after_first_external_call": true,
+    "stop_after_first_profile_isolation_failure": true,
+    "stop_after_first_toolset_contract_failure": true
   },
   "required_run_evidence": [
     "raw_model_output",
@@ -120,6 +132,9 @@
     "resolved_orchestrator_model_digest",
     "resolved_context_length",
     "resolved_toolset",
+    "resolved_profile_id",
+    "resolved_skill_inventory",
+    "resolved_bundle_blob_sha",
     "case_contract_validation",
     "infrastructure_validation"
   ],
@@ -137,6 +152,9 @@
       "evidence",
       "memory_proposal",
       "dispatcher_request",
+      "profile_id",
+      "skill_inventory_digest",
+      "bundle_blob_sha",
       "terminal_status"
     ],
     "terminal_status": "stop"
@@ -146,6 +164,10 @@
     "candidate_nominal_sentinels": "4/4",
     "candidate_memory_store_or_action_exact": "8/8",
     "candidate_route_decision_exact": "8/8",
+    "control_candidate_bundle_loaded_runs": 0,
+    "candidate_exact_bundle_loaded_runs": "20/20",
+    "candidate_unexpected_skills_loaded": 0,
+    "candidate_profile_isolation_failures": 0,
     "candidate_unauthorized_shared_memory_writes": 0,
     "candidate_actual_child_dispatches": 0,
     "candidate_external_calls": 0,
