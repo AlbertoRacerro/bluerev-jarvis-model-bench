@@ -13,10 +13,39 @@ CANDIDATE_SKILL_PATH = ROOT / "fixtures/bench-2r/hermes-skills/bounded-tool-orch
 CONTROL_SKILL_PATH = ROOT / "fixtures/bench-2r/hermes-skills/bounded-tool-orchestration-v1.2-candidate/SKILL.md"
 S3A_MARKER_PATH = ROOT / "config/bench2r-hermes-s3a-marker.json"
 R1_MARKER_PATH = ROOT / "config/bench2r-hermes-s3a-r1-repair-marker.json"
+DESIGN_WORKFLOW_PATH = ROOT / ".github/workflows/bench2r-hermes-s3a-r2-design-validation.yml"
 FORBIDDEN_WORKFLOW_PATH = ROOT / ".github/workflows/bench2r-hermes-s3a-r2-canary.yml"
+FORBIDDEN_MARKER_PATH = ROOT / "config/bench2r-hermes-s3a-r2-marker.json"
 
 NORMATIVE_OBJECT = '{"actions":[{"type":"call_tool","tool":"registry.lookup","args":{"key":"missing"}},{"type":"stop"}]}'
 PRIOR_SEEDS = {17, 42, 271828, 314159, 8675309, 371872, 665465, 623659}
+EXPECTED_GOVERNED_STACK = {
+    "candidate_id": "gemma4-12b-it-qat",
+    "model_tag": "gemma4:12b-it-qat",
+    "model_digest": "38044be4f923e5a55264ed7df4eaac2676651a905f735197c504045140c02bd3",
+    "context_length": 65536,
+    "max_output_tokens": 4096,
+    "sampling": {"temperature": 1.0, "top_k": 64, "top_p": 0.95},
+    "hermes_version": "0.18.2",
+    "hermes_commit_sha": "73b611ad19720d70308dad6b0fb64648aaadc216",
+    "finalizer_schema_version": "bench.hermes-deterministic-finalizer.v1",
+    "toolset": "bench2r_s3a_fixture",
+    "local_only": True,
+}
+EXPECTED_NEGATIVE_CASES = [
+    "fixtures/bench-2r/s3a-cases/s3a-tools-negative-result-004.json",
+    "fixtures/bench-2r/s3a-cases/s3a-tools-injected-timeout-005.json",
+]
+EXPECTED_NOMINAL_SENTINELS = [
+    "fixtures/bench-2r/s3a-cases/s3a-tools-vault-untrusted-payload-001.json",
+    "fixtures/bench-2r/s3a-cases/s3a-tools-registry-stability-002.json",
+]
+EXPECTED_REPETITIONS = {
+    "paired_negative_per_case_seed_arm": 2,
+    "candidate_nominal_per_seed": 1,
+}
+FORBIDDEN_WORKFLOW_LITERAL = ".github/workflows/bench2r-hermes-s3a-r2-canary.yml"
+FORBIDDEN_MARKER_LITERAL = "config/bench2r-hermes-s3a-r2-marker.json"
 
 
 class HermesS3AR2DesignError(RuntimeError):
@@ -72,6 +101,7 @@ def validate() -> dict[str, Any]:
     audit = _load(AUDIT_PATH)
     candidate = _read(CANDIDATE_SKILL_PATH)
     control = _read(CONTROL_SKILL_PATH)
+    design_workflow = _read(DESIGN_WORKFLOW_PATH)
     s3a_marker = _load(S3A_MARKER_PATH)
     r1_marker = _load(R1_MARKER_PATH)
 
@@ -97,11 +127,31 @@ def validate() -> dict[str, Any]:
     _require(totals.get("rerunnable") == 0, "audit rerunnable count drifted")
     _require(totals.get("C") == 0, "audit invents Ollama-unavailable failures")
 
+    governed_stack = plan.get("governed_stack")
+    _require(
+        governed_stack == EXPECTED_GOVERNED_STACK,
+        "R2 governed stack binding drifted",
+    )
+
     arms = plan.get("arms")
     _require(isinstance(arms, list) and len(arms) == 2, "R2 arms drifted")
     control_arm, candidate_arm = arms
-    _require(control_arm.get("arm_id") == "control_v1_2", "R2 control arm drifted")
-    _require(candidate_arm.get("arm_id") == "candidate_v1_3", "R2 candidate arm drifted")
+    _require(
+        control_arm.get("arm_id") == "control_v1_2"
+        and control_arm.get("skill_version") == "1.2.0"
+        and control_arm.get("skill_path")
+        == "fixtures/bench-2r/hermes-skills/bounded-tool-orchestration-v1.2-candidate/SKILL.md"
+        and control_arm.get("role") == "paired_observational_control",
+        "R2 control arm drifted",
+    )
+    _require(
+        candidate_arm.get("arm_id") == "candidate_v1_3"
+        and candidate_arm.get("skill_version") == "1.3.0"
+        and candidate_arm.get("skill_path")
+        == "fixtures/bench-2r/hermes-skills/bounded-tool-orchestration-v1.3-candidate/SKILL.md"
+        and candidate_arm.get("role") == "admission_candidate",
+        "R2 candidate arm drifted",
+    )
     _require(
         control_arm.get("skill_git_blob_sha") == _git_blob_sha(control),
         "v1.2 control skill blob drifted",
@@ -124,25 +174,76 @@ def validate() -> dict[str, Any]:
         _require(phrase in candidate, f"v1.3 required rule missing: {phrase}")
 
     seed_policy = plan.get("seed_policy")
+    cases = plan.get("cases")
+    repetitions = plan.get("repetitions")
     counts = plan.get("counts")
     _require(isinstance(seed_policy, dict), "R2 seed policy missing")
+    _require(isinstance(cases, dict), "R2 case inventory missing")
+    _require(isinstance(repetitions, dict), "R2 repetition policy missing")
     _require(isinstance(counts, dict), "R2 counts missing")
     seeds = seed_policy.get("canary_seeds")
     _require(seeds == [849690, 603823], "R2 canary seeds drifted")
     _require(not (set(seeds) & PRIOR_SEEDS), "R2 reuses an S3A or R1 seed")
+    _require(
+        cases.get("paired_negative") == EXPECTED_NEGATIVE_CASES,
+        "R2 paired negative case inventory drifted",
+    )
+    _require(
+        cases.get("candidate_nominal_sentinels") == EXPECTED_NOMINAL_SENTINELS,
+        "R2 nominal sentinel inventory drifted",
+    )
+    _require(
+        repetitions == EXPECTED_REPETITIONS,
+        "R2 repetition policy drifted",
+    )
 
-    expected_paired = (
-        counts.get("arms")
-        * counts.get("seeds")
-        * counts.get("negative_cases")
-        * counts.get("negative_repetitions")
+    negative_repetitions = repetitions["paired_negative_per_case_seed_arm"]
+    nominal_per_seed = repetitions["candidate_nominal_per_seed"]
+    candidate_negative = len(EXPECTED_NEGATIVE_CASES) * len(seeds) * negative_repetitions
+    control_negative = candidate_negative
+    expected_paired = candidate_negative + control_negative
+    expected_sentinels = len(seeds) * nominal_per_seed
+    expected_total = expected_paired + expected_sentinels
+    _require(
+        counts.get("arms") == len(arms)
+        and counts.get("seeds") == len(seeds)
+        and counts.get("negative_cases") == len(EXPECTED_NEGATIVE_CASES)
+        and counts.get("negative_repetitions") == negative_repetitions,
+        "R2 count dimensions drifted",
     )
     _require(expected_paired == 16, "R2 paired-run arithmetic drifted")
-    _require(counts.get("paired_negative_runs") == 16, "R2 paired count drifted")
-    _require(counts.get("candidate_negative_runs") == 8, "R2 candidate count drifted")
-    _require(counts.get("control_negative_runs") == 8, "R2 control count drifted")
-    _require(counts.get("candidate_nominal_sentinel_runs") == 2, "R2 sentinel count drifted")
-    _require(counts.get("total_canary_runs") == 18, "R2 total count drifted")
+    _require(
+        counts.get("paired_negative_runs") == expected_paired,
+        "R2 paired count drifted",
+    )
+    _require(
+        counts.get("candidate_negative_runs") == candidate_negative,
+        "R2 candidate count drifted",
+    )
+    _require(
+        counts.get("control_negative_runs") == control_negative,
+        "R2 control count drifted",
+    )
+    _require(
+        counts.get("candidate_nominal_sentinel_runs") == expected_sentinels,
+        "R2 sentinel count drifted",
+    )
+    _require(
+        counts.get("total_canary_runs") == expected_total,
+        "R2 total count drifted",
+    )
+
+    _require(
+        design_workflow.count(FORBIDDEN_WORKFLOW_LITERAL) == 3,
+        "R2 design workflow does not guard forbidden canary path on pull_request and push",
+    )
+    _require(
+        design_workflow.count(FORBIDDEN_MARKER_LITERAL) == 3,
+        "R2 design workflow does not guard forbidden marker path on pull_request and push",
+    )
+    _require("runs-on: ubuntu-latest" in design_workflow, "R2 design workflow is not hosted-only")
+    _require("self-hosted" not in design_workflow, "R2 design workflow permits self-hosted compute")
+    _require("workflow_dispatch:" not in design_workflow, "R2 design workflow exposes manual dispatch")
 
     execution = plan.get("execution")
     acceptance = plan.get("acceptance")
@@ -180,6 +281,7 @@ def validate() -> dict[str, Any]:
     _require(s3a_marker.get("enabled") is False, "S3A marker is enabled")
     _require(r1_marker.get("enabled") is False, "S3A-R1 marker is enabled")
     _require(not FORBIDDEN_WORKFLOW_PATH.exists(), "R2 execution workflow exists")
+    _require(not FORBIDDEN_MARKER_PATH.exists(), "R2 execution marker exists")
 
     return {
         "schema_version": "bench.hermes-s3a-r2-design-validation.v1",
@@ -187,9 +289,11 @@ def validate() -> dict[str, Any]:
         "rerunnable_jobs": 0,
         "candidate_skill_version": "1.3.0",
         "candidate_skill_blob_sha": _git_blob_sha(candidate),
-        "candidate_negative_runs": 8,
-        "paired_negative_runs": 16,
-        "total_canary_runs": 18,
+        "candidate_negative_runs": candidate_negative,
+        "paired_negative_runs": expected_paired,
+        "total_canary_runs": expected_total,
+        "governed_model_digest": governed_stack["model_digest"],
+        "hermes_commit_sha": governed_stack["hermes_commit_sha"],
         "execution_implemented": False,
         "production_status": "not_promoted",
     }
