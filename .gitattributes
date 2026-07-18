@@ -28,3 +28,7 @@ scripts/validate_bench2_hermes_execution.py text eol=lf
 tests/test_bench2_hermes_execution.py text eol=lf
 .github/workflows/bench2-hermes-full-matrix-validation.yml text eol=lf
 .github/workflows/bench2-hermes-full-matrix-oneshot.yml text eol=lf
+fixtures/bench-3/hermes-memory-routing-case-contracts.json text eol=lf
+fixtures/bench-3/hermes-skills/memory-orchestration-v0.1/SKILL.md text eol=lf
+fixtures/bench-3/hermes-skills/routing-orchestration-v0.1/SKILL.md text eol=lf
+fixtures/bench-3/hermes-skill-bundles/jarvis-orchestration-core.yaml text eol=lf
