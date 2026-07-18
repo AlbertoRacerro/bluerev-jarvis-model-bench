@@ -1,0 +1,37 @@
+{
+  "schema_version": "bench.hermes-dialogic-official-sources.v1",
+  "hermes_version": "0.18.2",
+  "hermes_commit_sha": "73b611ad19720d70308dad6b0fb64648aaadc216",
+  "sources": [
+    {
+      "capability": "persistent_memory_and_session_search",
+      "path": "website/docs/user-guide/features/memory.md",
+      "git_blob_sha": "20c37afa12f7be99831c37744ddf07039f48491e"
+    },
+    {
+      "capability": "skills_progressive_disclosure_and_learning",
+      "path": "website/docs/user-guide/features/skills.md",
+      "git_blob_sha": "19fffb1f1b23727f8d13cd42ac7986716ad1cf93"
+    },
+    {
+      "capability": "scheduled_tasks_and_routines",
+      "path": "website/docs/user-guide/features/cron.md",
+      "git_blob_sha": "a65a4bca1e7849267e8c89e4b54d90446df1663c"
+    },
+    {
+      "capability": "subagent_delegation_and_model_override",
+      "path": "website/docs/user-guide/features/delegation.md",
+      "git_blob_sha": "037c2e806ae1d883c21026405a96a5dbd5f76596"
+    },
+    {
+      "capability": "project_context_and_progressive_discovery",
+      "path": "website/docs/user-guide/features/context-files.md",
+      "git_blob_sha": "195201439f2cf2a2ac344586b9b4ec5ce99d993a"
+    },
+    {
+      "capability": "native_feature_inventory",
+      "path": "website/docs/user-guide/features/overview.md",
+      "git_blob_sha": "5f6c04f5ca8b5ca9461215802d334395d2c78b76"
+    }
+  ]
+}
