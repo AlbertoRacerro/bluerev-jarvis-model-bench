@@ -16,6 +16,7 @@ def validate():
         "conflict_precedence_validated": True,
         "runtime_namespace_guard_validated": True,
         "candidate_fixture_bindings_validated": True,
+        "case_contracts_validated": True,
     })
     return payload
 
