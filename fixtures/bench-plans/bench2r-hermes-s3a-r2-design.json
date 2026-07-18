@@ -14,6 +14,23 @@
     "evidence": "repair v1.2 produced semantically correct actions objects inside Markdown JSON fences in 4/4 repair negative runs",
     "repair_boundary": "skill-only byte-exact output instructions and removal of fenced examples"
   },
+  "governed_stack": {
+    "candidate_id": "gemma4-12b-it-qat",
+    "model_tag": "gemma4:12b-it-qat",
+    "model_digest": "38044be4f923e5a55264ed7df4eaac2676651a905f735197c504045140c02bd3",
+    "context_length": 65536,
+    "max_output_tokens": 4096,
+    "sampling": {
+      "temperature": 1.0,
+      "top_k": 64,
+      "top_p": 0.95
+    },
+    "hermes_version": "0.18.2",
+    "hermes_commit_sha": "73b611ad19720d70308dad6b0fb64648aaadc216",
+    "finalizer_schema_version": "bench.hermes-deterministic-finalizer.v1",
+    "toolset": "bench2r_s3a_fixture",
+    "local_only": true
+  },
   "arms": [
     {
       "arm_id": "control_v1_2",
@@ -94,7 +111,9 @@
     "candidate_requires_terminal_stop": true,
     "markers_must_remain_disabled": true,
     "execution_workflow_must_be_absent": true,
-    "candidate_contains_any_backtick": false
+    "candidate_contains_any_backtick": false,
+    "governed_stack_must_match_r1": true,
+    "case_inventory_must_match_r1": true
   },
   "controlled_variables": {
     "only_allowed_arm_difference": "skill_path_and_skill_git_blob_sha",
