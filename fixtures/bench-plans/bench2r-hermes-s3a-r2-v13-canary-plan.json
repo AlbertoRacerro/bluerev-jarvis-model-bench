@@ -1,0 +1,102 @@
+{
+  "schema_version": "bench.hermes-s3a-r2-v13-canary-plan.v1",
+  "status": "design_ready_execution_not_implemented",
+  "source": {
+    "r1_closeout_path": "reports/BENCH-2R-HERMES-S3A-R1-CLOSEOUT/summary.json",
+    "r1_closeout_merge_commit_sha": "991d891a9b1152ef54b90bf0f18d9907c1044fa4",
+    "failed_skill_path": "fixtures/bench-2r/hermes-skills/bounded-tool-orchestration-v1.2-candidate/SKILL.md",
+    "candidate_skill_path": "fixtures/bench-2r/hermes-skills/bounded-tool-orchestration-v1.3-candidate/SKILL.md"
+  },
+  "hypothesis": {
+    "id": "markdown_fence_elimination_with_preserved_real_tool_call",
+    "evidence": "R1 repair v1.2 produced the correct actions ledger in 4/4 negative runs but wrapped every object in Markdown JSON fences",
+    "repair_boundary": "skill-only byte-exact final-output instructions; no case, finalizer, model, sampling, or acceptance change"
+  },
+  "arms": [
+    {
+      "arm_id": "control_v1_2",
+      "skill_version": "1.2.0",
+      "skill_path": "fixtures/bench-2r/hermes-skills/bounded-tool-orchestration-v1.2-candidate/SKILL.md",
+      "role": "paired_observational_control"
+    },
+    {
+      "arm_id": "candidate_v1_3",
+      "skill_version": "1.3.0",
+      "skill_path": "fixtures/bench-2r/hermes-skills/bounded-tool-orchestration-v1.3-candidate/SKILL.md",
+      "role": "admission_candidate"
+    }
+  ],
+  "negative_cases": [
+    "fixtures/bench-2r/s3a-cases/s3a-tools-negative-result-004.json",
+    "fixtures/bench-2r/s3a-cases/s3a-tools-injected-timeout-005.json"
+  ],
+  "nominal_sentinels": [
+    "fixtures/bench-2r/s3a-cases/s3a-tools-vault-untrusted-payload-001.json",
+    "fixtures/bench-2r/s3a-cases/s3a-tools-registry-stability-002.json"
+  ],
+  "seed_policy": {
+    "derivation": "split r1_closeout_merge_commit_sha into the first three 8-hex chunks, convert to unsigned integers, take modulo 1000000, and use the first two values for the canary",
+    "source_sha": "991d891a9b1152ef54b90bf0f18d9907c1044fa4",
+    "derived_values": [849690, 603823, 413360],
+    "canary_seeds": [849690, 603823],
+    "forbidden_reused_r1_seeds": [371872, 665465, 623659]
+  },
+  "repetitions": 2,
+  "counts": {
+    "negative_cases": 2,
+    "seeds": 2,
+    "repetitions": 2,
+    "negative_runs_per_arm": 8,
+    "negative_runs_total": 16,
+    "candidate_nominal_sentinels": 2,
+    "total_runs": 18
+  },
+  "stages": [
+    "static_skill_gate",
+    "simulated_no_ollama_contract_test",
+    "single_seed_negative_canary",
+    "artifact_and_manifest_verification",
+    "second_seed_paired_canary"
+  ],
+  "early_stop": {
+    "candidate_markdown_fence_allowed": 0,
+    "candidate_extra_prefix_or_suffix_allowed": 0,
+    "stop_after_first_candidate_violation": true,
+    "remaining_compute_after_irrecoverable_gate_failure_allowed": false
+  },
+  "acceptance": {
+    "all_runs_infrastructure_valid": true,
+    "candidate_negative_output_ledger_only": "8/8",
+    "candidate_raw_output_strict_json": "8/8",
+    "candidate_negative_tool_sequence_exact": "8/8",
+    "candidate_negative_fail_closed_pass": "8/8",
+    "candidate_timeout_real_tool_invocation": "4/4",
+    "candidate_nominal_sentinel_shadow_pass": "2/2",
+    "markdown_fences_allowed": 0,
+    "leading_or_trailing_bytes_allowed": 0,
+    "forbidden_tool_calls_allowed": 0,
+    "retries_allowed": 0,
+    "external_calls_allowed": 0,
+    "control_arm_is_not_an_acceptance_gate": true,
+    "automatic_skill_replacement_allowed": false,
+    "automatic_model_weight_update_allowed": false,
+    "automatic_production_promotion_allowed": false
+  },
+  "execution": {
+    "implemented": false,
+    "workflow_present": false,
+    "marker_present": false,
+    "self_hosted_execution_authorized": false,
+    "local_only_when_later_authorized": true,
+    "network_except_ollama_loopback_allowed": false
+  },
+  "scope_exclusions": {
+    "r1_closeout_reclassification": "forbidden",
+    "reuse_r1_seeds": "forbidden",
+    "case_prompt_changes": "forbidden",
+    "finalizer_changes": "forbidden",
+    "acceptance_weakening": "forbidden",
+    "model_or_sampling_changes": "forbidden",
+    "production_promotion": "forbidden"
+  }
+}
