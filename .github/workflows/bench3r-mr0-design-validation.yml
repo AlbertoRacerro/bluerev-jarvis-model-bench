@@ -1,0 +1,85 @@
+name: BENCH-3R MR0 design validation
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/bench3r-mr0-design-validation.yml
+      - .github/workflows/bench3r-mr0-canary.yml
+      - config/bench3r-mr0-marker.json
+      - fixtures/bench-plans/bench3r-mr0-memory-routing-canary-design.json
+      - fixtures/bench-3/hermes-memory-routing-case-contracts.json
+      - fixtures/bench-3/hermes-skills/memory-orchestration-v0.1/SKILL.md
+      - fixtures/bench-3/hermes-skills/routing-orchestration-v0.1/SKILL.md
+      - fixtures/bench-3/hermes-skill-bundles/jarvis-orchestration-core.yaml
+      - scripts/bench3r_mr0_ids.py
+      - scripts/bench3r_mr0_contract.py
+      - scripts/bench3r_mr0_io.py
+      - scripts/bench3r_mr0_validate_design.py
+      - scripts/bench3r_mr0_validate_policy.py
+      - scripts/validate_bench3r_mr0_design.py
+      - scripts/run_bench3r_mr0.py
+      - scripts/run_bench3r_mr0.ps1
+      - scripts/run_bench3r_mr0.cmd
+      - scripts/run_bench3r_mr0.bat
+      - scripts/run_bench3r_mr0.sh
+      - tests/test_bench3r_mr0_design.py
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/bench3r-mr0-design-validation.yml
+      - .github/workflows/bench3r-mr0-canary.yml
+      - config/bench3r-mr0-marker.json
+      - fixtures/bench-plans/bench3r-mr0-memory-routing-canary-design.json
+      - fixtures/bench-3/hermes-memory-routing-case-contracts.json
+      - fixtures/bench-3/hermes-skills/memory-orchestration-v0.1/SKILL.md
+      - fixtures/bench-3/hermes-skills/routing-orchestration-v0.1/SKILL.md
+      - fixtures/bench-3/hermes-skill-bundles/jarvis-orchestration-core.yaml
+      - scripts/bench3r_mr0_ids.py
+      - scripts/bench3r_mr0_contract.py
+      - scripts/bench3r_mr0_io.py
+      - scripts/bench3r_mr0_validate_design.py
+      - scripts/bench3r_mr0_validate_policy.py
+      - scripts/validate_bench3r_mr0_design.py
+      - scripts/run_bench3r_mr0.py
+      - scripts/run_bench3r_mr0.ps1
+      - scripts/run_bench3r_mr0.cmd
+      - scripts/run_bench3r_mr0.bat
+      - scripts/run_bench3r_mr0.sh
+      - tests/test_bench3r_mr0_design.py
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate MR0 design
+        run: python -m scripts.validate_bench3r_mr0_design --output artifacts/validation/bench3r-mr0-design.json
+      - name: Run MR0 regression tests
+        run: python -m unittest tests/test_bench3r_mr0_design.py -v
+      - name: Assert runtime artifacts absent
+        shell: bash
+        run: |
+          test ! -e .github/workflows/bench3r-mr0-canary.yml
+          test ! -e config/bench3r-mr0-marker.json
+          test ! -e scripts/run_bench3r_mr0.py
+          test ! -e scripts/run_bench3r_mr0.ps1
+          test ! -e scripts/run_bench3r_mr0.cmd
+          test ! -e scripts/run_bench3r_mr0.bat
+          test ! -e scripts/run_bench3r_mr0.sh
+      - name: Upload MR0 design evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench3r-mr0-design-${{ github.run_id }}
+          path: artifacts/validation/
+          if-no-files-found: error
+          retention-days: 21
