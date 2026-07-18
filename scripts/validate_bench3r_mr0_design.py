@@ -6,6 +6,7 @@ from pathlib import Path
 
 from scripts import bench3r_mr0_contract as K
 from scripts import bench3r_mr0_ids as I
+from scripts import bench3r_mr0_namespace as namespace
 from scripts.bench3r_mr0_io import MR0DesignError, read_text, require
 from scripts.bench3r_mr0_validate_design import validate_plan
 from scripts.bench3r_mr0_validate_policy import WORKFLOW, validate_policy
@@ -37,7 +38,9 @@ def validate() -> dict[str, object]:
         "total run arithmetic drifted",
     )
 
-    validate_policy(plan, read_text(WORKFLOW))
+    workflow = read_text(WORKFLOW)
+    validate_policy(plan, workflow)
+    namespace_evidence = namespace.validate(workflow)
     return {
         "schema_version": K.VALIDATION_SCHEMA,
         "status": "valid_static_design",
@@ -49,6 +52,7 @@ def validate() -> dict[str, object]:
         "paired_cases": paired,
         "candidate_sentinels": len(I.SENTINELS),
         "future_canary_runs": counts["total_canary_runs"],
+        **namespace_evidence,
         "actual_child_dispatch_allowed": False,
         "shared_memory_mutation_allowed": False,
         "execution_implemented": False,
@@ -64,7 +68,13 @@ def main() -> int:
     args = parser.parse_args()
     try:
         payload, code = validate(), 0
-    except (MR0DesignError, OSError, ValueError, TypeError) as exc:
+    except (
+        MR0DesignError,
+        namespace.MR0NamespaceError,
+        OSError,
+        ValueError,
+        TypeError,
+    ) as exc:
         payload, code = {
             "schema_version": K.VALIDATION_SCHEMA,
             "status": "invalid",
