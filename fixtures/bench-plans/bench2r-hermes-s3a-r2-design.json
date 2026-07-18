@@ -109,12 +109,13 @@
   },
   "execution": {
     "implemented": false,
-    "workflow_present": false,
     "marker_present": false,
     "ollama_calls_allowed_in_this_slice": false,
     "self_hosted_compute_allowed_in_this_slice": false,
     "external_providers_allowed": false,
-    "production_routing_changes_allowed": false
+    "production_routing_changes_allowed": false,
+    "execution_workflow_present": false,
+    "hosted_design_validation_workflow_present": true
   },
   "acceptance": {
     "candidate_negative_output_ledger_only_exact": "8/8",
