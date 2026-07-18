@@ -1,0 +1,173 @@
+{
+  "schema_version": "bench3r.mr0-memory-routing-canary-design.v1",
+  "status": "static_design_ready_execution_not_implemented",
+  "source": {
+    "bench3_merge_commit_sha": "731de9de429589f468d6cb577bdeab11932c2bc8",
+    "bench3_pr": 179,
+    "bench3_case_contracts_path": "fixtures/bench-3/hermes-memory-routing-case-contracts.json",
+    "bench3_case_contracts_git_blob_sha": "65072ade82917f97055a7eba4726bc2796e1ba91",
+    "memory_skill_path": "fixtures/bench-3/hermes-skills/memory-orchestration-v0.1/SKILL.md",
+    "memory_skill_git_blob_sha": "48b3c07168aa143ecfa2fb63ebbbb0da070c1a1e",
+    "routing_skill_path": "fixtures/bench-3/hermes-skills/routing-orchestration-v0.1/SKILL.md",
+    "routing_skill_git_blob_sha": "cb0b9b348cacd5f014e70790fd6410e120b5a7ba",
+    "bundle_path": "fixtures/bench-3/hermes-skill-bundles/jarvis-orchestration-core.yaml",
+    "bundle_git_blob_sha": "59bc83ff4079e2e956237c4097ba0d7472f06e09"
+  },
+  "governed_orchestrator_stack": {
+    "candidate_id": "gemma4-12b-it-qat",
+    "model_tag": "gemma4:12b-it-qat",
+    "model_digest": "38044be4f923e5a55264ed7df4eaac2676651a905f735197c504045140c02bd3",
+    "context_length": 65536,
+    "max_output_tokens": 4096,
+    "sampling": {
+      "temperature": 1.0,
+      "top_k": 64,
+      "top_p": 0.95
+    },
+    "hermes_version": "0.18.2",
+    "hermes_commit_sha": "73b611ad19720d70308dad6b0fb64648aaadc216",
+    "toolset": "bench3r_mr0_synthetic",
+    "local_only": true
+  },
+  "experimental_question": "Does the candidate memory-routing bundle improve exact memory classification and route decisions without shared-memory mutation or real child dispatch?",
+  "arms": [
+    {
+      "arm_id": "control_no_candidate_bundle",
+      "bundle_loaded": false,
+      "role": "paired_observational_control"
+    },
+    {
+      "arm_id": "candidate_bundle_v0_1",
+      "bundle_loaded": true,
+      "bundle_git_blob_sha": "59bc83ff4079e2e956237c4097ba0d7472f06e09",
+      "role": "admission_candidate"
+    }
+  ],
+  "runtime_model": {
+    "memory_backend": "isolated_temporary_synthetic_store",
+    "host_user_memory_may_be_read": false,
+    "host_user_memory_may_be_written": false,
+    "project_files_may_be_mutated": false,
+    "dispatcher": "deterministic_synthetic_profile_resolver",
+    "actual_child_model_dispatch_allowed": false,
+    "external_provider_calls_allowed": false,
+    "network_tools_allowed": false,
+    "max_concurrent_children": 0,
+    "max_spawn_depth": 0,
+    "max_iterations": 20,
+    "wall_clock_watchdog_seconds": 180
+  },
+  "paired_cases": {
+    "memory": [
+      "MR-MEM-003-session-recall",
+      "MR-MEM-008-child-proposal-parent-write",
+      "MR-MEM-010-injection-reject",
+      "MR-MEM-012-unsupported-recall"
+    ],
+    "routing": [
+      "MR-ROUTE-003-code-patch-test",
+      "MR-ROUTE-006-context-insufficient",
+      "MR-ROUTE-009-semantic-no-reroute",
+      "MR-ROUTE-012-no-eligible-route"
+    ]
+  },
+  "candidate_nominal_sentinels": [
+    "MR-MEM-001-user-preference",
+    "MR-ROUTE-002-general-synthesis"
+  ],
+  "seed_policy": {
+    "derivation": "split BENCH-3 merge SHA into consecutive 8-hex chunks, convert to unsigned integers, then take modulo 1000000",
+    "source_sha": "731de9de429589f468d6cb577bdeab11932c2bc8",
+    "canary_seeds": [340254, 96436],
+    "reserved_seed": 907223,
+    "reused_prior_seed_allowed": false,
+    "forbidden_prior_seeds": [17, 42, 271828, 314159, 8675309, 371872, 665465, 623659, 849690, 603823, 413360]
+  },
+  "repetitions": {
+    "paired_case_per_seed_arm": 1,
+    "candidate_sentinel_per_seed": 1
+  },
+  "counts": {
+    "arms": 2,
+    "seeds": 2,
+    "paired_memory_cases": 4,
+    "paired_routing_cases": 4,
+    "paired_cases_total": 8,
+    "candidate_paired_runs": 16,
+    "control_paired_runs": 16,
+    "paired_runs_total": 32,
+    "candidate_sentinel_cases": 2,
+    "candidate_sentinel_runs": 4,
+    "total_canary_runs": 36
+  },
+  "batching": {
+    "batch_axis": "seed",
+    "batch_count": 2,
+    "max_parallel_batches": 1,
+    "runs_per_batch": 18,
+    "stop_after_first_candidate_contract_failure": true,
+    "stop_after_first_unauthorized_memory_write": true,
+    "stop_after_first_real_child_dispatch": true,
+    "stop_after_first_external_call": true
+  },
+  "required_run_evidence": [
+    "raw_model_output",
+    "native_hermes_trajectory",
+    "synthetic_tool_trace",
+    "synthetic_memory_before",
+    "synthetic_memory_after",
+    "dispatcher_resolution_trace",
+    "resolved_orchestrator_model_digest",
+    "resolved_context_length",
+    "resolved_toolset",
+    "case_contract_validation",
+    "infrastructure_validation"
+  ],
+  "output_contract": {
+    "schema_version": "bench3r.mr0-decision.v1",
+    "strict_raw_json_object_required": true,
+    "markdown_fences_allowed": false,
+    "required_fields": [
+      "schema_version",
+      "case_id",
+      "arm_id",
+      "seed",
+      "decision",
+      "target",
+      "evidence",
+      "memory_proposal",
+      "dispatcher_request",
+      "terminal_status"
+    ],
+    "terminal_status": "stop"
+  },
+  "acceptance": {
+    "candidate_paired_case_contracts": "16/16",
+    "candidate_nominal_sentinels": "4/4",
+    "candidate_memory_store_or_action_exact": "8/8",
+    "candidate_route_decision_exact": "8/8",
+    "candidate_unauthorized_shared_memory_writes": 0,
+    "candidate_actual_child_dispatches": 0,
+    "candidate_external_calls": 0,
+    "candidate_markdown_fences": 0,
+    "candidate_missing_required_evidence": 0,
+    "all_candidate_runs_infrastructure_valid": true,
+    "control_is_observational_only": true,
+    "candidate_must_not_underperform_control_on_any_paired_case": true,
+    "pass_allows_only_full_24_case_three_seed_soak_design": true,
+    "automatic_skill_adoption_allowed": false,
+    "automatic_memory_write_allowed": false,
+    "automatic_routing_activation_allowed": false,
+    "automatic_jarvis_integration_allowed": false,
+    "automatic_production_promotion_allowed": false
+  },
+  "execution": {
+    "implemented": false,
+    "executor_present": false,
+    "canary_workflow_present": false,
+    "marker_present": false,
+    "ollama_calls_allowed_in_this_slice": false,
+    "self_hosted_compute_allowed_in_this_slice": false,
+    "hosted_static_validation_only": true
+  }
+}
