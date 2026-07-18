@@ -5,16 +5,21 @@ on:
     paths:
       - .github/workflows/bench3r-mr0-design-validation.yml
       - .github/workflows/bench3r-mr0-canary.yml
+      - .github/workflows/*bench*3*r*mr0**
+      - .github/actions/**
       - config/bench3r-mr0-marker.json
+      - config/*bench*3*r*mr0**
       - fixtures/bench-plans/bench3r-mr0-memory-routing-canary-design.json
       - fixtures/bench-3/hermes-memory-routing-case-contracts.json
       - fixtures/bench-3/hermes-skills/**
       - fixtures/bench-3/hermes-skill-bundles/**
+      - scripts/*bench*3*r*mr0**
       - scripts/bench3r_mr0_ids.py
       - scripts/bench3r_mr0_contract.py
       - scripts/bench3r_mr0_io.py
       - scripts/bench3r_mr0_validate_design.py
       - scripts/bench3r_mr0_validate_policy.py
+      - scripts/bench3r_mr0_namespace.py
       - scripts/validate_bench3r_mr0_design.py
       - scripts/run_bench3r_mr0.py
       - scripts/run_bench3r_mr0.ps1
@@ -25,21 +30,27 @@ on:
       - tests/test_bench3r_mr0_cases.py
       - tests/test_bench3r_mr0_policy.py
       - tests/test_bench3r_mr0_workflow.py
+      - tests/test_bench3r_mr0_namespace.py
   push:
     branches: [main]
     paths:
       - .github/workflows/bench3r-mr0-design-validation.yml
       - .github/workflows/bench3r-mr0-canary.yml
+      - .github/workflows/*bench*3*r*mr0**
+      - .github/actions/**
       - config/bench3r-mr0-marker.json
+      - config/*bench*3*r*mr0**
       - fixtures/bench-plans/bench3r-mr0-memory-routing-canary-design.json
       - fixtures/bench-3/hermes-memory-routing-case-contracts.json
       - fixtures/bench-3/hermes-skills/**
       - fixtures/bench-3/hermes-skill-bundles/**
+      - scripts/*bench*3*r*mr0**
       - scripts/bench3r_mr0_ids.py
       - scripts/bench3r_mr0_contract.py
       - scripts/bench3r_mr0_io.py
       - scripts/bench3r_mr0_validate_design.py
       - scripts/bench3r_mr0_validate_policy.py
+      - scripts/bench3r_mr0_namespace.py
       - scripts/validate_bench3r_mr0_design.py
       - scripts/run_bench3r_mr0.py
       - scripts/run_bench3r_mr0.ps1
@@ -50,6 +61,7 @@ on:
       - tests/test_bench3r_mr0_cases.py
       - tests/test_bench3r_mr0_policy.py
       - tests/test_bench3r_mr0_workflow.py
+      - tests/test_bench3r_mr0_namespace.py
 
 permissions:
   contents: read
@@ -68,7 +80,7 @@ jobs:
       - name: Validate MR0 design
         run: python -m scripts.validate_bench3r_mr0_design --output artifacts/validation/bench3r-mr0-design.json
       - name: Run MR0 regression tests
-        run: python -m unittest tests/test_bench3r_mr0_design.py tests/test_bench3r_mr0_cases.py tests/test_bench3r_mr0_policy.py tests/test_bench3r_mr0_workflow.py -v
+        run: python -m unittest tests/test_bench3r_mr0_design.py tests/test_bench3r_mr0_cases.py tests/test_bench3r_mr0_policy.py tests/test_bench3r_mr0_workflow.py tests/test_bench3r_mr0_namespace.py -v
       - name: Assert runtime artifacts absent
         shell: bash
         run: |
