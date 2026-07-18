@@ -1,0 +1,77 @@
+name: BENCH-2R Hermes dialogic orchestrator design validation
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/bench2r-hermes-dialogic-orchestrator-design-validation.yml
+      - .github/workflows/bench2r-hermes-dialogic-orchestrator-runtime.yml
+      - config/bench2r-hermes-dialogic-orchestrator-marker.json
+      - config/bench2r-hermes-s3a-marker.json
+      - config/bench2r-hermes-s3a-r1-repair-marker.json
+      - fixtures/bench-2r/hermes-skills/dialogic-orchestrator-v0.1-candidate/SKILL.md
+      - fixtures/bench-plans/bench2r-hermes-dialogic-orchestrator-design.json
+      - fixtures/bench-plans/bench2r-hermes-s3a-r2-design.json
+      - reports/BENCH-2R-HERMES-DIALOGIC-ORCHESTRATOR-DESIGN/**
+      - scripts/validate_bench2r_hermes_dialogic_orchestrator_design.py
+      - tests/test_bench2r_hermes_dialogic_orchestrator_design.py
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/bench2r-hermes-dialogic-orchestrator-design-validation.yml
+      - .github/workflows/bench2r-hermes-dialogic-orchestrator-runtime.yml
+      - config/bench2r-hermes-dialogic-orchestrator-marker.json
+      - config/bench2r-hermes-s3a-marker.json
+      - config/bench2r-hermes-s3a-r1-repair-marker.json
+      - fixtures/bench-2r/hermes-skills/dialogic-orchestrator-v0.1-candidate/SKILL.md
+      - fixtures/bench-plans/bench2r-hermes-dialogic-orchestrator-design.json
+      - fixtures/bench-plans/bench2r-hermes-s3a-r2-design.json
+      - reports/BENCH-2R-HERMES-DIALOGIC-ORCHESTRATOR-DESIGN/**
+      - scripts/validate_bench2r_hermes_dialogic_orchestrator_design.py
+      - tests/test_bench2r_hermes_dialogic_orchestrator_design.py
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate static dialogic orchestrator design
+        run: |
+          mkdir -p artifacts/validation
+          python -m scripts.validate_bench2r_hermes_dialogic_orchestrator_design --output artifacts/validation/dialogic-orchestrator-design.json
+          python -m unittest -v tests.test_bench2r_hermes_dialogic_orchestrator_design
+          python -m py_compile scripts/validate_bench2r_hermes_dialogic_orchestrator_design.py
+      - name: Assert runtime remains absent
+        run: |
+          test ! -e .github/workflows/bench2r-hermes-dialogic-orchestrator-runtime.yml
+          test ! -e config/bench2r-hermes-dialogic-orchestrator-marker.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          plan = json.loads(
+              Path("fixtures/bench-plans/bench2r-hermes-dialogic-orchestrator-design.json").read_text(encoding="utf-8")
+          )
+          execution = plan["execution"]
+          assert execution["implemented"] is False
+          assert execution["self_hosted_workflow_present"] is False
+          assert execution["activation_marker_present"] is False
+          assert execution["ollama_calls_allowed_in_this_slice"] is False
+          assert execution["training_weight_updates_allowed_in_this_slice"] is False
+          PY
+      - name: Upload validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench2r-hermes-dialogic-orchestrator-design-${{ github.run_id }}
+          path: artifacts/validation/
+          if-no-files-found: error
+          retention-days: 21
