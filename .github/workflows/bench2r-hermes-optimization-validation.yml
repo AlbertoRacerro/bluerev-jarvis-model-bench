@@ -5,12 +5,19 @@ on:
     paths:
       - config/bench2r-hermes-optimization-profiles.json
       - config/bench2r-hermes-preflight-marker.json
+      - config/bench2r-hermes-s3a-marker.json
+      - config/bench2r-hermes-s3a-r1-repair-marker.json
       - fixtures/bench-2r/**
       - fixtures/bench-plans/bench2r-hermes-optimization-plan.json
+      - fixtures/bench-plans/bench2r-hermes-s3a-r2-v13-canary-plan.json
       - scripts/bench2r_hermes_runtime.py
       - scripts/validate_bench2r_hermes_optimization.py
+      - scripts/validate_bench2r_hermes_s3a_r2_v13_design.py
       - tests/test_bench2r_hermes_optimization.py
+      - tests/test_bench2r_hermes_s3a_r2_v13_design.py
       - reports/BENCH-2R-HERMES-OPTIMIZATION-DESIGN/**
+      - reports/BENCH-2R-WINDOWS-RUNNER-AUDIT/**
+      - reports/BENCH-2R-HERMES-S3A-R1-CLOSEOUT/**
       - .github/workflows/bench2r-hermes-optimization-validation.yml
 
 permissions:
@@ -32,6 +39,11 @@ jobs:
           python -m unittest -v tests.test_bench2r_hermes_optimization
           python -m scripts.validate_bench2r_hermes_optimization --output artifacts/bench2r-optimization-validation.json
           python -m py_compile scripts/bench2r_hermes_runtime.py scripts/validate_bench2r_hermes_optimization.py
+      - name: Validate disabled S3A-R2 v1.3 design
+        run: |
+          python -m unittest -v tests.test_bench2r_hermes_s3a_r2_v13_design
+          python -m scripts.validate_bench2r_hermes_s3a_r2_v13_design --output artifacts/bench2r-s3a-r2-v13-design-validation.json
+          python -m py_compile scripts/validate_bench2r_hermes_s3a_r2_v13_design.py
       - name: Assert validation cannot execute models
         run: |
           python - <<'PY'
