@@ -150,7 +150,7 @@ def validate() -> dict[str, Any]:
     _require(isinstance(acceptance, dict), "R2 acceptance missing")
     for key in (
         "implemented",
-        "workflow_present",
+        "execution_workflow_present",
         "marker_present",
         "ollama_calls_allowed_in_this_slice",
         "self_hosted_compute_allowed_in_this_slice",
@@ -164,6 +164,10 @@ def validate() -> dict[str, Any]:
         "automatic_production_promotion_allowed",
     ):
         _require(acceptance.get(key) is False, f"R2 unsafe acceptance flag: {key}")
+    _require(
+        execution.get("hosted_design_validation_workflow_present") is True,
+        "R2 hosted design validation workflow is missing",
+    )
     _require(
         acceptance.get("candidate_negative_markdown_fences_allowed") == 0,
         "R2 permits Markdown fences",
