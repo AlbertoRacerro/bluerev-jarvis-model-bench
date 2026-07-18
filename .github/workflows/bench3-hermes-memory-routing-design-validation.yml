@@ -5,6 +5,7 @@ on:
     paths:
       - .github/workflows/bench3-hermes-memory-routing-design-validation.yml
       - .github/workflows/bench3-hermes-memory-routing-canary.yml
+      - .github/actions/**
       - config/bench3-hermes-memory-routing-marker.json
       - docs/research/HERMES_LOCAL_RELIABILITY_MEMORY_ROUTING.md
       - fixtures/bench-3/hermes-memory-routing-case-contracts.json
@@ -24,12 +25,14 @@ on:
       - tests/test_bench3_case_contracts.py
       - tests/test_bench3_workflow_guards.py
       - tests/test_bench3_shell_runtime_guard.py
+      - tests/test_bench3_action_namespace.py
       - tests/test_bench3_static_contract.py
   push:
     branches: [main]
     paths:
       - .github/workflows/bench3-hermes-memory-routing-design-validation.yml
       - .github/workflows/bench3-hermes-memory-routing-canary.yml
+      - .github/actions/**
       - config/bench3-hermes-memory-routing-marker.json
       - docs/research/HERMES_LOCAL_RELIABILITY_MEMORY_ROUTING.md
       - fixtures/bench-3/hermes-memory-routing-case-contracts.json
@@ -49,6 +52,7 @@ on:
       - tests/test_bench3_case_contracts.py
       - tests/test_bench3_workflow_guards.py
       - tests/test_bench3_shell_runtime_guard.py
+      - tests/test_bench3_action_namespace.py
       - tests/test_bench3_static_contract.py
 
 permissions:
@@ -68,7 +72,7 @@ jobs:
       - name: Validate complete non-executive BENCH-3 contract
         run: python -m scripts.validate_bench3_static_contract --output artifacts/validation/bench3-memory-routing-design.json
       - name: Run memory-routing regression tests
-        run: python -m unittest tests/test_bench3_hermes_memory_routing_design.py tests/test_bench3_case_contracts.py tests/test_bench3_workflow_guards.py tests/test_bench3_shell_runtime_guard.py tests/test_bench3_static_contract.py -v
+        run: python -m unittest tests/test_bench3_hermes_memory_routing_design.py tests/test_bench3_case_contracts.py tests/test_bench3_workflow_guards.py tests/test_bench3_shell_runtime_guard.py tests/test_bench3_action_namespace.py tests/test_bench3_static_contract.py -v
       - name: Assert no runtime boundary exists
         shell: bash
         run: |
