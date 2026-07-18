@@ -2,11 +2,52 @@
   "schema_version": "bench3r.mr0-synthetic-toolset.v1",
   "toolset_id": "bench3r_mr0_synthetic",
   "scope": "case_local_simulation",
+  "boundaries": {
+    "case_local_only": true,
+    "external_io": false,
+    "model_launch": false,
+    "persistent_changes": false
+  },
   "tools": [
-    {"name": "mr0_session_search", "terminal": false},
-    {"name": "mr0_memory_proposal", "terminal": false},
-    {"name": "mr0_route_request", "terminal": false},
-    {"name": "mr0_profile_resolve", "terminal": false},
-    {"name": "mr0_finish", "terminal": true}
+    {
+      "name": "mr0_session_search",
+      "inputs": ["query", "synthetic_corpus_id"],
+      "outputs": ["matches", "evidence_ids"],
+      "effects": "none",
+      "model_launch": false,
+      "terminal": false
+    },
+    {
+      "name": "mr0_memory_proposal",
+      "inputs": ["target", "operation", "content", "evidence_ids"],
+      "outputs": ["proposal_id", "proposal_status"],
+      "effects": "proposal_only",
+      "model_launch": false,
+      "terminal": false
+    },
+    {
+      "name": "mr0_route_request",
+      "inputs": ["lane", "requirements", "completion_contract"],
+      "outputs": ["request_id", "request_status"],
+      "effects": "request_only",
+      "model_launch": false,
+      "terminal": false
+    },
+    {
+      "name": "mr0_profile_resolve",
+      "inputs": ["lane"],
+      "outputs": ["profile_id", "model_digest", "context_length", "toolset_id"],
+      "effects": "none",
+      "model_launch": false,
+      "terminal": false
+    },
+    {
+      "name": "mr0_finish",
+      "inputs": ["decision_object"],
+      "outputs": ["terminal_status"],
+      "effects": "none",
+      "model_launch": false,
+      "terminal": true
+    }
   ]
 }
