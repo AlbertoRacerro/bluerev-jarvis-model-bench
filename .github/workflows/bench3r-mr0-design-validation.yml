@@ -8,9 +8,8 @@ on:
       - config/bench3r-mr0-marker.json
       - fixtures/bench-plans/bench3r-mr0-memory-routing-canary-design.json
       - fixtures/bench-3/hermes-memory-routing-case-contracts.json
-      - fixtures/bench-3/hermes-skills/memory-orchestration-v0.1/SKILL.md
-      - fixtures/bench-3/hermes-skills/routing-orchestration-v0.1/SKILL.md
-      - fixtures/bench-3/hermes-skill-bundles/jarvis-orchestration-core.yaml
+      - fixtures/bench-3/hermes-skills/**
+      - fixtures/bench-3/hermes-skill-bundles/**
       - scripts/bench3r_mr0_ids.py
       - scripts/bench3r_mr0_contract.py
       - scripts/bench3r_mr0_io.py
@@ -31,9 +30,8 @@ on:
       - config/bench3r-mr0-marker.json
       - fixtures/bench-plans/bench3r-mr0-memory-routing-canary-design.json
       - fixtures/bench-3/hermes-memory-routing-case-contracts.json
-      - fixtures/bench-3/hermes-skills/memory-orchestration-v0.1/SKILL.md
-      - fixtures/bench-3/hermes-skills/routing-orchestration-v0.1/SKILL.md
-      - fixtures/bench-3/hermes-skill-bundles/jarvis-orchestration-core.yaml
+      - fixtures/bench-3/hermes-skills/**
+      - fixtures/bench-3/hermes-skill-bundles/**
       - scripts/bench3r_mr0_ids.py
       - scripts/bench3r_mr0_contract.py
       - scripts/bench3r_mr0_io.py
