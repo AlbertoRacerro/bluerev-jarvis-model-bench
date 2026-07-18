@@ -31,6 +31,16 @@
         "path": "website/docs/user-guide/features/provider-routing.md",
         "git_blob_sha": "3dd6e69787e6a98e3761dcce753e063741d2591b",
         "purpose": "OpenRouter-only provider routing boundary"
+      },
+      {
+        "path": "toolsets.py",
+        "git_blob_sha": "03e64fdba4c012a792c2139f5d39ffc110f60d78",
+        "purpose": "exact memory, session-search, skills, and delegation toolset registry"
+      },
+      {
+        "path": "website/docs/user-guide/profiles.md",
+        "git_blob_sha": "904d3ec3d1ee9da64e18ef9515f9eb66a25c7575",
+        "purpose": "per-profile state isolation and explicit non-sandbox boundary"
       }
     ]
   },
@@ -55,7 +65,7 @@
       "name": "routing-orchestration",
       "version": "0.1.0",
       "path": "fixtures/bench-3/hermes-skills/routing-orchestration-v0.1/SKILL.md",
-      "git_blob_sha": "274a2a1fb4a9593f914f9dc7bd6e51467ab705c8",
+      "git_blob_sha": "cb0b9b348cacd5f014e70790fd6410e120b5a7ba",
       "status": "candidate_not_installed"
     }
   ],
@@ -116,7 +126,12 @@
     "child_context_must_be_self_contained": true,
     "least_privilege_toolsets_required": true,
     "dispatcher_trace_required": true,
-    "no_eligible_route_behavior": "fail_closed"
+    "no_eligible_route_behavior": "fail_closed",
+    "profiles_are_filesystem_sandbox": false,
+    "absolute_terminal_cwd_required": true,
+    "explicit_max_iterations_required": true,
+    "max_iterations_ceiling": 50,
+    "dispatcher_wall_clock_watchdog_required": true
   },
   "fallback_policy": {
     "infrastructure_fallback_before_side_effects_max": 1,
