@@ -42,6 +42,19 @@ COUNTS = {
     "candidate_sentinel_runs": 4,
     "total_canary_runs": 36,
 }
+EVIDENCE = [
+    "raw_model_output",
+    "native_hermes_trajectory",
+    "synthetic_tool_trace",
+    "synthetic_memory_before",
+    "synthetic_memory_after",
+    "dispatcher_resolution_trace",
+    "resolved_orchestrator_model_digest",
+    "resolved_context_length",
+    "resolved_toolset",
+    "case_contract_validation",
+    "infrastructure_validation",
+]
 OUTPUT_FIELDS = [
     "schema_version", "case_id", "arm_id", "seed", "decision",
     "target", "evidence", "memory_proposal", "dispatcher_request",
