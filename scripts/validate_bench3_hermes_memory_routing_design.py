@@ -105,6 +105,30 @@ FORBIDDEN_WORKFLOW_LITERAL = ".github/workflows/bench3-hermes-memory-routing-can
 FORBIDDEN_MARKER_LITERAL = "config/bench3-hermes-memory-routing-marker.json"
 FORBIDDEN_RUNNER_LITERAL = "scripts/run_bench3_hermes_memory_routing.py"
 
+ALLOWED_STATIC_RUNTIME_NAMESPACE_PATHS = {
+    ".github/workflows/bench3-hermes-memory-routing-design-validation.yml",
+    "scripts/validate_bench3_hermes_memory_routing_design.py",
+}
+RUNTIME_NAMESPACE_SENTINELS = (
+    "bench.hermes-memory-routing",
+    "bench3-hermes-memory-routing",
+    "memory-orchestration",
+    "routing-orchestration",
+    "jarvis-orchestration-core",
+    "MR-MEM-",
+    "MR-ROUTE-",
+)
+BROAD_TRIGGGER_LITERALS:
+    ".github/workflows/*bench3*memory*.yml",
+    ".github/workflows/*bench3*memory*.yaml",
+    ".github/workflows/*bench3*routing*.yml",
+    ".github/workflows/*bench3*routing*.yaml",
+    "config/*bench3*memory*.json",
+    "config/*bench3*routing*.json",
+    "scripts/*bench3*memory*.py",
+    "scripts/*bench3*routing*.py",
+)
+
 
 class MemoryRoutingDesignError(RuntimeError):
     pass
@@ -153,6 +177,32 @@ def _git_blob_sha(text: str) -> str:
     header = f"blob {len(payload)}\0".encode("ascii")
     return hashlib.sha1(header + payload).hexdigest()
 
+
+def _find_unexpected_runtime_artifacts() -> list[str]:
+    unexpected: list[str] = []
+    for directory, suffixes in (
+        (ROOT / ".github/workflows", {".yml", ".yaml"}),
+        (ROOT / "config", {".json"}),
+        (ROOT / "scripts", {".py"}),
+    ):
+        if not directory.exists():
+            continue
+        for path in directory.rglob("*"):
+            if not path.is_file() or path.suffix.lower() not in suffixes:
+                continue
+            relative = path.relative_to(ROOT).as_posix()
+            if relative in ALLOWED_STATIC_RUNTIME_NAMESPACE_PATHS:
+                continue
+            lowered = relative.lower()
+            path_matches = "bench3" in lowered and ("memory" in lowered or "routing" in lowered)
+            try:
+                text = path.read_text(encoding="utf-8")
+            except (OSError, UnicodeError):
+                text = ""
+            content_matches = any(sentinel in text for sentinel in RUNTIME_NAMESPACE_SENTINELS)
+            if path_matches or content_matches:
+                unexpected.append(relative)
+    return sorted(unexpected)
 
 def validate() -> dict[str, Any]:
     plan = _load(PLAN_PATH)
@@ -294,6 +344,18 @@ def validate() -> dict[str, Any]:
     execution = plan.get("execution")
     _require(isinstance(acceptance, dict), "acceptance boundary missing")
     _require(isinstance(execution, dict), "execution boundary missing")
+    required_true_acceptance = (
+        "memory_classification_exact_required",
+        "unsupported_recall_must_fail_closed",
+        "session_search_required_for_episodic_recall",
+        "route_selection_exact_required",
+        "resolved_profile_and_model_digest_required",
+        "actual_context_and_toolsets_required",
+        "semantic_failure_preserved",
+    )
+    for key in required_true_acceptance:
+        _require(acceptance.get(key) is True, f"required acceptance gate disabled: {key}")
+    _require(acceptance.get("child_memory_write_allowed") is False, "child memory write acceptance enabled")
     for key in (
         "automatic_skill_adoption_allowed",
         "automatic_memory_write_allowed",
@@ -312,6 +374,7 @@ def validate() -> dict[str, Any]:
     ):
         _require(execution.get(key) is False, f"unsafe execution flag: {key}")
     _require(execution.get("hosted_static_validation_only") is True, "hosted-only static boundary missing")
+    _require(execution.get("runtime_namespace_guard_required") is True, "runtime namespace guard disabled")
 
     _require(HERMES_COMMIT in research, "research note is not pinned to Hermes commit")
     for source in EXPECTED_OFFICIAL_SOURCES:
@@ -324,6 +387,8 @@ def validate() -> dict[str, Any]:
     _require(workflow.count(FORBIDDEN_WORKFLOW_LITERAL) == 3, "design workflow does not guard forbidden runtime workflow on PR and push")
     _require(workflow.count(FORBIDDEN_MARKER_LITERAL) == 3, "design workflow does not guard forbidden marker on PR and push")
     _require(workflow.count(FORBIDDEN_RUNNER_LITERAL) == 3, "design workflow does not guard forbidden runner on PR and push")
+    for trigger in BROAD_TRIGGER_LITERALS:
+        _require(workflow.count(trigger) == 2, f"design workflow broad trigger missing: {trigger}")
     _require("runs-on: ubuntu-latest" in workflow, "design validation is not hosted-only")
     _require("self-hosted" not in workflow, "design validation references self-hosted compute")
     _require("workflow_dispatch:" not in workflow, "design validation exposes manual dispatch")
@@ -331,6 +396,8 @@ def validate() -> dict[str, Any]:
     _require(not FORBIDDEN_WORKFLOW_PATH.exists(), "runtime workflow exists")
     _require(not FORBIDDEN_MARKER_PATH.exists(), "runtime marker exists")
     _require(not FORBIDDEN_RUNNER_PATH.exists(), "runtime runner exists")
+    unexpected_runtime_artifacts = _find_unexpected_runtime_artifacts()
+    _require(not unexpected_runtime_artifacts, f"unexpected memory-routing runtime artifacts: {unexpected_runtime_artifacts}")
 
     return {
         "schema_version": "bench.hermes-memory-routing-design-validation.v1",

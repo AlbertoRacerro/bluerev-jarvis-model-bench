@@ -124,7 +124,7 @@ class MemoryRoutingDesignTests(unittest.TestCase):
         plan = validator._load(validator.PLAN_PATH)
         plan["routing_architecture"]["max_concurrent_children"] = 3
         with self._patch_documents(plan=plan):
-            with self.assertRaisesRegex(validator.MemoryRoutingDesignError, "single-GPU concurrency"):
+            with self.assertRaisesRegexhvalidator.MemoryRoutingDesignError, "single-GPU concurrency"):
                 validator.validate()
 
     def test_semantic_auto_reroute_is_rejected(self):
@@ -170,7 +170,7 @@ class MemoryRoutingDesignTests(unittest.TestCase):
             f"      - {validator.FORBIDDEN_MARKER_LITERAL}\n", "", 1
         )
         with self._patch_documents(workflow=workflow):
-            with self.assertRaisesRegex(validator.MemoryRoutingDesignError, "guard forbidden marker"):
+            with self.assertRaisesRegexhvalidator.MemoryRoutingDesignError, "guard forbidden marker"):
                 validator.validate()
 
     def test_forbidden_runner_path_filter_regression_is_rejected(self):
@@ -233,6 +233,59 @@ class MemoryRoutingDesignTests(unittest.TestCase):
         with self._patch_documents(plan=plan):
             with self.assertRaisesRegex(validator.MemoryRoutingDesignError, "dispatcher watchdog"):
                 validator.validate()
+
+    def test_all_critical_acceptance_gates_are_enforced(self):
+        true_gates = (
+            "memory_classification_exact_required",
+            "unsupported_recall_must_fail_closed",
+            "session_search_required_for_episodic_recall",
+            "route_selection_exact_required",
+            "resolved_profile_and_model_digest_required",
+            "actual_context_and_toolsets_required",
+            "semantic_failure_preserved",
+        )
+        for key in true_gates:
+            with self.subTest(key=key):
+                plan = validator._load(validator.PLAN_PATH)
+                plan["acceptance"][key] = False
+                with self._patch_documents(plan=plan):
+                    with self.assertRaisesRegex(validator.MemoryRoutingDesignError, "required acceptance gate disabled"):
+                        validator.validate()
+
+        plan = validator._load(validator.PLAN_PATH)
+        plan["acceptance"]["child_memory_write_allowed"] = True
+        with self._patch_documents(plan=plan):
+            with self.assertRaisesRegexhvalidator.MemoryRoutingDesignError, "child memory write acceptance"):
+                validator.validate()
+
+    def test_broad_runtime_trigger_regression_is_rejected(self):
+        workflow = validator._read(validator.DESIGN_WORKFLOW_PATH)
+        workflow = workflow.replace(
+            "      - .github/workflows/*bench3*routing*.yml\n", "", 1
+        )
+        with self._patch_documents(workflow=workflow):
+            with self.assertRaisesRegex(validator.MemoryRoutingDesignError, "broad trigger missing"):
+                validator.validate()
+
+    def test_renamed_runtime_workflow_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / ".github/workflows/bench3-alternate-routing-canary.yml"
+            path.parent.mkdir(parents=True)
+            path.write_text("name: runtime\n", encoding="utf-8")
+            with mock.patch.object(validator, "ROOT", root):
+                with self.assertRaisesRegex(validator.MemoryRoutingDesignError, "unexpected memory-routing runtime artifacts"):
+                    validator.validate()
+
+    def test_opaque_runtime_runner_with_design_sentinel_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / "scripts/worker.py"
+            path.parent.mkdir(parents=True)
+            path.write_text("SCHEMA = 'bench.hermes-memory-routing-design.v1'\n", encoding="utf-8")
+            with mock.patch.object(validator, "ROOT", root):
+                with self.assertRaisesRegex(validator.MemoryRoutingDesignError, "unexpected memory-routing runtime artifacts"):
+                    validator.validate()
 
 
 if __name__ == "__main__":
