@@ -52,7 +52,7 @@ Therefore this skill must not pretend that naming a lane changes the child model
 Actual per-task routing must be enforced by one of these deterministic mechanisms:
 
 1. A JarvisOS route tool that resolves a lane to an immutable profile and governed stack.
-2. Separate Hermes profiles with pinned provider, endpoint, model digest, context, skills, and toolsets.
+2. Separate Hermes profiles with pinned provider, endpoint, model digest, context, skills, and toolsets. Profiles isolate Hermes state but are not filesystem sandboxes; set an absolute terminal.cwd and enforce filesystem/tool policy separately.
 3. A later Hermes upgrade only after compatibility qualification proves the required routing semantics.
 
 OpenRouter provider_routing is not a local Ollama router and must not be used as evidence of local lane selection.
@@ -78,6 +78,8 @@ Grant least-privilege toolsets.
 
 For a single consumer GPU, set max_concurrent_children to 1 until a hardware experiment proves safe concurrency. Keep max_spawn_depth at 1 and disable nested orchestrators during the first routing qualification.
 
+Every dispatch must set an explicit max_iterations value within the reviewed ceiling. Because slow local inference may legitimately exceed a short Hermes child timeout, the JarvisOS dispatcher must provide a separate wall-clock watchdog and preserve a timeout diagnostic.
+
 Subagents must not write persistent memory. The parent adjudicates child summaries and any memory proposals.
 
 ## Fallback Policy
@@ -98,7 +100,7 @@ Require dispatcher or child evidence for:
 1. Selected lane and resolved profile.
 2. Exact provider endpoint and model digest.
 3. Actual context length and residency policy.
-4. Toolsets and iteration budget.
+4. Toolsets, explicit max_iterations, absolute working directory, and dispatcher watchdog.
 5. Completion-contract evidence.
 6. Whether a fallback occurred and why.
 7. Absence of forbidden side effects or retries.
