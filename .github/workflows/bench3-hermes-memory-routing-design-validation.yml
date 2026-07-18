@@ -21,7 +21,9 @@ on:
       - scripts/*bench3*memory*.py
       - scripts/*bench3*routing*.py
       - scripts/validate_bench3_hermes_memory_routing_design.py
+      - scripts/validate_bench3_static_contract.py
       - tests/test_bench3_hermes_memory_routing_design.py
+      - tests/test_bench3_static_contract.py
   push:
     branches: [main]
     paths:
@@ -43,7 +45,9 @@ on:
       - scripts/*bench3*memory*.py
       - scripts/*bench3*routing*.py
       - scripts/validate_bench3_hermes_memory_routing_design.py
+      - scripts/validate_bench3_static_contract.py
       - tests/test_bench3_hermes_memory_routing_design.py
+      - tests/test_bench3_static_contract.py
 
 permissions:
   contents: read
@@ -59,10 +63,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Validate non-executive memory-routing design
-        run: python -m scripts.validate_bench3_hermes_memory_routing_design --output artifacts/validation/bench3-memory-routing-design.json
+      - name: Validate complete non-executive BENCH-3 contract
+        run: python -m scripts.validate_bench3_static_contract --output artifacts/validation/bench3-memory-routing-design.json
       - name: Run memory-routing regression tests
-        run: python -m unittest tests/test_bench3_hermes_memory_routing_design.py -v
+        run: python -m unittest tests/test_bench3_hermes_memory_routing_design.py tests/test_bench3_static_contract.py -v
       - name: Assert no runtime boundary exists
         shell: bash
         run: |
