@@ -16,5 +16,10 @@ ROUTING_CASES = [
     ROUTE + "012-no-eligible-route",
 ]
 SENTINELS = [MEM + "001-user-preference", ROUTE + "002-general-synthesis"]
+SEED_DERIVATION = "split BENCH-3 merge SHA into consecutive 8-hex chunks, convert to unsigned integers, then take modulo 1000000"
 SEEDS = [340254, 96436]
 RESERVED_SEED = 907223
+FORBIDDEN_SEEDS = [
+    17, 42, 271828, 314159, 8675309,
+    371872, 665465, 623659, 849690, 603823, 413360,
+]
