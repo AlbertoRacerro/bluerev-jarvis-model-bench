@@ -4,8 +4,10 @@ on:
   pull_request:
     paths:
       - .github/workflows/bench2r-hermes-s3a-r2-design-validation.yml
+      - .github/workflows/bench2r-hermes-s3a-r2-canary.yml
       - config/bench2r-hermes-s3a-marker.json
       - config/bench2r-hermes-s3a-r1-repair-marker.json
+      - config/bench2r-hermes-s3a-r2-marker.json
       - fixtures/bench-2r/hermes-skills/bounded-tool-orchestration-v1.2-candidate/SKILL.md
       - fixtures/bench-2r/hermes-skills/bounded-tool-orchestration-v1.3-candidate/SKILL.md
       - fixtures/bench-plans/bench2r-hermes-s3a-r2-design.json
@@ -16,8 +18,10 @@ on:
     branches: [main]
     paths:
       - .github/workflows/bench2r-hermes-s3a-r2-design-validation.yml
+      - .github/workflows/bench2r-hermes-s3a-r2-canary.yml
       - config/bench2r-hermes-s3a-marker.json
       - config/bench2r-hermes-s3a-r1-repair-marker.json
+      - config/bench2r-hermes-s3a-r2-marker.json
       - fixtures/bench-2r/hermes-skills/bounded-tool-orchestration-v1.2-candidate/SKILL.md
       - fixtures/bench-2r/hermes-skills/bounded-tool-orchestration-v1.3-candidate/SKILL.md
       - fixtures/bench-plans/bench2r-hermes-s3a-r2-design.json
@@ -47,6 +51,7 @@ jobs:
         shell: bash
         run: |
           test ! -e .github/workflows/bench2r-hermes-s3a-r2-canary.yml
+          test ! -e config/bench2r-hermes-s3a-r2-marker.json
           python - <<'PY'
           import json
           from pathlib import Path
