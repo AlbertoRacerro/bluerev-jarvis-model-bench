@@ -15,6 +15,20 @@ STACK = {
     "toolset": "bench3r_mr0_synthetic",
     "local_only": True,
 }
+RUNTIME = {
+    "memory_backend": "isolated_temporary_synthetic_store",
+    "host_user_memory_may_be_read": False,
+    "host_user_memory_may_be_written": False,
+    "project_files_may_be_mutated": False,
+    "dispatcher": "deterministic_synthetic_profile_resolver",
+    "actual_child_model_dispatch_allowed": False,
+    "external_provider_calls_allowed": False,
+    "network_tools_allowed": False,
+    "max_concurrent_children": 0,
+    "max_spawn_depth": 0,
+    "max_iterations": 20,
+    "wall_clock_watchdog_seconds": 180,
+}
 COUNTS = {
     "arms": 2,
     "seeds": 2,
