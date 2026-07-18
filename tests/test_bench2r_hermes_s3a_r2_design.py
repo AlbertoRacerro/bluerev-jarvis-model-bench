@@ -10,7 +10,16 @@ from scripts import validate_bench2r_hermes_s3a_r2_design as validator
 
 
 class HermesS3AR2DesignTests(unittest.TestCase):
-    def _patch_documents(self, *, plan=None, audit=None, candidate=None, s3a_marker=None, r1_marker=None):
+    def _patch_documents(
+        self,
+        *,
+        plan=None,
+        audit=None,
+        candidate=None,
+        workflow=None,
+        s3a_marker=None,
+        r1_marker=None,
+    ):
         original_load = validator._load
         original_read = validator._read
 
@@ -28,6 +37,8 @@ class HermesS3AR2DesignTests(unittest.TestCase):
         def read(path: Path):
             if path == validator.CANDIDATE_SKILL_PATH and candidate is not None:
                 return candidate
+            if path == validator.DESIGN_WORKFLOW_PATH and workflow is not None:
+                return workflow
             return original_read(path)
 
         return mock.patch.multiple(
@@ -42,6 +53,10 @@ class HermesS3AR2DesignTests(unittest.TestCase):
         self.assertEqual(payload["candidate_negative_runs"], 8)
         self.assertEqual(payload["paired_negative_runs"], 16)
         self.assertEqual(payload["total_canary_runs"], 18)
+        self.assertEqual(
+            payload["governed_model_digest"],
+            validator.EXPECTED_GOVERNED_STACK["model_digest"],
+        )
         self.assertFalse(payload["execution_implemented"])
         self.assertEqual(payload["production_status"], "not_promoted")
 
@@ -59,11 +74,39 @@ class HermesS3AR2DesignTests(unittest.TestCase):
             with self.assertRaisesRegex(validator.HermesS3AR2DesignError, "candidate skill blob"):
                 validator.validate()
 
+    def test_governed_stack_drift_is_rejected(self):
+        plan = validator._load(validator.PLAN_PATH)
+        plan["governed_stack"]["model_digest"] = "0" * 64
+        with self._patch_documents(plan=plan):
+            with self.assertRaisesRegex(validator.HermesS3AR2DesignError, "governed stack"):
+                validator.validate()
+
     def test_prior_seed_reuse_is_rejected(self):
         plan = validator._load(validator.PLAN_PATH)
         plan["seed_policy"]["canary_seeds"] = [371872, 603823]
         with self._patch_documents(plan=plan):
             with self.assertRaisesRegex(validator.HermesS3AR2DesignError, "canary seeds"):
+                validator.validate()
+
+    def test_negative_case_inventory_drift_is_rejected(self):
+        plan = validator._load(validator.PLAN_PATH)
+        plan["cases"]["paired_negative"][0] = plan["cases"]["candidate_nominal_sentinels"][0]
+        with self._patch_documents(plan=plan):
+            with self.assertRaisesRegex(validator.HermesS3AR2DesignError, "negative case inventory"):
+                validator.validate()
+
+    def test_nominal_case_inventory_drift_is_rejected(self):
+        plan = validator._load(validator.PLAN_PATH)
+        plan["cases"]["candidate_nominal_sentinels"].reverse()
+        with self._patch_documents(plan=plan):
+            with self.assertRaisesRegex(validator.HermesS3AR2DesignError, "sentinel inventory"):
+                validator.validate()
+
+    def test_repetition_drift_is_rejected(self):
+        plan = validator._load(validator.PLAN_PATH)
+        plan["repetitions"]["paired_negative_per_case_seed_arm"] = 1
+        with self._patch_documents(plan=plan):
+            with self.assertRaisesRegex(validator.HermesS3AR2DesignError, "repetition policy"):
                 validator.validate()
 
     def test_bad_run_arithmetic_is_rejected(self):
@@ -88,12 +131,42 @@ class HermesS3AR2DesignTests(unittest.TestCase):
             with self.assertRaisesRegex(validator.HermesS3AR2DesignError, "R1 marker"):
                 validator.validate()
 
+    def test_canary_path_filter_regression_is_rejected(self):
+        workflow = validator._read(validator.DESIGN_WORKFLOW_PATH)
+        workflow = workflow.replace(
+            f"      - {validator.FORBIDDEN_WORKFLOW_LITERAL}\n",
+            "",
+            1,
+        )
+        with self._patch_documents(workflow=workflow):
+            with self.assertRaisesRegex(validator.HermesS3AR2DesignError, "guard forbidden canary path"):
+                validator.validate()
+
+    def test_marker_path_filter_regression_is_rejected(self):
+        workflow = validator._read(validator.DESIGN_WORKFLOW_PATH)
+        workflow = workflow.replace(
+            f"      - {validator.FORBIDDEN_MARKER_LITERAL}\n",
+            "",
+            1,
+        )
+        with self._patch_documents(workflow=workflow):
+            with self.assertRaisesRegex(validator.HermesS3AR2DesignError, "guard forbidden marker path"):
+                validator.validate()
+
     def test_execution_workflow_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "r2.yml"
             path.write_text("name: forbidden\n", encoding="utf-8")
             with mock.patch.object(validator, "FORBIDDEN_WORKFLOW_PATH", path):
                 with self.assertRaisesRegex(validator.HermesS3AR2DesignError, "workflow exists"):
+                    validator.validate()
+
+    def test_execution_marker_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "r2-marker.json"
+            path.write_text("{}\n", encoding="utf-8")
+            with mock.patch.object(validator, "FORBIDDEN_MARKER_PATH", path):
+                with self.assertRaisesRegex(validator.HermesS3AR2DesignError, "marker exists"):
                     validator.validate()
 
 
