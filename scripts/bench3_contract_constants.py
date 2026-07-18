@@ -107,8 +107,8 @@ FALSE_EXECUTION = (
     "memory_mutation_allowed_in_this_slice",
 )
 NAMESPACE_VARIANTS = ("bench3", "bench-3", "bench_3")
-BROAD_TRIGGERS = tuple(
-    [f".github/workflows/*{variant}*{kind}*.{ext}" for variant in NAMESPACE_VARIANTS for kind in ("memory", "routing") for ext in ("yml", "yaml")]
-    + [f"config/*{variant}*{kind}*.json" for variant in NAMESPACE_VARIANTS for kind in ("memory", "routing")]
-    + [f"scripts/*{variant}*{kind}*.{ext}" for variant in NAMESPACE_VARIANTS for kind in ("memory", "routing") for ext in ("py", "ps1", "cmd", "bat")]
+BROAD_TRIGGERS = (
+    ".github/workflows/*bench*3**",
+    "config/*bench*3**",
+    "scripts/*bench*3**",
 )
