@@ -197,6 +197,7 @@
     "self_hosted_compute_allowed_in_this_slice": false,
     "jarvis_routing_changes_allowed_in_this_slice": false,
     "memory_mutation_allowed_in_this_slice": false,
-    "hosted_static_validation_only": true
+    "hosted_static_validation_only": true,
+    "runtime_namespace_guard_required": true
   }
 }
