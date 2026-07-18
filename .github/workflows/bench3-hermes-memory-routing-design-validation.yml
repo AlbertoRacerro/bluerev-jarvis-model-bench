@@ -5,50 +5,46 @@ on:
     paths:
       - .github/workflows/bench3-hermes-memory-routing-design-validation.yml
       - .github/workflows/bench3-hermes-memory-routing-canary.yml
-      - .github/workflows/*bench3*memory*.yml
-      - .github/workflows/*bench3*memory*.yaml
-      - .github/workflows/*bench3*routing*.yml
-      - .github/workflows/*bench3*routing*.yaml
       - config/bench3-hermes-memory-routing-marker.json
-      - config/*bench3*memory*.json
-      - config/*bench3*routing*.json
       - docs/research/HERMES_LOCAL_RELIABILITY_MEMORY_ROUTING.md
+      - fixtures/bench-3/hermes-memory-routing-case-contracts.json
       - fixtures/bench-3/hermes-skills/memory-orchestration-v0.1/SKILL.md
       - fixtures/bench-3/hermes-skills/routing-orchestration-v0.1/SKILL.md
       - fixtures/bench-3/hermes-skill-bundles/jarvis-orchestration-core.yaml
       - fixtures/bench-plans/bench3-hermes-memory-routing-design.json
       - scripts/run_bench3_hermes_memory_routing.py
-      - scripts/*bench3*memory*.py
-      - scripts/*bench3*routing*.py
-      - scripts/bench3_contract_constants.py
-      - scripts/validate_bench3_hermes_memory_routing_design.py
-      - scripts/validate_bench3_static_contract.py
+      - scripts/run_bench3_hermes_memory_routing.ps1
+      - scripts/run_bench3_hermes_memory_routing.cmd
+      - scripts/run_bench3_hermes_memory_routing.bat
+      - .github/workflows/*bench*3**
+      - config/*bench*3**
+      - scripts/*bench*3**
       - tests/test_bench3_hermes_memory_routing_design.py
+      - tests/test_bench3_case_contracts.py
+      - tests/test_bench3_workflow_guards.py
       - tests/test_bench3_static_contract.py
   push:
     branches: [main]
     paths:
       - .github/workflows/bench3-hermes-memory-routing-design-validation.yml
       - .github/workflows/bench3-hermes-memory-routing-canary.yml
-      - .github/workflows/*bench3*memory*.yml
-      - .github/workflows/*bench3*memory*.yaml
-      - .github/workflows/*bench3*routing*.yml
-      - .github/workflows/*bench3*routing*.yaml
       - config/bench3-hermes-memory-routing-marker.json
-      - config/*bench3*memory*.json
-      - config/*bench3*routing*.json
       - docs/research/HERMES_LOCAL_RELIABILITY_MEMORY_ROUTING.md
+      - fixtures/bench-3/hermes-memory-routing-case-contracts.json
       - fixtures/bench-3/hermes-skills/memory-orchestration-v0.1/SKILL.md
       - fixtures/bench-3/hermes-skills/routing-orchestration-v0.1/SKILL.md
       - fixtures/bench-3/hermes-skill-bundles/jarvis-orchestration-core.yaml
       - fixtures/bench-plans/bench3-hermes-memory-routing-design.json
       - scripts/run_bench3_hermes_memory_routing.py
-      - scripts/*bench3*memory*.py
-      - scripts/*bench3*routing*.py
-      - scripts/bench3_contract_constants.py
-      - scripts/validate_bench3_hermes_memory_routing_design.py
-      - scripts/validate_bench3_static_contract.py
+      - scripts/run_bench3_hermes_memory_routing.ps1
+      - scripts/run_bench3_hermes_memory_routing.cmd
+      - scripts/run_bench3_hermes_memory_routing.bat
+      - .github/workflows/*bench*3**
+      - config/*bench*3**
+      - scripts/*bench*3**
       - tests/test_bench3_hermes_memory_routing_design.py
+      - tests/test_bench3_case_contracts.py
+      - tests/test_bench3_workflow_guards.py
       - tests/test_bench3_static_contract.py
 
 permissions:
@@ -68,17 +64,19 @@ jobs:
       - name: Validate complete non-executive BENCH-3 contract
         run: python -m scripts.validate_bench3_static_contract --output artifacts/validation/bench3-memory-routing-design.json
       - name: Run memory-routing regression tests
-        run: python -m unittest tests/test_bench3_hermes_memory_routing_design.py tests/test_bench3_static_contract.py -v
+        run: python -m unittest tests/test_bench3_hermes_memory_routing_design.py tests/test_bench3_case_contracts.py tests/test_bench3_workflow_guards.py tests/test_bench3_static_contract.py -v
       - name: Assert no runtime boundary exists
         shell: bash
         run: |
           test ! -e .github/workflows/bench3-hermes-memory-routing-canary.yml
           test ! -e config/bench3-hermes-memory-routing-marker.json
           test ! -e scripts/run_bench3_hermes_memory_routing.py
+          test ! -e scripts/run_bench3_hermes_memory_routing.ps1
+          test ! -e scripts/run_bench3_hermes_memory_routing.cmd
+          test ! -e scripts/run_bench3_hermes_memory_routing.bat
           python - <<'PY'
           import json
           from pathlib import Path
-
           plan = json.loads(Path('fixtures/bench-plans/bench3-hermes-memory-routing-design.json').read_text(encoding='utf-8'))
           execution = plan['execution']
           assert execution['implemented'] is False
