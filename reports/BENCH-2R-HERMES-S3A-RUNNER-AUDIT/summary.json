@@ -1,0 +1,232 @@
+{
+  "schema_version": "bench.hermes-s3a-runner-audit.v1",
+  "status": "complete_with_historical_attempt_gap",
+  "audited_at": "2026-07-18",
+  "repository": "AlbertoRacerro/bluerev-jarvis-model-bench",
+  "main_commit_sha": "991d891a9b1152ef54b90bf0f18d9907c1044fa4",
+  "markers": {
+    "s3a": {
+      "path": "config/bench2r-hermes-s3a-marker.json",
+      "enabled": false
+    },
+    "s3a_r1": {
+      "path": "config/bench2r-hermes-s3a-r1-repair-marker.json",
+      "enabled": false
+    }
+  },
+  "classification_model": {
+    "runner_evidence": {
+      "A": "runner assigned and at least setup/checkout or an operational step executed",
+      "B": "no runner assignment and no steps before cancellation"
+    },
+    "failure_subtype": {
+      "C": "runner started but Ollama unavailable",
+      "D": "infrastructure or workflow failure after assignment",
+      "E": "semantic gate failure after valid preflight, capture, and artifact upload"
+    },
+    "note": "A/B records runner availability; C/D/E record the failure subtype, so A+D and A+E are intentional combinations."
+  },
+  "runs": [
+    {
+      "workflow": "BENCH-2R Hermes S3A shadow soak",
+      "run_id": 29342851925,
+      "attempt": 1,
+      "head_sha": "d4516d167527c24a41ada8f72233d730b8ddfb42",
+      "job_count": 5,
+      "classification_counts": {
+        "A+D": 5
+      },
+      "capture_started": false,
+      "artifacts": 0,
+      "reason": "all five jobs reached the runner and failed preflight; activation superseded"
+    },
+    {
+      "workflow": "BENCH-2R Hermes S3A shadow soak",
+      "run_id": 29343772998,
+      "attempt": 1,
+      "head_sha": "810400f7b1e5b7659daa16e8ce3516682ce95ada",
+      "job_count": 5,
+      "classification_counts": {
+        "A+D": 5
+      },
+      "capture_started": false,
+      "artifacts": 0,
+      "reason": "all five jobs reached the runner and failed preflight; activation superseded"
+    },
+    {
+      "workflow": "BENCH-2R Hermes S3A shadow soak",
+      "run_id": 29349268377,
+      "attempt": 1,
+      "head_sha": "b2d775541ef3617ab4226e7ca922bc5a8f0272f7",
+      "job_count": 5,
+      "classification_counts": {
+        "A+D": 4,
+        "B": 1
+      },
+      "capture_started": false,
+      "artifacts": 0,
+      "reason": "four jobs failed preflight after assignment; batch 4 was cancelled before assignment; activation superseded"
+    },
+    {
+      "workflow": "BENCH-2R Hermes S3A shadow soak",
+      "run_id": 29349791304,
+      "attempt": 1,
+      "head_sha": "c30cf7f35022bfede5835e72acbcf7d4355ebf69",
+      "job_count": 5,
+      "classification_counts": {
+        "A+D": 4,
+        "B": 1
+      },
+      "capture_started": false,
+      "artifacts": 0,
+      "reason": "PowerShell PSSecurityException blocked four assigned jobs; batch 4 was cancelled before assignment; shell fix superseded this activation"
+    },
+    {
+      "workflow": "BENCH-2R Hermes S3A shadow soak",
+      "run_id": 29350222618,
+      "attempt": 1,
+      "head_sha": "e522b3ec455faf4a563118cf96df65f62f16656a",
+      "job_count": 5,
+      "classification_counts": {
+        "A+D": 4,
+        "B": 1
+      },
+      "capture_started": false,
+      "reason": "marker validation drift blocked assigned jobs; one job was cancelled during checkout and batch 4 before assignment; activation superseded"
+    },
+    {
+      "workflow": "BENCH-2R Hermes S3A shadow soak",
+      "run_id": 29350762330,
+      "attempt": 1,
+      "head_sha": "43fdd22252d89c1b83b5190e6ef41dbf0bfac625",
+      "job_count": 5,
+      "classification_counts": {
+        "A+E": 2,
+        "A+pass": 3
+      },
+      "capture_started": true,
+      "main_artifacts": 5,
+      "preflight_artifacts": 5,
+      "reason": "all batches completed on the Windows runner; batches 0 and 2 failed semantic enforcement, not infrastructure"
+    },
+    {
+      "workflow": "BENCH-2R Hermes S3A-R1 repair experiment",
+      "run_id": 29363488845,
+      "attempt": 1,
+      "head_sha": "0aefc372fc2ac95bc1467877d2bca68dc1abcbb5",
+      "job_count": 3,
+      "classification_counts": {
+        "A+D": 3
+      },
+      "capture_started": false,
+      "preflight_artifacts": 2,
+      "reason": "closeout blob drift blocked batches 0 and 1; batch 2 was cancelled during checkout; corrected activation superseded the run"
+    },
+    {
+      "workflow": "BENCH-2R Hermes S3A-R1 repair experiment",
+      "run_id": 29364133435,
+      "attempt": 2,
+      "head_sha": "414c5ac259d3ac892f5ca2046c23d9074ae86a27",
+      "job_count": 3,
+      "classification_counts": {
+        "A+E": 1,
+        "B": 2
+      },
+      "capture_started": true,
+      "main_artifacts": 1,
+      "preflight_artifacts": 1,
+      "reason": "batch 0 completed and failed the strict raw-JSON semantic gate; batches 1 and 2 were cancelled before assignment and are mathematically unnecessary after early stop"
+    },
+    {
+      "workflow": "Recover BENCH-2R Hermes S3A-R1 batch 0 evidence",
+      "run_id": 29364729407,
+      "attempt": 1,
+      "head_sha": "8caff4e1c8ba9dbc3b8c93da849c387380d560bc",
+      "job_count": 1,
+      "classification_counts": {
+        "A+D": 1
+      },
+      "capture_started": false,
+      "artifacts": 0,
+      "reason": "runner was available; the expected preserved workspace path did not exist"
+    },
+    {
+      "workflow": "BENCH-2R Hermes S3A-R1 recovery v2",
+      "run_id": 29391937836,
+      "attempt": 1,
+      "job_count": 1,
+      "classification_counts": {
+        "A+pass": 1
+      },
+      "capture_started": false,
+      "artifacts": 1,
+      "reason": "full runner-workspace scan succeeded and found zero residual directories or diagnostics"
+    }
+  ],
+  "class_b_jobs": [
+    {
+      "run_id": 29349268377,
+      "attempt": 1,
+      "job_id": 87140999505,
+      "job_name": "shadow-soak (4)",
+      "rerunnable": false,
+      "reason": "superseded preflight-invalid activation"
+    },
+    {
+      "run_id": 29349791304,
+      "attempt": 1,
+      "job_id": 87142766802,
+      "job_name": "shadow-soak (4)",
+      "rerunnable": false,
+      "reason": "superseded PowerShell-invalid activation"
+    },
+    {
+      "run_id": 29350222618,
+      "attempt": 1,
+      "job_id": 87144249471,
+      "job_name": "shadow-soak (4)",
+      "rerunnable": false,
+      "reason": "superseded marker-invalid activation"
+    },
+    {
+      "run_id": 29364133435,
+      "attempt": 2,
+      "job_id": 87278459381,
+      "job_name": "paired-repair (1)",
+      "rerunnable": false,
+      "reason": "R1 acceptance mathematically unrecoverable after batch 0"
+    },
+    {
+      "run_id": 29364133435,
+      "attempt": 2,
+      "job_id": 87278480900,
+      "job_name": "paired-repair (2)",
+      "rerunnable": false,
+      "reason": "R1 acceptance mathematically unrecoverable after batch 0"
+    }
+  ],
+  "job_totals": {
+    "jobs_with_full_observer_or_actions_metadata": 38,
+    "A+D": 26,
+    "A+E": 3,
+    "A+pass": 4,
+    "B": 5,
+    "C": 0,
+    "rerunnable": 0
+  },
+  "historical_attempt_gap": {
+    "run_id": 29364133435,
+    "attempt": 1,
+    "known_evidence": "preflight artifact 8323363209 exists",
+    "missing_evidence": "the current connector exposes latest-attempt jobs and no persisted observer snapshot for attempt 1 was found",
+    "decision_impact": "none; attempt 2 is authoritative and fully captured"
+  },
+  "decision": {
+    "rerun_performed": false,
+    "rerunnable_job_ids": [],
+    "same_configuration_rerun_allowed": false,
+    "new_compute_required_for_audit": false,
+    "next_allowed_work": "static design and validation of bounded-tool-orchestration v1.3 with fresh seeds",
+    "production_status": "not_promoted"
+  }
+}
