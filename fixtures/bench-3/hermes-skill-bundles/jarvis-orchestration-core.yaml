@@ -1,0 +1,10 @@
+name: jarvis-orchestration-core
+description: Reliable memory retrieval and capability-based local routing.
+skills:
+  - memory-orchestration
+  - routing-orchestration
+instruction: |
+  Retrieve only the context the task actually needs.
+  Route from the governed capability registry, not from model reputation.
+  Keep memory promotion parent-only and evidence-backed.
+  A route decision is not execution until a dispatcher trace confirms it.
